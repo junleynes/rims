@@ -12,7 +12,8 @@ import {
   ChevronRight,
   LayoutGrid,
   Building2,
-  ArrowLeft
+  ArrowLeft,
+  CalendarDays
 } from 'lucide-react';
 import { 
   Table, 
@@ -60,18 +61,31 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   const [currentSection, setCurrentSection] = useState<Section | null>(
     user?.role === 'Manager' ? (user.section as Section) : null
   );
+  const [currentYear, setCurrentYear] = useState<string | null>(null);
   
-  // Table filters
-  const [selectedYear, setSelectedYear] = useState<string>('All');
+  // Table filters (Secondary filters once inside a Year)
   const [selectedCategory, setSelectedCategory] = useState<BudgetCategory | 'All'>('All');
   const [selectedSubCategory, setSelectedSubCategory] = useState<Account | 'All'>('All');
   const [search, setSearch] = useState('');
+
+  // Available years for the current selection
+  const availableYears = useMemo(() => {
+    const years = (budgets || [])
+      .filter(b => (!currentDivision || b.division === currentDivision) && (!currentSection || b.section === currentSection))
+      .map(b => b.year?.toString())
+      .filter(Boolean);
+    
+    // Ensure we always have some years to select even if no data exists yet (forward planning)
+    const baseYears = ['2025', '2026', '2027', '2028'];
+    return Array.from(new Set([...years, ...baseYears])).sort();
+  }, [budgets, currentDivision, currentSection]);
 
   const filteredBudgets = useMemo(() => {
     return (budgets || []).filter(b => {
       const matchesDivision = !currentDivision || b.division === currentDivision;
       const matchesSection = !currentSection || b.section === currentSection;
-      const matchesYear = selectedYear === 'All' || b.year?.toString() === selectedYear;
+      const matchesYear = !currentYear || b.year?.toString() === currentYear;
+      
       const matchesCategory = selectedCategory === 'All' || b.category === selectedCategory;
       const matchesSubCategory = selectedSubCategory === 'All' || b.account === selectedSubCategory;
       const matchesSearch = 
@@ -80,12 +94,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       
       return matchesDivision && matchesSection && matchesYear && matchesCategory && matchesSubCategory && matchesSearch;
     });
-  }, [budgets, currentDivision, currentSection, selectedYear, selectedCategory, selectedSubCategory, search]);
-
-  const availableYears = useMemo(() => {
-    const years = (budgets || []).map(b => b.year?.toString()).filter(Boolean);
-    return Array.from(new Set(years)).sort();
-  }, [budgets]);
+  }, [budgets, currentDivision, currentSection, currentYear, selectedCategory, selectedSubCategory, search]);
 
   // Step 1: Selection of Division
   if (!currentDivision && user?.role === 'Admin') {
@@ -104,7 +113,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">{division}</h3>
-                  <p className="text-sm text-muted-foreground">Click to view sections</p>
+                  <p className="text-sm text-muted-foreground">Select to view sections</p>
                 </div>
               </div>
               <ChevronRight className="h-6 w-6 text-muted-foreground group-hover:text-primary translate-x-0 group-hover:translate-x-1 transition-all" />
@@ -151,44 +160,70 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     );
   }
 
-  // Step 3: Entries Table
+  // Step 3: Selection of Year
+  if (currentSection && !currentYear) {
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => {
+              if (user?.role === 'Admin') setCurrentSection(null);
+              else setCurrentDivision(null); // Just in case for managers
+            }} 
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Sections
+          </Button>
+          <div className="h-4 w-px bg-border" />
+          <div className="flex flex-col">
+            <h2 className="text-lg font-semibold text-primary">{currentSection}</h2>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{currentDivision}</span>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          {availableYears.map((year) => (
+            <Card 
+              key={year} 
+              className="group cursor-pointer hover:border-primary hover:shadow-md transition-all border-2 border-transparent bg-white"
+              onClick={() => setCurrentYear(year)}
+            >
+              <CardContent className="p-6 flex flex-col items-center justify-center gap-2">
+                <CalendarDays className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+                <span className="text-xl font-bold group-hover:text-primary transition-colors">{year}</span>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Step 4: Entries Table (Inside Section > Year)
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
       {/* Breadcrumbs / Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-border/50">
         <div className="flex items-center gap-3">
-          {user?.role === 'Admin' && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                setCurrentSection(null);
-                setSelectedYear('All');
-                setSelectedCategory('All');
-                setSelectedSubCategory('All');
-              }}
-              className="h-8"
-            >
-              <ArrowLeft className="h-3.5 w-3.5 mr-1" /> All Sections
-            </Button>
-          )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setCurrentYear(null)}
+            className="h-8"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 mr-1" /> {currentYear}
+          </Button>
           <div className="flex flex-col">
             <h2 className="text-sm font-bold text-primary leading-tight">{currentSection}</h2>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{currentDivision}</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
+              FY {currentYear} • {currentDivision}
+            </span>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="h-8 w-[100px] text-xs">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All Years</SelectItem>
-              {availableYears.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
           <Select value={selectedCategory} onValueChange={(v) => {
             setSelectedCategory(v as BudgetCategory | 'All');
             setSelectedSubCategory('All');
@@ -197,7 +232,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="All">All</SelectItem>
+              <SelectItem value="All">All Type</SelectItem>
               <SelectItem value="CAPEX">CAPEX</SelectItem>
               <SelectItem value="OPEX">OPEX</SelectItem>
             </SelectContent>
@@ -218,7 +253,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
           <div className="relative h-8">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
-              placeholder="Search..." 
+              placeholder="Search in Year..." 
               className="pl-8 h-8 w-48 text-xs bg-muted/50 border-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -235,7 +270,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead className="w-[80px]">Year</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Account/Class</TableHead>
               <TableHead className="min-w-[200px]">Project Title</TableHead>
@@ -252,7 +286,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                   className="hover:bg-muted/10 cursor-pointer group transition-colors"
                   onClick={() => router.push(`/budgets/${budget.id}/edit`)}
                 >
-                  <TableCell className="font-medium text-muted-foreground text-xs">{budget.year}</TableCell>
                   <TableCell>
                     <Badge 
                       variant={budget.category === 'CAPEX' ? 'default' : 'secondary'} 
@@ -300,9 +333,12 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
                   <div className="flex flex-col items-center gap-2">
-                    <p>No budget entries found for the selected section.</p>
+                    <p>No budget entries found for {currentSection} in {currentYear}.</p>
+                    <Button variant="outline" size="sm" onClick={() => router.push('/budgets/new')}>
+                      Encode First Item
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -313,3 +349,4 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     </div>
   );
 }
+
