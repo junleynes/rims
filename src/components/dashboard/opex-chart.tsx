@@ -10,8 +10,8 @@ interface OpexChartProps {
 }
 
 export function OpexChart({ budgets }: OpexChartProps) {
-  // Filter for non-capex accounts as a proxy for OPEX
-  const opexBudgets = budgets.filter(b => b.account !== 'Capex');
+  // Filter for OPEX category
+  const opexBudgets = budgets.filter(b => b.category === 'OPEX');
   
   const breakdown = opexBudgets.reduce((acc, b) => {
     const key = b.account;
@@ -20,7 +20,7 @@ export function OpexChart({ budgets }: OpexChartProps) {
   }, {} as Record<string, number>);
 
   const data = Object.entries(breakdown).map(([name, value]) => ({
-    name: name.length > 20 ? name.substring(0, 20) + '...' : name,
+    name: name.length > 25 ? name.substring(0, 25) + '...' : name,
     value,
   })).sort((a, b) => b.value - a.value);
 
@@ -37,7 +37,7 @@ export function OpexChart({ budgets }: OpexChartProps) {
   if (data.length === 0) {
     return (
       <Card className="h-full flex items-center justify-center border-none shadow-sm min-h-[400px]">
-        <p className="text-muted-foreground">No Expenditure data found for selected filters.</p>
+        <p className="text-muted-foreground">No OPEX data found for selected filters.</p>
       </Card>
     );
   }
@@ -45,8 +45,8 @@ export function OpexChart({ budgets }: OpexChartProps) {
   return (
     <Card className="border-none shadow-sm flex flex-col h-full">
       <CardHeader className="items-center pb-0">
-        <CardTitle>Expenditure Breakdown</CardTitle>
-        <CardDescription>Distribution by Account Type</CardDescription>
+        <CardTitle>OPEX Breakdown</CardTitle>
+        <CardDescription>Distribution by Account Category</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0 pt-6">
         <div className="h-[350px] w-full">

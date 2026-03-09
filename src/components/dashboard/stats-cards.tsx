@@ -20,7 +20,7 @@ interface StatsCardsProps {
 export function StatsCards({ budgets, section }: StatsCardsProps) {
   const totalBudget = budgets.reduce((acc, b) => acc + b.totalCostBudget, 0);
   const totalActual = budgets.reduce((acc, b) => acc + (b.totalCostActual || 0), 0);
-  const totalCapex = budgets.filter(b => b.account === 'Capex').reduce((acc, b) => acc + b.totalCostBudget, 0);
+  const totalCapex = budgets.filter(b => b.category === 'CAPEX').reduce((acc, b) => acc + b.totalCostBudget, 0);
   const totalEntries = budgets.length;
 
   const stats = [

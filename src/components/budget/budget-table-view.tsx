@@ -8,7 +8,9 @@ import {
   Download, 
   Trash2, 
   MoreVertical,
-  ExternalLink
+  ExternalLink,
+  ChevronRight,
+  ChevronDown
 } from 'lucide-react';
 import { 
   Table, 
@@ -27,9 +29,10 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { BudgetEntry, Account, Section } from '@/lib/types';
-import { SECTIONS, ACCOUNTS } from '@/lib/mock-data';
+import { BudgetEntry, Account, Section, BudgetCategory } from '@/lib/types';
+import { SECTIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
 import { useAuth } from '@/components/auth-context';
+import { cn } from '@/lib/utils';
 
 interface BudgetTableViewProps {
   budgets: BudgetEntry[];
@@ -38,75 +41,151 @@ interface BudgetTableViewProps {
 
 export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   const { user } = useAuth();
+  
+  // Hierarchical state
+  const [selectedSection, setSelectedSection] = useState<Section | 'All'>(user?.role === 'Manager' ? (user.section as Section) : 'All');
+  const [selectedYear, setSelectedYear] = useState<string>('All');
+  const [selectedCategory, setSelectedCategory] = useState<BudgetCategory | 'All'>('All');
+  const [selectedSubCategory, setSelectedSubCategory] = useState<Account | 'All'>('All');
+  
   const [search, setSearch] = useState('');
-  const [filterAccount, setFilterAccount] = useState<Account | 'All'>('All');
-  const [filterSection, setFilterSection] = useState<Section | 'All'>('All');
 
+  // Filter budgets based on hierarchy and search
   const filteredBudgets = (budgets || []).filter(b => {
-    // Defensive access to avoid runtime errors with legacy or malformed data
     const projectTitle = b.projectTitle || '';
     const itemDescription = b.itemDescription || '';
     const account = b.account || '';
     const section = b.section || '';
+    const category = b.category || '';
+    const year = b.year?.toString() || '';
 
     const matchesSearch = projectTitle.toLowerCase().includes(search.toLowerCase()) || 
-                          itemDescription.toLowerCase().includes(search.toLowerCase()) ||
-                          account.toLowerCase().includes(search.toLowerCase());
+                          itemDescription.toLowerCase().includes(search.toLowerCase());
     
-    const matchesAccount = filterAccount === 'All' || account === filterAccount;
+    const matchesSection = selectedSection === 'All' || section === selectedSection;
+    const matchesYear = selectedYear === 'All' || year === selectedYear;
+    const matchesCategory = selectedCategory === 'All' || category === selectedCategory;
+    const matchesSubCategory = selectedSubCategory === 'All' || account === selectedSubCategory;
     
-    const matchesSection = user?.role === 'Manager' 
-      ? section === user.section 
-      : (filterSection === 'All' || section === filterSection);
-    
-    return matchesSearch && matchesAccount && matchesSection;
+    return matchesSearch && matchesSection && matchesYear && matchesCategory && matchesSubCategory;
   });
 
+  const availableYears = Array.from(new Set(budgets.map(b => b.year.toString()))).sort();
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Hierarchy Navigation Bar */}
+      <div className="bg-white p-4 rounded-xl shadow-sm space-y-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2 px-2">
+          <Filter className="h-4 w-4" />
+          <span>Hierarchy Filter:</span>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Section Selector */}
+          <div className="space-y-2">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground ml-1">Section</Label>
+            <Select 
+              value={selectedSection} 
+              onValueChange={(v) => {
+                setSelectedSection(v as Section);
+                setSelectedYear('All');
+                setSelectedCategory('All');
+                setSelectedSubCategory('All');
+              }}
+              disabled={user?.role === 'Manager'}
+            >
+              <SelectTrigger className="bg-muted/50 border-none">
+                <SelectValue placeholder="All Sections" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Sections</SelectItem>
+                {SECTIONS.map(s => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Year Selector */}
+          <div className="space-y-2">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground ml-1">Year</Label>
+            <Select 
+              value={selectedYear} 
+              onValueChange={(v) => {
+                setSelectedYear(v);
+                setSelectedCategory('All');
+                setSelectedSubCategory('All');
+              }}
+            >
+              <SelectTrigger className="bg-muted/50 border-none">
+                <SelectValue placeholder="All Years" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Years</SelectItem>
+                {availableYears.map(y => (
+                  <SelectItem key={y} value={y}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Category Selector */}
+          <div className="space-y-2">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground ml-1">Category</Label>
+            <Select 
+              value={selectedCategory} 
+              onValueChange={(v) => {
+                setSelectedCategory(v as BudgetCategory | 'All');
+                setSelectedSubCategory('All');
+              }}
+            >
+              <SelectTrigger className="bg-muted/50 border-none">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Categories</SelectItem>
+                <SelectItem value="CAPEX">CAPEX</SelectItem>
+                <SelectItem value="OPEX">OPEX</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* SubCategory Selector (only for OPEX) */}
+          <div className="space-y-2">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground ml-1">Sub Category</Label>
+            <Select 
+              value={selectedSubCategory} 
+              onValueChange={(v) => setSelectedSubCategory(v as Account | 'All')}
+              disabled={selectedCategory === 'CAPEX'}
+            >
+              <SelectTrigger className="bg-muted/50 border-none">
+                <SelectValue placeholder={selectedCategory === 'CAPEX' ? "N/A (CAPEX)" : "All Sub-categories"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Sub-categories</SelectItem>
+                {OPEX_ACCOUNTS.map(a => (
+                  <SelectItem key={a} value={a}>{a}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-xl shadow-sm">
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
-            placeholder="Search project titles, descriptions..." 
+            placeholder="Search within current filters..." 
             className="pl-10 bg-muted/50 border-none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Filter className="h-4 w-4" /> Account: {filterAccount === 'All' ? 'All' : filterAccount.substring(0, 10) + '...'}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="max-h-[300px] overflow-y-auto">
-              <DropdownMenuItem onClick={() => setFilterAccount('All')}>All</DropdownMenuItem>
-              {ACCOUNTS.map(a => (
-                <DropdownMenuItem key={a} onClick={() => setFilterAccount(a)}>{a}</DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          {user?.role === 'Admin' && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Filter className="h-4 w-4" /> Section: {filterSection === 'All' ? 'All' : filterSection.substring(0, 10) + '...'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="max-h-[300px] overflow-y-auto">
-                <DropdownMenuItem onClick={() => setFilterSection('All')}>All Sections</DropdownMenuItem>
-                {SECTIONS.map(s => (
-                  <DropdownMenuItem key={s} onClick={() => setFilterSection(s)}>{s}</DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
+        <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
-            <Download className="h-4 w-4" /> Export
+            <Download className="h-4 w-4" /> Export CSV
           </Button>
         </div>
       </div>
@@ -116,8 +195,8 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
           <TableHeader className="bg-muted/30">
             <TableRow>
               <TableHead className="w-[80px]">Year</TableHead>
-              <TableHead>Account</TableHead>
-              <TableHead>Section</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Sub Category / Account</TableHead>
               <TableHead className="min-w-[200px]">Project Title</TableHead>
               <TableHead>Budget Cost</TableHead>
               <TableHead>Actual Cost</TableHead>
@@ -130,15 +209,23 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                 <TableRow key={budget.id} className="hover:bg-muted/10">
                   <TableCell className="font-medium text-muted-foreground">{budget.year}</TableCell>
                   <TableCell>
-                    <Badge variant={budget.account === 'Capex' ? 'default' : 'secondary'} className="rounded-md text-[10px]">
-                      {(budget.account || '').substring(0, 15)}...
+                    <Badge 
+                      variant={budget.category === 'CAPEX' ? 'default' : 'secondary'} 
+                      className={cn(
+                        "rounded-md text-[10px] px-2 py-0.5",
+                        budget.category === 'CAPEX' ? "bg-primary" : "bg-accent"
+                      )}
+                    >
+                      {budget.category}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs font-medium">{budget.section || 'N/A'}</TableCell>
+                  <TableCell className="text-xs font-medium max-w-[150px] truncate">
+                    {budget.category === 'CAPEX' ? budget.classification : budget.account}
+                  </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-semibold text-primary">{budget.projectTitle || 'Untitled'}</span>
-                      <span className="text-xs text-muted-foreground line-clamp-1">{budget.classification || 'Unclassified'}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase">{budget.section || 'N/A'}</span>
                     </div>
                   </TableCell>
                   <TableCell className="font-bold whitespace-nowrap">
@@ -169,7 +256,15 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             ) : (
               <TableRow>
                 <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
-                  No budget entries found.
+                  <div className="flex flex-col items-center gap-2">
+                    <p>No budget entries found for the selected hierarchy.</p>
+                    <Button variant="outline" size="sm" onClick={() => {
+                      setSelectedSection(user?.role === 'Manager' ? (user.section as Section) : 'All');
+                      setSelectedYear('All');
+                      setSelectedCategory('All');
+                      setSelectedSubCategory('All');
+                    }}>Reset All Filters</Button>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -178,4 +273,9 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       </div>
     </div>
   );
+}
+
+// Small helper for labels used in the hierarchy view
+function Label({ children, className }: { children: React.ReactNode, className?: string }) {
+  return <div className={cn("text-sm font-medium leading-none", className)}>{children}</div>
 }

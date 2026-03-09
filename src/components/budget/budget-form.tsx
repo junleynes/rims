@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Save, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,8 +18,8 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/components/auth-context';
 import { useBudgets } from '@/components/budget-context';
-import { SECTIONS, DIVISIONS, CLASSIFICATIONS, ACCOUNTS } from '@/lib/mock-data';
-import { Section, Division, Classification, Account, BudgetEntry } from '@/lib/types';
+import { SECTIONS, DIVISIONS, CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
+import { Section, Division, Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 export function BudgetForm() {
@@ -35,7 +35,8 @@ export function BudgetForm() {
     division: (user?.division || DIVISIONS[0]) as Division,
     section: (user?.section || SECTIONS[0]) as Section,
     classification: CLASSIFICATIONS[0],
-    account: ACCOUNTS[0],
+    category: 'CAPEX',
+    account: 'Capex',
     projectTitle: '',
     itemDescription: '',
     quantity: 1,
@@ -45,6 +46,15 @@ export function BudgetForm() {
     dateDelivered: '',
     remarks: '',
   });
+
+  // Automatically update account when category changes
+  useEffect(() => {
+    if (formData.category === 'CAPEX') {
+      setFormData(prev => ({ ...prev, account: 'Capex' }));
+    } else if (formData.category === 'OPEX' && formData.account === 'Capex') {
+      setFormData(prev => ({ ...prev, account: OPEX_ACCOUNTS[0] }));
+    }
+  }, [formData.category]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -141,6 +151,22 @@ export function BudgetForm() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, category: v as BudgetCategory }))}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="CAPEX">CAPEX</SelectItem>
+                    <SelectItem value="OPEX">OPEX</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="classification">Classification</Label>
                 <Select 
                   value={formData.classification} 
@@ -157,22 +183,24 @@ export function BudgetForm() {
                 </Select>
               </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="account">Account</Label>
-                <Select 
-                  value={formData.account} 
-                  onValueChange={(v) => setFormData(prev => ({ ...prev, account: v as Account }))}
-                >
-                  <SelectTrigger id="account">
-                    <SelectValue placeholder="Select Account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ACCOUNTS.map(a => (
-                      <SelectItem key={a} value={a}>{a}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {formData.category === 'OPEX' && (
+                <div className="space-y-2 md:col-span-1">
+                  <Label htmlFor="account">Sub Category (Account)</Label>
+                  <Select 
+                    value={formData.account} 
+                    onValueChange={(v) => setFormData(prev => ({ ...prev, account: v as Account }))}
+                  >
+                    <SelectTrigger id="account">
+                      <SelectValue placeholder="Select Account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OPEX_ACCOUNTS.map(a => (
+                        <SelectItem key={a} value={a}>{a}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

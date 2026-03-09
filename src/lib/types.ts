@@ -27,6 +27,8 @@ export type Section =
 
 export type Classification = 'Hardware' | 'Software' | 'Others';
 
+export type BudgetCategory = 'CAPEX' | 'OPEX';
+
 export type Account = 
   | 'Capex'
   | 'Seminars and Trainings - online or face to face'
@@ -43,6 +45,7 @@ export interface BudgetEntry {
   division: Division;
   section: Section;
   classification: Classification;
+  category: BudgetCategory;
   account: Account;
   projectTitle: string;
   itemDescription: string;

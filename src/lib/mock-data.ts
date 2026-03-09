@@ -29,8 +29,7 @@ export const SECTIONS: Section[] = [
 
 export const CLASSIFICATIONS: Classification[] = ['Hardware', 'Software', 'Others'];
 
-export const ACCOUNTS: Account[] = [
-  'Capex',
+export const OPEX_ACCOUNTS: Account[] = [
   'Seminars and Trainings - online or face to face',
   'Seminars and Trainings - Subscriptions/Annual Renewal',
   'Repairs and Maintenance - one time purchase',
@@ -38,6 +37,11 @@ export const ACCOUNTS: Account[] = [
   'Miscellaneous - Perpetual',
   'Miscellaneous - Subscriptions/Annual Renewal',
   'Office Supplies'
+];
+
+export const ACCOUNTS: Account[] = [
+  'Capex',
+  ...OPEX_ACCOUNTS
 ];
 
 export const MOCK_USERS: User[] = [
@@ -64,6 +68,7 @@ export const MOCK_BUDGETS: BudgetEntry[] = [
     division: 'Technical and Media Server Support Division',
     section: 'Media Server Support Section',
     classification: 'Hardware',
+    category: 'CAPEX',
     account: 'Capex',
     projectTitle: 'SAN Expansion for 4K workflows',
     itemDescription: 'Upgrade existing storage cluster with 1PB additional capacity.',
