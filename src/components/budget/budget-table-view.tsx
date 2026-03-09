@@ -1,6 +1,8 @@
+
 "use client";
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Search, 
   Filter, 
@@ -8,8 +10,7 @@ import {
   Trash2, 
   MoreVertical,
   ExternalLink,
-  ChevronRight,
-  ChevronDown
+  Edit2
 } from 'lucide-react';
 import { 
   Table, 
@@ -35,6 +36,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { BudgetEntry, Account, Section, BudgetCategory } from '@/lib/types';
 import { SECTIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
 import { useAuth } from '@/components/auth-context';
@@ -47,6 +49,7 @@ interface BudgetTableViewProps {
 
 export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   const { user } = useAuth();
+  const router = useRouter();
   
   // Hierarchical state
   const [selectedSection, setSelectedSection] = useState<Section | 'All'>(user?.role === 'Manager' ? (user.section as Section) : 'All');
@@ -212,7 +215,11 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
           <TableBody>
             {filteredBudgets.length > 0 ? (
               filteredBudgets.map((budget) => (
-                <TableRow key={budget.id} className="hover:bg-muted/10">
+                <TableRow 
+                  key={budget.id} 
+                  className="hover:bg-muted/10 cursor-pointer group transition-colors"
+                  onClick={() => router.push(`/budgets/${budget.id}/edit`)}
+                >
                   <TableCell className="font-medium text-muted-foreground">{budget.year}</TableCell>
                   <TableCell>
                     <Badge 
@@ -230,7 +237,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-semibold text-primary">{budget.projectTitle || 'Untitled'}</span>
+                      <span className="font-semibold text-primary group-hover:underline">{budget.projectTitle || 'Untitled'}</span>
                       <span className="text-[10px] text-muted-foreground uppercase">{budget.section || 'N/A'}</span>
                     </div>
                   </TableCell>
@@ -240,7 +247,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                   <TableCell className="font-medium text-muted-foreground whitespace-nowrap">
                     {budget.totalCostActual ? `₱ ${budget.totalCostActual.toLocaleString()}` : '---'}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -248,8 +255,8 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2">
-                          <ExternalLink className="h-4 w-4" /> View Details
+                        <DropdownMenuItem className="gap-2" onClick={() => router.push(`/budgets/${budget.id}/edit`)}>
+                          <Edit2 className="h-4 w-4" /> Edit Entry
                         </DropdownMenuItem>
                         <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => onDelete?.(budget.id)}>
                           <Trash2 className="h-4 w-4" /> Delete
@@ -279,9 +286,4 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       </div>
     </div>
   );
-}
-
-// Small helper for labels used in the hierarchy view
-function Label({ children, className }: { children: React.ReactNode, className?: string }) {
-  return <div className={cn("text-sm font-medium leading-none", className)}>{children}</div>
 }

@@ -8,6 +8,7 @@ import { MOCK_BUDGETS } from '@/lib/mock-data';
 interface BudgetContextType {
   budgets: BudgetEntry[];
   addBudget: (entry: Omit<BudgetEntry, 'id' | 'createdAt'>) => void;
+  updateBudget: (id: string, entry: Partial<BudgetEntry>) => void;
   deleteBudget: (id: string) => void;
   isLoading: boolean;
 }
@@ -39,8 +40,12 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
       ...entry,
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
-    };
+    } as BudgetEntry;
     setBudgets(prev => [newEntry, ...prev]);
+  };
+
+  const updateBudget = (id: string, entry: Partial<BudgetEntry>) => {
+    setBudgets(prev => prev.map(b => b.id === id ? { ...b, ...entry } : b));
   };
 
   const deleteBudget = (id: string) => {
@@ -48,7 +53,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <BudgetContext.Provider value={{ budgets, addBudget, deleteBudget, isLoading }}>
+    <BudgetContext.Provider value={{ budgets, addBudget, updateBudget, deleteBudget, isLoading }}>
       {children}
     </BudgetContext.Provider>
   );

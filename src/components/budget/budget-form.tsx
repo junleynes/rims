@@ -22,39 +22,47 @@ import { SECTIONS, DIVISIONS, CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-
 import { Section, Division, Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
-export function BudgetForm() {
+interface BudgetFormProps {
+  initialData?: BudgetEntry;
+}
+
+export function BudgetForm({ initialData }: BudgetFormProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const { addBudget } = useBudgets();
+  const { addBudget, updateBudget } = useBudgets();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
 
-  const [formData, setFormData] = useState<Omit<BudgetEntry, 'id' | 'createdAt' | 'totalCostBudget' | 'totalCostActual'>>({
-    year: new Date().getFullYear() + 1,
-    division: (user?.division || DIVISIONS[0]) as Division,
-    section: (user?.section || SECTIONS[0]) as Section,
-    classification: CLASSIFICATIONS[0],
-    category: 'CAPEX',
-    account: 'Capex',
-    projectTitle: '',
-    itemDescription: '',
-    quantity: 1,
-    unitCostBudget: 0,
-    unitCostActual: 0,
-    prNumber: '',
-    dateDelivered: '',
-    remarks: '',
+  const [formData, setFormData] = useState<Omit<BudgetEntry, 'id' | 'createdAt'>>({
+    year: initialData?.year || new Date().getFullYear() + 1,
+    division: initialData?.division || (user?.division || DIVISIONS[0]) as Division,
+    section: initialData?.section || (user?.section || SECTIONS[0]) as Section,
+    classification: initialData?.classification || CLASSIFICATIONS[0],
+    category: initialData?.category || 'CAPEX',
+    account: initialData?.account || 'Capex',
+    projectTitle: initialData?.projectTitle || '',
+    itemDescription: initialData?.itemDescription || '',
+    quantity: initialData?.quantity || 1,
+    unitCostBudget: initialData?.unitCostBudget || 0,
+    totalCostBudget: initialData?.totalCostBudget || 0,
+    unitCostActual: initialData?.unitCostActual || 0,
+    totalCostActual: initialData?.totalCostActual || 0,
+    prNumber: initialData?.prNumber || '',
+    dateDelivered: initialData?.dateDelivered || '',
+    remarks: initialData?.remarks || '',
   });
 
-  // Automatically update account when category changes
+  // Automatically update account when category changes if not in edit mode with existing data
   useEffect(() => {
-    if (formData.category === 'CAPEX') {
-      setFormData(prev => ({ ...prev, account: 'Capex' }));
-    } else if (formData.category === 'OPEX' && formData.account === 'Capex') {
-      setFormData(prev => ({ ...prev, account: OPEX_ACCOUNTS[0] }));
+    if (!initialData) {
+      if (formData.category === 'CAPEX') {
+        setFormData(prev => ({ ...prev, account: 'Capex' }));
+      } else if (formData.category === 'OPEX' && formData.account === 'Capex') {
+        setFormData(prev => ({ ...prev, account: OPEX_ACCOUNTS[0] }));
+      }
     }
-  }, [formData.category]);
+  }, [formData.category, initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,17 +70,23 @@ export function BudgetForm() {
     
     try {
       const totalCostBudget = formData.quantity * formData.unitCostBudget;
-      const totalCostActual = formData.unitCostActual ? formData.quantity * formData.unitCostActual : undefined;
+      const totalCostActual = formData.unitCostActual ? formData.quantity * formData.unitCostActual : 0;
 
-      addBudget({
+      const finalData = {
         ...formData,
         totalCostBudget,
         totalCostActual,
-      } as any);
+      };
+
+      if (initialData) {
+        updateBudget(initialData.id, finalData);
+      } else {
+        addBudget(finalData);
+      }
 
       toast({
         title: "Success",
-        description: "Budget entry saved successfully.",
+        description: initialData ? "Budget entry updated successfully." : "Budget entry saved successfully.",
       });
       router.push('/budgets');
     } catch (error) {
@@ -92,8 +106,12 @@ export function BudgetForm() {
         <Card className="shadow-lg border-primary/10">
           <CardHeader className="bg-primary/5 border-b border-primary/10">
             <div>
-              <CardTitle className="text-2xl font-bold text-primary">Budget Encoding</CardTitle>
-              <CardDescription>Enter details as per the official budget format.</CardDescription>
+              <CardTitle className="text-2xl font-bold text-primary">
+                {initialData ? 'Edit Budget Entry' : 'Budget Encoding'}
+              </CardTitle>
+              <CardDescription>
+                {initialData ? 'Update existing budget details.' : 'Enter details as per the official budget format.'}
+              </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
@@ -319,7 +337,7 @@ export function BudgetForm() {
               className="bg-primary hover:bg-primary/90 gap-2 min-w-[120px]"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Budget
+              {initialData ? 'Update Budget' : 'Save Budget'}
             </Button>
           </div>
         </Card>
