@@ -27,6 +27,30 @@ export const SECTIONS: Section[] = [
   'CODE Compliance Unit'
 ];
 
+export const DIVISION_SECTIONS_MAP: Record<Division, Section[]> = {
+  'Office of the Head': ['Office of the Head', 'Post Administration Section'],
+  'Operations Division': [
+    'Video Edit Section',
+    'Videographics Section',
+    'Audio Post Section',
+    'Music Production Section',
+    'Digital Cinematography and Standards Section',
+    'Content Management Section'
+  ],
+  'Technical and Media Server Support Division': [
+    'Technical Support and TOC Section',
+    'IT Solutions and Data Center Operations Section',
+    'Media Server Support Section',
+    'Facility Maintenance Section'
+  ],
+  'Project Management Division': [
+    'Agile Content Section',
+    'Promotional Content Section',
+    'Original Content Section',
+    'CODE Compliance Unit'
+  ]
+};
+
 export const CLASSIFICATIONS: Classification[] = ['Hardware', 'Software', 'Others'];
 
 export const OPEX_ACCOUNTS: Account[] = [
