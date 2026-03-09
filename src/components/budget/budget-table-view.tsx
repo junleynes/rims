@@ -27,8 +27,8 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
-import { BudgetEntry, Account, Section, Division } from '@/lib/types';
-import { SECTIONS, DIVISIONS, ACCOUNTS } from '@/lib/mock-data';
+import { BudgetEntry, Account, Section } from '@/lib/types';
+import { SECTIONS, ACCOUNTS } from '@/lib/mock-data';
 import { useAuth } from '@/components/auth-context';
 
 interface BudgetTableViewProps {
@@ -42,14 +42,22 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   const [filterAccount, setFilterAccount] = useState<Account | 'All'>('All');
   const [filterSection, setFilterSection] = useState<Section | 'All'>('All');
 
-  const filteredBudgets = budgets.filter(b => {
-    const matchesSearch = b.projectTitle.toLowerCase().includes(search.toLowerCase()) || 
-                          b.itemDescription.toLowerCase().includes(search.toLowerCase()) ||
-                          b.account.toLowerCase().includes(search.toLowerCase());
-    const matchesAccount = filterAccount === 'All' || b.account === filterAccount;
+  const filteredBudgets = (budgets || []).filter(b => {
+    // Defensive access to avoid runtime errors with legacy or malformed data
+    const projectTitle = b.projectTitle || '';
+    const itemDescription = b.itemDescription || '';
+    const account = b.account || '';
+    const section = b.section || '';
+
+    const matchesSearch = projectTitle.toLowerCase().includes(search.toLowerCase()) || 
+                          itemDescription.toLowerCase().includes(search.toLowerCase()) ||
+                          account.toLowerCase().includes(search.toLowerCase());
+    
+    const matchesAccount = filterAccount === 'All' || account === filterAccount;
+    
     const matchesSection = user?.role === 'Manager' 
-      ? b.section === user.section 
-      : (filterSection === 'All' || b.section === filterSection);
+      ? section === user.section 
+      : (filterSection === 'All' || section === filterSection);
     
     return matchesSearch && matchesAccount && matchesSection;
   });
@@ -123,18 +131,18 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                   <TableCell className="font-medium text-muted-foreground">{budget.year}</TableCell>
                   <TableCell>
                     <Badge variant={budget.account === 'Capex' ? 'default' : 'secondary'} className="rounded-md text-[10px]">
-                      {budget.account.substring(0, 15)}...
+                      {(budget.account || '').substring(0, 15)}...
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-xs font-medium">{budget.section}</TableCell>
+                  <TableCell className="text-xs font-medium">{budget.section || 'N/A'}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-semibold text-primary">{budget.projectTitle}</span>
-                      <span className="text-xs text-muted-foreground line-clamp-1">{budget.classification}</span>
+                      <span className="font-semibold text-primary">{budget.projectTitle || 'Untitled'}</span>
+                      <span className="text-xs text-muted-foreground line-clamp-1">{budget.classification || 'Unclassified'}</span>
                     </div>
                   </TableCell>
                   <TableCell className="font-bold whitespace-nowrap">
-                    ₱ {budget.totalCostBudget.toLocaleString()}
+                    ₱ {(budget.totalCostBudget || 0).toLocaleString()}
                   </TableCell>
                   <TableCell className="font-medium text-muted-foreground whitespace-nowrap">
                     {budget.totalCostActual ? `₱ ${budget.totalCostActual.toLocaleString()}` : '---'}
