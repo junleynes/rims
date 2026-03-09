@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -29,6 +28,13 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { BudgetEntry, Account, Section, BudgetCategory } from '@/lib/types';
 import { SECTIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
 import { useAuth } from '@/components/auth-context';
@@ -70,7 +76,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     return matchesSearch && matchesSection && matchesYear && matchesCategory && matchesSubCategory;
   });
 
-  const availableYears = Array.from(new Set(budgets.map(b => b.year.toString()))).sort();
+  const availableYears = Array.from(new Set((budgets || []).map(b => b.year?.toString() || ''))).filter(Boolean).sort();
 
   return (
     <div className="space-y-6">
