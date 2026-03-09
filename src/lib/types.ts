@@ -1,43 +1,58 @@
 
 export type Role = 'Admin' | 'Manager';
 
+export type Division = 
+  | 'Office of the Head'
+  | 'Operations Division'
+  | 'Technical and Media Server Support Division'
+  | 'Project Management Division';
+
 export type Section = 
-  | 'Media Server Support'
-  | 'Post Production'
-  | 'Engineering'
-  | 'Broadcast IT';
+  | 'Office of the Head'
+  | 'Post Administration Section'
+  | 'Video Edit Section'
+  | 'Videographics Section'
+  | 'Audio Post Section'
+  | 'Music Production Section'
+  | 'Digital Cinematography and Standards Section'
+  | 'Content Management Section'
+  | 'Technical Support and TOC Section'
+  | 'IT Solutions and Data Center Operations Section'
+  | 'Media Server Support Section'
+  | 'Facility Maintenance Section'
+  | 'Agile Content Section'
+  | 'Promotional Content Section'
+  | 'Original Content Section'
+  | 'CODE Compliance Unit';
 
-export type Category = 'CAPEX' | 'OPEX';
+export type Classification = 'Hardware' | 'Software' | 'Others';
 
-export type OPEXSubcategory = 
-  | 'Manpower'
-  | 'Promotions'
-  | 'Overtime'
-  | 'Communications'
-  | 'Repair and Maintenance'
-  | 'Miscellaneous'
-  | 'Seminars and Training';
-
-export type CAPEXSubcategory = 
-  | 'Equipment'
-  | 'Storage systems'
-  | 'Servers'
-  | 'Hardware upgrades';
-
-export type Subcategory = OPEXSubcategory | CAPEXSubcategory;
+export type Account = 
+  | 'Capex'
+  | 'Seminars and Trainings - online or face to face'
+  | 'Seminars and Trainings - Subscriptions/Annual Renewal'
+  | 'Repairs and Maintenance - one time purchase'
+  | 'Repairs and Maintenance - Subscriptions/Annual Renewal'
+  | 'Miscellaneous - Perpetual'
+  | 'Miscellaneous - Subscriptions/Annual Renewal'
+  | 'Office Supplies';
 
 export interface BudgetEntry {
   id: string;
   year: number;
+  division: Division;
   section: Section;
-  category: Category;
-  subcategory: Subcategory;
-  actionPlan: string;
-  description: string;
+  classification: Classification;
+  account: Account;
+  projectTitle: string;
+  itemDescription: string;
   quantity: number;
-  unitCost: number;
-  totalCost: number;
-  rolloutSchedule: string;
+  unitCostBudget: number;
+  totalCostBudget: number;
+  unitCostActual?: number;
+  totalCostActual?: number;
+  prNumber?: string;
+  dateDelivered?: string;
   remarks: string;
   createdAt: string;
 }
@@ -47,5 +62,6 @@ export interface User {
   username: string;
   name: string;
   role: Role;
-  section?: Section; // Only for Managers
+  section?: Section;
+  division?: Division;
 }

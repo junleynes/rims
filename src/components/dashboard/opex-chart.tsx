@@ -4,22 +4,23 @@
 import { Pie, PieChart, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BudgetEntry } from '@/lib/types';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 
 interface OpexChartProps {
   budgets: BudgetEntry[];
 }
 
 export function OpexChart({ budgets }: OpexChartProps) {
-  const opexBudgets = budgets.filter(b => b.category === 'OPEX');
+  // Filter for non-capex accounts as a proxy for OPEX
+  const opexBudgets = budgets.filter(b => b.account !== 'Capex');
   
   const breakdown = opexBudgets.reduce((acc, b) => {
-    acc[b.subcategory] = (acc[b.subcategory] || 0) + b.totalCost;
+    const key = b.account;
+    acc[key] = (acc[key] || 0) + b.totalCostBudget;
     return acc;
   }, {} as Record<string, number>);
 
   const data = Object.entries(breakdown).map(([name, value]) => ({
-    name,
+    name: name.length > 20 ? name.substring(0, 20) + '...' : name,
     value,
   })).sort((a, b) => b.value - a.value);
 
@@ -35,20 +36,20 @@ export function OpexChart({ budgets }: OpexChartProps) {
 
   if (data.length === 0) {
     return (
-      <Card className="h-full flex items-center justify-center border-none shadow-sm">
-        <p className="text-muted-foreground">No OPEX data found for selected filters.</p>
+      <Card className="h-full flex items-center justify-center border-none shadow-sm min-h-[400px]">
+        <p className="text-muted-foreground">No Expenditure data found for selected filters.</p>
       </Card>
     );
   }
 
   return (
-    <Card className="border-none shadow-sm flex flex-col">
+    <Card className="border-none shadow-sm flex flex-col h-full">
       <CardHeader className="items-center pb-0">
-        <CardTitle>OPEX Breakdown</CardTitle>
-        <CardDescription>Distribution by Subcategory</CardDescription>
+        <CardTitle>Expenditure Breakdown</CardTitle>
+        <CardDescription>Distribution by Account Type</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 pb-0 pt-6">
-        <div className="h-[300px] w-full">
+        <div className="h-[350px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Tooltip 

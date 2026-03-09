@@ -6,11 +6,11 @@ import {
   Layers, 
   Wallet, 
   FileText,
-  TrendingUp,
-  Building
+  TrendingUp
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { BudgetEntry } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 interface StatsCardsProps {
   budgets: BudgetEntry[];
@@ -18,18 +18,25 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ budgets, section }: StatsCardsProps) {
-  const totalBudget = budgets.reduce((acc, b) => acc + b.totalCost, 0);
-  const totalCapex = budgets.filter(b => b.category === 'CAPEX').reduce((acc, b) => acc + b.totalCost, 0);
-  const totalOpex = budgets.filter(b => b.category === 'OPEX').reduce((acc, b) => acc + b.totalCost, 0);
+  const totalBudget = budgets.reduce((acc, b) => acc + b.totalCostBudget, 0);
+  const totalActual = budgets.reduce((acc, b) => acc + (b.totalCostActual || 0), 0);
+  const totalCapex = budgets.filter(b => b.account === 'Capex').reduce((acc, b) => acc + b.totalCostBudget, 0);
   const totalEntries = budgets.length;
 
   const stats = [
     {
-      title: section ? `${section} Total` : "Total Budget",
+      title: section ? `${section} Budget` : "Total Budget (Projected)",
       value: `₱${totalBudget.toLocaleString()}`,
       icon: Wallet,
       color: "text-primary",
       bg: "bg-primary/10",
+    },
+    {
+      title: "Actual Expenditure",
+      value: `₱${totalActual.toLocaleString()}`,
+      icon: CreditCard,
+      color: "text-blue-500",
+      bg: "bg-blue-50",
     },
     {
       title: "Total CAPEX",
@@ -39,14 +46,7 @@ export function StatsCards({ budgets, section }: StatsCardsProps) {
       bg: "bg-accent/10",
     },
     {
-      title: "Total OPEX",
-      value: `₱${totalOpex.toLocaleString()}`,
-      icon: CreditCard,
-      color: "text-blue-500",
-      bg: "bg-blue-50",
-    },
-    {
-      title: "Budget Entries",
+      title: "Total Entries",
       value: totalEntries.toString(),
       icon: FileText,
       color: "text-orange-500",
@@ -78,5 +78,3 @@ export function StatsCards({ budgets, section }: StatsCardsProps) {
     </div>
   );
 }
-
-import { cn } from '@/lib/utils';

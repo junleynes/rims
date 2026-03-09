@@ -18,8 +18,8 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/components/auth-context';
 import { useBudgets } from '@/components/budget-context';
-import { SECTIONS, CATEGORIES } from '@/lib/mock-data';
-import { Category, Subcategory, Section } from '@/lib/types';
+import { SECTIONS, DIVISIONS, CLASSIFICATIONS, ACCOUNTS } from '@/lib/mock-data';
+import { Section, Division, Classification, Account, BudgetEntry } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 export function BudgetForm() {
@@ -30,16 +30,19 @@ export function BudgetForm() {
   
   const [isLoading, setIsLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Omit<BudgetEntry, 'id' | 'createdAt' | 'totalCostBudget' | 'totalCostActual'>>({
     year: new Date().getFullYear() + 1,
-    section: (user?.role === 'Manager' ? user.section : SECTIONS[0]) as Section,
-    category: 'CAPEX' as Category,
-    subcategory: '' as Subcategory,
-    actionPlan: '',
-    description: '',
+    division: (user?.division || DIVISIONS[0]) as Division,
+    section: (user?.section || SECTIONS[0]) as Section,
+    classification: CLASSIFICATIONS[0],
+    account: ACCOUNTS[0],
+    projectTitle: '',
+    itemDescription: '',
     quantity: 1,
-    unitCost: 0,
-    rolloutSchedule: '',
+    unitCostBudget: 0,
+    unitCostActual: 0,
+    prNumber: '',
+    dateDelivered: '',
     remarks: '',
   });
 
@@ -48,10 +51,15 @@ export function BudgetForm() {
     setIsLoading(true);
     
     try {
+      const totalCostBudget = formData.quantity * formData.unitCostBudget;
+      const totalCostActual = formData.unitCostActual ? formData.quantity * formData.unitCostActual : undefined;
+
       addBudget({
         ...formData,
-        totalCost: formData.quantity * formData.unitCost,
-      });
+        totalCostBudget,
+        totalCostActual,
+      } as any);
+
       toast({
         title: "Success",
         description: "Budget entry saved successfully.",
@@ -73,17 +81,15 @@ export function BudgetForm() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card className="shadow-lg border-primary/10">
           <CardHeader className="bg-primary/5 border-b border-primary/10">
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-2xl font-bold text-primary">Budget Encoding</CardTitle>
-                <CardDescription>Enter details for a new budget item.</CardDescription>
-              </div>
+            <div>
+              <CardTitle className="text-2xl font-bold text-primary">Budget Encoding</CardTitle>
+              <CardDescription>Enter details as per the official budget format.</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="year">Year</Label>
+                <Label htmlFor="year">Budget Year</Label>
                 <Select 
                   value={formData.year.toString()} 
                   onValueChange={(v) => setFormData(prev => ({ ...prev, year: parseInt(v) }))}
@@ -101,9 +107,25 @@ export function BudgetForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="section">Section</Label>
+                <Label htmlFor="division">Division</Label>
                 <Select 
-                  disabled={user?.role === 'Manager'}
+                  value={formData.division} 
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, division: v as Division }))}
+                >
+                  <SelectTrigger id="division">
+                    <SelectValue placeholder="Select Division" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DIVISIONS.map(d => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="section">Section/Unit</Label>
+                <Select 
                   value={formData.section} 
                   onValueChange={(v) => setFormData(prev => ({ ...prev, section: v as Section }))}
                 >
@@ -119,33 +141,34 @@ export function BudgetForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label htmlFor="classification">Classification</Label>
                 <Select 
-                  value={formData.category} 
-                  onValueChange={(v) => setFormData(prev => ({ ...prev, category: v as Category, subcategory: '' as Subcategory }))}
+                  value={formData.classification} 
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, classification: v as Classification }))}
                 >
-                  <SelectTrigger id="category">
-                    <SelectValue placeholder="Select Category" />
+                  <SelectTrigger id="classification">
+                    <SelectValue placeholder="Select Classification" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="CAPEX">CAPEX</SelectItem>
-                    <SelectItem value="OPEX">OPEX</SelectItem>
+                    {CLASSIFICATIONS.map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="subcategory">Subcategory</Label>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="account">Account</Label>
                 <Select 
-                  value={formData.subcategory} 
-                  onValueChange={(v) => setFormData(prev => ({ ...prev, subcategory: v as Subcategory }))}
+                  value={formData.account} 
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, account: v as Account }))}
                 >
-                  <SelectTrigger id="subcategory">
-                    <SelectValue placeholder="Select Subcategory" />
+                  <SelectTrigger id="account">
+                    <SelectValue placeholder="Select Account" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES[formData.category].map(sc => (
-                      <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                    {ACCOUNTS.map(a => (
+                      <SelectItem key={a} value={a}>{a}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -153,69 +176,97 @@ export function BudgetForm() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="actionPlan">Action Plan</Label>
+              <Label htmlFor="projectTitle">Project title or description</Label>
               <Input 
-                id="actionPlan" 
-                placeholder="e.g. Hardware Refresh Q3"
-                value={formData.actionPlan}
-                onChange={(e) => setFormData(prev => ({ ...prev, actionPlan: e.target.value }))}
+                id="projectTitle" 
+                placeholder="Brief title for the project..."
+                value={formData.projectTitle}
+                onChange={(e) => setFormData(prev => ({ ...prev, projectTitle: e.target.value }))}
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Detailed Description</Label>
+              <Label htmlFor="itemDescription">Item Description</Label>
               <Textarea 
-                id="description" 
-                placeholder="Details of the budget item..."
+                id="itemDescription" 
+                placeholder="Detailed item specifications..."
                 className="min-h-[100px]"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                value={formData.itemDescription}
+                onChange={(e) => setFormData(prev => ({ ...prev, itemDescription: e.target.value }))}
                 required
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity</Label>
+                <Label htmlFor="quantity">quantity</Label>
                 <Input 
                   id="quantity" 
                   type="number"
                   min="1"
                   value={formData.quantity}
-                  onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) }))}
+                  onChange={(e) => setFormData(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unitCost">Unit Cost (₱)</Label>
+                <Label htmlFor="unitCostBudget">unit cost (budget) (₱)</Label>
                 <Input 
-                  id="unitCost" 
+                  id="unitCostBudget" 
                   type="number"
                   min="0"
-                  value={formData.unitCost}
-                  onChange={(e) => setFormData(prev => ({ ...prev, unitCost: parseFloat(e.target.value) }))}
+                  value={formData.unitCostBudget}
+                  onChange={(e) => setFormData(prev => ({ ...prev, unitCostBudget: parseFloat(e.target.value) || 0 }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Total Cost</Label>
+                <Label>total cost (budget)</Label>
                 <div className="h-10 px-3 py-2 rounded-md bg-secondary flex items-center font-bold text-primary">
-                  ₱ {(formData.quantity * formData.unitCost).toLocaleString()}
+                  ₱ {(formData.quantity * formData.unitCostBudget).toLocaleString()}
                 </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t">
+              <div className="space-y-2">
+                <Label htmlFor="unitCostActual">unit cost (actual) (₱)</Label>
+                <Input 
+                  id="unitCostActual" 
+                  type="number"
+                  min="0"
+                  value={formData.unitCostActual || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, unitCostActual: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>total cost (actual)</Label>
+                <div className="h-10 px-3 py-2 rounded-md bg-muted/50 flex items-center font-bold text-muted-foreground">
+                  ₱ {(formData.quantity * (formData.unitCostActual || 0)).toLocaleString()}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prNumber">Purchase Requisition number</Label>
+                <Input 
+                  id="prNumber" 
+                  placeholder="PR-XXXXX"
+                  value={formData.prNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, prNumber: e.target.value }))}
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="rollout">Rollout Schedule</Label>
+                <Label htmlFor="dateDelivered">date delivered</Label>
                 <Input 
-                  id="rollout" 
-                  placeholder="e.g. Q1 2026 or Jan-Jun"
-                  value={formData.rolloutSchedule}
-                  onChange={(e) => setFormData(prev => ({ ...prev, rolloutSchedule: e.target.value }))}
+                  id="dateDelivered" 
+                  type="date"
+                  value={formData.dateDelivered}
+                  onChange={(e) => setFormData(prev => ({ ...prev, dateDelivered: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="remarks">Remarks</Label>
+                <Label htmlFor="remarks">remarks</Label>
                 <Input 
                   id="remarks" 
                   placeholder="Additional notes..."
