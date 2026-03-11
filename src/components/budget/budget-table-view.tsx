@@ -86,23 +86,22 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     }
   }, [user]);
 
-  // Available years for selection logic - now dynamic
+  // Available years for selection logic - fully dynamic
   const availableYears = useMemo(() => {
     const currentYearNum = new Date().getFullYear();
     const dynamicYears = [];
-    // Always show a rolling window (last 2 years + next 5 years)
+    // Always show a rolling window (last year + next 5 years) for planning
     for (let i = currentYearNum - 1; i <= currentYearNum + 5; i++) {
       dynamicYears.push(i.toString());
     }
 
-    // Also include any years present in the current data (e.g. historical data)
+    // Also include any years present in the actual budget data
     const existingDataYears = (budgets || [])
-      .filter(b => (!currentDivisionName || b.division === currentDivisionName) && (!currentSectionName || b.section === currentSectionName))
       .map(b => b.year?.toString())
       .filter(Boolean);
     
     return Array.from(new Set([...dynamicYears, ...existingDataYears])).sort();
-  }, [budgets, currentDivisionName, currentSectionName]);
+  }, [budgets]);
 
   const filteredBudgets = useMemo(() => {
     return (budgets || []).filter(b => {
@@ -286,7 +285,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               size="sm" 
               onClick={() => {
                 if (user?.role === 'Admin') setCurrentSectionName(null);
-                // Managers stay locked to their section
               }} 
               disabled={user?.role === 'Manager'}
               className="gap-2"
