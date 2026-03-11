@@ -54,18 +54,18 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     remarks: initialData?.remarks || '',
   });
 
-  // Dynamically generate year options: 2 years back and 10 years forward
+  // Dynamically generate year options: 2 years back and 2 years forward
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years = [];
-    for (let i = currentYear - 2; i <= currentYear + 10; i++) {
+    for (let i = currentYear - 2; i <= currentYear + 2; i++) {
       years.push(i.toString());
     }
     // Also ensure the initial data year is included if it's outside the range
     if (initialData?.year && !years.includes(initialData.year.toString())) {
       years.push(initialData.year.toString());
     }
-    return years.sort();
+    return Array.from(new Set(years)).sort();
   }, [initialData?.year]);
 
   // Automatically update account when category changes if not in edit mode with existing data

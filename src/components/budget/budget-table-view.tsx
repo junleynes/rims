@@ -86,12 +86,12 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     }
   }, [user]);
 
-  // Available years for selection logic - fully dynamic
+  // Available years for selection logic - restricted to current year + 2
   const availableYears = useMemo(() => {
     const currentYearNum = new Date().getFullYear();
     const dynamicYears = [];
-    // Always show a rolling window (last year + next 5 years) for planning
-    for (let i = currentYearNum - 1; i <= currentYearNum + 5; i++) {
+    // Rolling window: last year + next 2 years
+    for (let i = currentYearNum - 1; i <= currentYearNum + 2; i++) {
       dynamicYears.push(i.toString());
     }
 
