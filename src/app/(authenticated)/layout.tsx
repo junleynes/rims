@@ -3,6 +3,7 @@
 
 import { AuthProvider, useAuth } from '@/components/auth-context';
 import { BudgetProvider } from '@/components/budget-context';
+import { useBranding } from '@/components/branding-context';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useRouter } from 'next/navigation';
@@ -11,6 +12,7 @@ import { Loader2 } from 'lucide-react';
 
 function AuthenticatedContent({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const { config } = useBranding();
   const router = useRouter();
 
   useEffect(() => {
@@ -36,7 +38,7 @@ function AuthenticatedContent({ children }: { children: React.ReactNode }) {
             <SidebarTrigger />
             <div className="h-6 w-px bg-border mx-2" />
             <div className="flex-1 flex justify-between items-center">
-              <h2 className="font-semibold text-lg text-primary">Budget Management System</h2>
+              <h2 className="font-semibold text-lg text-primary">{config.appName}</h2>
               <div className="text-xs text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
                 Financial Year: 2026/2027
               </div>

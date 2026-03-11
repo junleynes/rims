@@ -2,10 +2,11 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import {Toaster} from '@/components/ui/toaster';
+import { BrandingProvider } from '@/components/branding-context';
 
 export const metadata: Metadata = {
-  title: 'BudgetGuard - Professional Budget Management',
-  description: 'Secure and efficient budget tracking system for departments.',
+  title: 'R.I.M.S - Resource Inventory Management System',
+  description: 'Secure and efficient budget and resource tracking system.',
 };
 
 export default function RootLayout({
@@ -21,8 +22,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased bg-background text-foreground">
-        {children}
-        <Toaster />
+        <BrandingProvider>
+          {children}
+          <Toaster />
+        </BrandingProvider>
       </body>
     </html>
   );

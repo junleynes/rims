@@ -11,10 +11,11 @@ import {
   LogOut,
   ShieldCheck,
   TrendingUp,
-  FileText
+  Settings
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
+import { useBranding } from '@/components/branding-context';
 import { 
   Sidebar, 
   SidebarContent, 
@@ -27,11 +28,12 @@ import {
   SidebarGroupLabel
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { config } = useBranding();
 
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
@@ -41,7 +43,7 @@ export function SidebarNav() {
 
   const adminItems = [
     { name: 'User Management', icon: Users, href: '/admin/users' },
-    { name: 'System Settings', icon: ShieldCheck, href: '/admin/settings' },
+    { name: 'System Settings', icon: Settings, href: '/admin/settings' },
   ];
 
   if (!user) return null;
@@ -54,7 +56,7 @@ export function SidebarNav() {
             <TrendingUp className="text-primary-foreground h-5 w-5" />
           </div>
           <span className="font-bold text-xl tracking-tight group-data-[collapsible=icon]:hidden">
-            BudgetGuard
+            {config.appAcronym}
           </span>
         </div>
       </SidebarHeader>

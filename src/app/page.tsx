@@ -10,10 +10,12 @@ import { Label } from '@/components/ui/label';
 import { AuthProvider, useAuth } from '@/components/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useBranding } from '@/components/branding-context';
 
 function LoginPage() {
   const router = useRouter();
   const { login, user } = useAuth();
+  const { config } = useBranding();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState('');
@@ -30,7 +32,7 @@ function LoginPage() {
     try {
       login(username);
       toast({
-        title: "Welcome to BudgetGuard",
+        title: `Welcome to ${config.appAcronym}`,
         description: "Successfully signed in.",
       });
       router.push('/dashboard');
@@ -57,11 +59,11 @@ function LoginPage() {
             <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
               <TrendingUp className="h-10 w-10 text-accent" />
             </div>
-            <h1 className="text-4xl font-bold tracking-tight">BudgetGuard</h1>
+            <h1 className="text-4xl font-bold tracking-tight">{config.appAcronym}</h1>
           </div>
-          <h2 className="text-2xl font-semibold mb-4 text-accent">Intelligent Financial Planning</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-accent">{config.appName}</h2>
           <p className="text-white/80 leading-relaxed text-lg mb-8">
-            A specialized system for broadcast, media, and engineering departments to manage CAPEX and OPEX expenditures with precision.
+            A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.
           </p>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -83,7 +85,7 @@ function LoginPage() {
               <TrendingUp className="h-12 w-12 text-primary" />
             </div>
             <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
-            <CardDescription>Enter your credentials to access the system</CardDescription>
+            <CardDescription>Enter your credentials to access {config.appAcronym}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -115,7 +117,7 @@ function LoginPage() {
             </p>
             <div className="h-px w-full bg-border" />
             <p className="text-xs text-muted-foreground">
-              &copy; 2025 BudgetGuard System. All rights reserved.
+              &copy; 2025 {config.appAcronym} System. All rights reserved.
             </p>
           </CardFooter>
         </Card>

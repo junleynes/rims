@@ -68,3 +68,8 @@ export interface User {
   section?: Section;
   division?: Division;
 }
+
+export interface BrandingConfig {
+  appName: string;
+  appAcronym: string;
+}
