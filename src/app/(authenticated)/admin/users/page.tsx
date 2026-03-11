@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState } from 'react';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { 
   Table, 
   TableBody, 
@@ -22,12 +24,12 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Plus, Trash2, Shield, User as UserIcon } from 'lucide-react';
+import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock } from 'lucide-react';
 import { Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 export default function UserManagementPage() {
-  const { users, divisions, sections, addUser, deleteUser } = useSystemData();
+  const { users, divisions, sections, addUser, deleteUser, updateUser } = useSystemData();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -35,7 +37,8 @@ export default function UserManagementPage() {
     username: '',
     role: 'Manager' as Role,
     division: '',
-    section: ''
+    section: '',
+    twoFactorEnabled: true
   });
 
   const handleAddUser = () => {
@@ -44,8 +47,16 @@ export default function UserManagementPage() {
       return;
     }
     addUser(formData);
-    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '' });
+    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', twoFactorEnabled: true });
     toast({ title: "User Created", description: "The user account has been successfully generated." });
+  };
+
+  const toggle2FA = (userId: string, currentStatus: boolean) => {
+    updateUser(userId, { twoFactorEnabled: !currentStatus });
+    toast({ 
+      title: !currentStatus ? "2FA Enabled" : "2FA Disabled", 
+      description: `Two-factor authentication has been ${!currentStatus ? 'enabled' : 'disabled'} for this user.` 
+    });
   };
 
   const filteredSections = sections.filter(s => {
@@ -57,7 +68,7 @@ export default function UserManagementPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary">User Management</h1>
-        <p className="text-muted-foreground">Manage system users and their organizational access boundaries.</p>
+        <p className="text-muted-foreground">Manage system users, their organizational boundaries, and security settings.</p>
       </div>
 
       <Card className="border-none shadow-sm">
@@ -66,7 +77,7 @@ export default function UserManagementPage() {
           <CardDescription>Assign roles and scope access to specific divisions or sections.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
             <div className="space-y-1">
               <Label className="text-xs">Full Name</Label>
               <Input 
@@ -127,6 +138,13 @@ export default function UserManagementPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1 flex flex-col justify-center items-center">
+              <Label className="text-xs mb-2">Enable 2FA</Label>
+              <Switch 
+                checked={formData.twoFactorEnabled} 
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, twoFactorEnabled: checked }))} 
+              />
+            </div>
             <div className="flex items-end">
               <Button onClick={handleAddUser} className="w-full gap-2">
                 <Plus className="h-4 w-4" /> Create
@@ -147,6 +165,7 @@ export default function UserManagementPage() {
                 <TableHead>User Identity</TableHead>
                 <TableHead>System Role</TableHead>
                 <TableHead>Organization Scope</TableHead>
+                <TableHead className="text-center">2FA Security</TableHead>
                 <TableHead className="text-right">Management</TableHead>
               </TableRow>
             </TableHeader>
@@ -173,6 +192,19 @@ export default function UserManagementPage() {
                       <span className="text-xs font-medium">{u.division || 'Unassigned / Global'}</span>
                       {u.section && u.section !== 'None' && (
                         <span className="text-[10px] text-muted-foreground uppercase tracking-tight">Section/Unit: {u.section}</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <Switch 
+                        checked={!!u.twoFactorEnabled} 
+                        onCheckedChange={() => toggle2FA(u.id, !!u.twoFactorEnabled)}
+                      />
+                      {u.twoFactorEnabled ? (
+                        <Lock className="h-4 w-4 text-green-500" title="2FA Active" />
+                      ) : (
+                        <Unlock className="h-4 w-4 text-muted-foreground" title="2FA Disabled" />
                       )}
                     </div>
                   </TableCell>

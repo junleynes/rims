@@ -48,6 +48,7 @@ export interface User {
   role: Role;
   section?: string;
   division?: string;
+  twoFactorEnabled?: boolean;
 }
 
 export interface BrandingConfig {

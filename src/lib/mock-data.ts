@@ -81,6 +81,7 @@ export const MOCK_USERS: User[] = [
     username: 'admin',
     name: 'System Administrator',
     role: 'Admin',
+    twoFactorEnabled: true,
   },
   {
     id: '2',
@@ -89,6 +90,7 @@ export const MOCK_USERS: User[] = [
     role: 'Manager',
     section: 'Media Server Support Section',
     division: 'Technical and Media Server Support Division',
+    twoFactorEnabled: false,
   },
 ];
 

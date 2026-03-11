@@ -31,10 +31,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = (username: string) => {
-    const foundUser = MOCK_USERS.find(u => u.username === username);
+    // In a real app, we'd fetch from the registry (SystemDataContext) 
+    // but for login we simulate using the mock + any updates in localStorage
+    const savedUsersStr = localStorage.getItem('rims_users');
+    const allUsers: User[] = savedUsersStr ? JSON.parse(savedUsersStr) : MOCK_USERS;
+    
+    const foundUser = allUsers.find(u => u.username === username);
+    
     if (foundUser) {
-      // Step 1: Set as pending for 2FA
-      setPendingUser(foundUser);
+      if (foundUser.twoFactorEnabled) {
+        // Step 1: Set as pending for 2FA
+        setPendingUser(foundUser);
+      } else {
+        // Direct login
+        setUser(foundUser);
+        localStorage.setItem('budgetguard_user', JSON.stringify(foundUser));
+      }
     } else {
       throw new Error('User not found');
     }
