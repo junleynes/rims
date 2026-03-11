@@ -27,7 +27,14 @@ export const SECTIONS: Section[] = [
   'CODE Compliance Unit'
 ];
 
-export const DIVISION_SECTIONS_MAP: Record<Division, Section[]> = {
+export const LOCATIONS = [
+  '4th floor',
+  '5th floor',
+  '6th floor',
+  'Deployed'
+];
+
+export const DIVISION_SECTIONS_MAP: Record<string, string[]> = {
   'Office of the Head': ['Office of the Head', 'Post Administration Section'],
   'Operations Division': [
     'Video Edit Section',
@@ -91,6 +98,7 @@ export const MOCK_BUDGETS: BudgetEntry[] = [
     year: 2026,
     division: 'Technical and Media Server Support Division',
     section: 'Media Server Support Section',
+    location: '5th floor',
     classification: 'Hardware',
     category: 'CAPEX',
     account: 'Capex',

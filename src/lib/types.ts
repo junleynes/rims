@@ -20,6 +20,7 @@ export interface BudgetEntry {
   year: number;
   division: string;
   section: string;
+  location: string;
   classification: Classification;
   category: BudgetCategory;
   account: Account;

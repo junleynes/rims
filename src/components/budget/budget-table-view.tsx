@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -14,7 +15,8 @@ import {
   ArrowLeft,
   CalendarDays,
   Filter,
-  Globe
+  Globe,
+  MapPin
 } from 'lucide-react';
 import { 
   Table, 
@@ -59,10 +61,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   const { divisions, sections } = useSystemData();
   const router = useRouter();
   
-  // Scoping state
   const [scope, setScope] = useState<ViewScope>('drilldown');
-  
-  // Drill-down state
   const [currentDivisionName, setCurrentDivisionName] = useState<string | null>(
     user?.division || null
   );
@@ -70,15 +69,10 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     user?.section || null
   );
   const [currentYear, setCurrentYear] = useState<string | null>(null);
-  
-  // Flat view state (for 'whole' or 'division' scope)
   const [selectedDivisionFlat, setSelectedDivisionFlat] = useState<string | 'All'>('All');
-  
-  // Table filters
   const [selectedCategory, setSelectedCategory] = useState<BudgetCategory | 'All'>('All');
   const [search, setSearch] = useState('');
 
-  // Enforce access control for Managers
   useEffect(() => {
     if (user?.role === 'Manager') {
       if (user.division) setCurrentDivisionName(user.division);
@@ -86,32 +80,24 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     }
   }, [user]);
 
-  // Available years for selection logic - restricted to current year + 2
   const availableYears = useMemo(() => {
     const currentYearNum = new Date().getFullYear();
     const dynamicYears = [];
-    // Rolling window: last year + next 2 years
-    for (let i = currentYearNum - 1; i <= currentYearNum + 2; i++) {
+    for (let i = currentYearNum - 2; i <= currentYearNum + 2; i++) {
       dynamicYears.push(i.toString());
     }
-
-    // Also include any years present in the actual budget data
     const existingDataYears = (budgets || [])
       .map(b => b.year?.toString())
       .filter(Boolean);
-    
     return Array.from(new Set([...dynamicYears, ...existingDataYears])).sort();
   }, [budgets]);
 
   const filteredBudgets = useMemo(() => {
     return (budgets || []).filter(b => {
-      // Role-based hard filter for Managers
       if (user?.role === 'Manager') {
         if (user.division && b.division !== user.division) return false;
         if (user.section && b.section !== user.section) return false;
       }
-
-      // Scope Logic
       if (scope === 'drilldown') {
         if (currentDivisionName && b.division !== currentDivisionName) return false;
         if (currentSectionName && b.section !== currentSectionName) return false;
@@ -119,14 +105,12 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       } else if (scope === 'division') {
         if (selectedDivisionFlat !== 'All' && b.division !== selectedDivisionFlat) return false;
       }
-      
-      // General Filters
       const matchesCategory = selectedCategory === 'All' || b.category === selectedCategory;
       const matchesSearch = 
         (b.projectTitle || '').toLowerCase().includes(search.toLowerCase()) || 
         (b.itemDescription || '').toLowerCase().includes(search.toLowerCase()) ||
-        (b.section || '').toLowerCase().includes(search.toLowerCase());
-      
+        (b.section || '').toLowerCase().includes(search.toLowerCase()) ||
+        (b.location || '').toLowerCase().includes(search.toLowerCase());
       return matchesCategory && matchesSearch;
     });
   }, [budgets, scope, currentDivisionName, currentSectionName, currentYear, selectedDivisionFlat, selectedCategory, search, user]);
@@ -148,7 +132,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
           </TabsList>
         </Tabs>
       </div>
-
       <div className="flex flex-wrap items-center gap-2">
         {scope === 'division' && (
           <Select 
@@ -168,7 +151,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             </SelectContent>
           </Select>
         )}
-
         <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as BudgetCategory | 'All')}>
           <SelectTrigger className="h-8 w-[100px] text-xs">
             <SelectValue placeholder="Category" />
@@ -179,7 +161,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             <SelectItem value="OPEX">OPEX</SelectItem>
           </SelectContent>
         </Select>
-
         <div className="relative h-8">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input 
@@ -189,7 +170,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-
         <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs">
           <Download className="h-3.5 w-3.5" /> Export
         </Button>
@@ -197,9 +177,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     </div>
   );
 
-  // DRILL-DOWN VIEWS
   if (scope === 'drilldown') {
-    // Step 1: Selection of Division (Admins Only)
     if (!currentDivisionName && user?.role === 'Admin') {
       return (
         <div className="space-y-6">
@@ -229,12 +207,9 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
         </div>
       );
     }
-
-    // Step 2: Selection of Section (Admins or Multi-section Managers)
     if (currentDivisionName && !currentSectionName) {
       const divId = divisions.find(d => d.name === currentDivisionName)?.id;
       const filteredSections = sections.filter(s => s.divisionId === divId);
-      
       return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
           <div className="flex items-center gap-4">
@@ -246,7 +221,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             <div className="h-4 w-px bg-border" />
             <h2 className="text-lg font-semibold text-primary">{currentDivisionName}</h2>
           </div>
-          
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSections.map((section) => (
               <Card 
@@ -265,17 +239,10 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                 </CardContent>
               </Card>
             ))}
-            {filteredSections.length === 0 && (
-              <div className="col-span-full py-12 text-center text-muted-foreground">
-                No sections found for this division.
-              </div>
-            )}
           </div>
         </div>
       );
     }
-
-    // Step 3: Selection of Year
     if (currentSectionName && !currentYear) {
       return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -297,7 +264,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{currentDivisionName}</span>
             </div>
           </div>
-          
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {availableYears.map((year) => (
               <Card 
@@ -317,11 +283,9 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     }
   }
 
-  // FINAL TABLE DISPLAY
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
       {renderHeaderControls()}
-
       {scope === 'drilldown' && (
         <div className="flex items-center gap-3 mb-2 px-2">
           <Button variant="outline" size="sm" onClick={() => setCurrentYear(null)} className="h-7 text-xs">
@@ -333,17 +297,16 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
           </div>
         </div>
       )}
-
       <div className="border rounded-xl bg-white overflow-hidden shadow-sm">
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
               <TableHead>Category</TableHead>
               {scope !== 'drilldown' && <TableHead>Section/Unit</TableHead>}
+              <TableHead>Location</TableHead>
               <TableHead>Account/Class</TableHead>
               <TableHead className="min-w-[200px]">Project Title</TableHead>
               <TableHead>Budget Cost</TableHead>
-              <TableHead>Actual Cost</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -371,6 +334,12 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                       {budget.section}
                     </TableCell>
                   )}
+                  <TableCell>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      {budget.location}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-[11px] font-medium max-w-[150px] truncate">
                     {budget.category === 'CAPEX' ? budget.classification : budget.account}
                   </TableCell>
@@ -385,9 +354,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                   </TableCell>
                   <TableCell className="font-bold whitespace-nowrap text-sm">
                     ₱ {(budget.totalCostBudget || 0).toLocaleString()}
-                  </TableCell>
-                  <TableCell className="font-medium text-muted-foreground whitespace-nowrap text-xs">
-                    {budget.totalCostActual ? `₱ ${budget.totalCostActual.toLocaleString()}` : '---'}
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
@@ -410,7 +376,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={scope !== 'drilldown' ? 7 : 6} className="h-32 text-center text-muted-foreground">
+                <TableCell colSpan={scope !== 'drilldown' ? 8 : 7} className="h-32 text-center text-muted-foreground">
                   <div className="flex flex-col items-center gap-2">
                     <p>No budget entries found for the selected scope.</p>
                     <Button variant="outline" size="sm" onClick={() => router.push('/budgets/new')}>
