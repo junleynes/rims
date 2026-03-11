@@ -30,6 +30,16 @@
     --chart-4: 200 70% 30%;
     --chart-5: 150 60% 40%;
     --radius: 0.75rem;
+    
+    /* Sidebar specific variables */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 196 60% 15%;
+    --sidebar-primary: 196 60% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 196 20% 94%;
+    --sidebar-accent-foreground: 196 60% 25%;
+    --sidebar-border: 196 20% 88%;
+    --sidebar-ring: 196 60% 45%;
   }
   .dark {
     --background: 196 60% 5%;
