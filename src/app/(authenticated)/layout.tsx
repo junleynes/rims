@@ -3,6 +3,7 @@
 
 import { AuthProvider, useAuth } from '@/components/auth-context';
 import { BudgetProvider } from '@/components/budget-context';
+import { SystemDataProvider } from '@/components/system-data-context';
 import { useBranding } from '@/components/branding-context';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -56,9 +57,11 @@ function AuthenticatedContent({ children }: { children: React.ReactNode }) {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <BudgetProvider>
-        <AuthenticatedContent>{children}</AuthenticatedContent>
-      </BudgetProvider>
+      <SystemDataProvider>
+        <BudgetProvider>
+          <AuthenticatedContent>{children}</AuthenticatedContent>
+        </BudgetProvider>
+      </SystemDataProvider>
     </AuthProvider>
   );
 }

@@ -43,9 +43,9 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BudgetEntry, Account, Section, Division, BudgetCategory } from '@/lib/types';
-import { DIVISIONS, DIVISION_SECTIONS_MAP, OPEX_ACCOUNTS } from '@/lib/mock-data';
+import { BudgetEntry, Account, BudgetCategory } from '@/lib/types';
 import { useAuth } from '@/components/auth-context';
+import { useSystemData } from '@/components/system-data-context';
 import { cn } from '@/lib/utils';
 
 interface BudgetTableViewProps {
@@ -57,44 +57,44 @@ type ViewScope = 'drilldown' | 'whole' | 'division';
 
 export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   const { user } = useAuth();
+  const { divisions, sections } = useSystemData();
   const router = useRouter();
   
   // Scoping state
   const [scope, setScope] = useState<ViewScope>('drilldown');
   
   // Drill-down state
-  const [currentDivision, setCurrentDivision] = useState<Division | null>(
-    user?.role === 'Manager' ? (user.division as Division) : null
+  const [currentDivisionName, setCurrentDivisionName] = useState<string | null>(
+    user?.division || null
   );
-  const [currentSection, setCurrentSection] = useState<Section | null>(
-    user?.role === 'Manager' ? (user.section as Section) : null
+  const [currentSectionName, setCurrentSectionName] = useState<string | null>(
+    user?.section || null
   );
   const [currentYear, setCurrentYear] = useState<string | null>(null);
   
   // Flat view state (for 'whole' or 'division' scope)
-  const [selectedDivisionFlat, setSelectedDivisionFlat] = useState<Division | 'All'>('All');
+  const [selectedDivisionFlat, setSelectedDivisionFlat] = useState<string | 'All'>('All');
   
   // Table filters
   const [selectedCategory, setSelectedCategory] = useState<BudgetCategory | 'All'>('All');
-  const [selectedSubCategory, setSelectedSubCategory] = useState<Account | 'All'>('All');
   const [search, setSearch] = useState('');
 
   // Available years for selection logic
   const availableYears = useMemo(() => {
     const years = (budgets || [])
-      .filter(b => (!currentDivision || b.division === currentDivision) && (!currentSection || b.section === currentSection))
+      .filter(b => (!currentDivisionName || b.division === currentDivisionName) && (!currentSectionName || b.section === currentSectionName))
       .map(b => b.year?.toString())
       .filter(Boolean);
     const baseYears = ['2025', '2026', '2027', '2028'];
     return Array.from(new Set([...years, ...baseYears])).sort();
-  }, [budgets, currentDivision, currentSection]);
+  }, [budgets, currentDivisionName, currentSectionName]);
 
   const filteredBudgets = useMemo(() => {
     return (budgets || []).filter(b => {
       // Scope Logic
       if (scope === 'drilldown') {
-        if (currentDivision && b.division !== currentDivision) return false;
-        if (currentSection && b.section !== currentSection) return false;
+        if (currentDivisionName && b.division !== currentDivisionName) return false;
+        if (currentSectionName && b.section !== currentSectionName) return false;
         if (currentYear && b.year?.toString() !== currentYear) return false;
       } else if (scope === 'division') {
         if (selectedDivisionFlat !== 'All' && b.division !== selectedDivisionFlat) return false;
@@ -102,15 +102,14 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       
       // General Filters
       const matchesCategory = selectedCategory === 'All' || b.category === selectedCategory;
-      const matchesSubCategory = selectedSubCategory === 'All' || b.account === selectedSubCategory;
       const matchesSearch = 
         (b.projectTitle || '').toLowerCase().includes(search.toLowerCase()) || 
         (b.itemDescription || '').toLowerCase().includes(search.toLowerCase()) ||
         (b.section || '').toLowerCase().includes(search.toLowerCase());
       
-      return matchesCategory && matchesSubCategory && matchesSearch;
+      return matchesCategory && matchesSearch;
     });
-  }, [budgets, scope, currentDivision, currentSection, currentYear, selectedDivisionFlat, selectedCategory, selectedSubCategory, search]);
+  }, [budgets, scope, currentDivisionName, currentSectionName, currentYear, selectedDivisionFlat, selectedCategory, search]);
 
   const renderHeaderControls = () => (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-border/50 mb-6">
@@ -132,21 +131,18 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
 
       <div className="flex flex-wrap items-center gap-2">
         {scope === 'division' && (
-          <Select value={selectedDivisionFlat} onValueChange={(v) => setSelectedDivisionFlat(v as Division | 'All')}>
+          <Select value={selectedDivisionFlat} onValueChange={setSelectedDivisionFlat}>
             <SelectTrigger className="h-8 w-[160px] text-xs">
               <SelectValue placeholder="Select Division" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All Divisions</SelectItem>
-              {DIVISIONS.map(d => <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>)}
+              {divisions.map(d => <SelectItem key={d.id} value={d.name} className="text-xs">{d.name}</SelectItem>)}
             </SelectContent>
           </Select>
         )}
 
-        <Select value={selectedCategory} onValueChange={(v) => {
-          setSelectedCategory(v as BudgetCategory | 'All');
-          setSelectedSubCategory('All');
-        }}>
+        <Select value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as BudgetCategory | 'All')}>
           <SelectTrigger className="h-8 w-[100px] text-xs">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
@@ -177,16 +173,16 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   // DRILL-DOWN VIEWS
   if (scope === 'drilldown') {
     // Step 1: Selection of Division
-    if (!currentDivision && user?.role === 'Admin') {
+    if (!currentDivisionName && user?.role === 'Admin') {
       return (
         <div className="space-y-6">
           {renderHeaderControls()}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {DIVISIONS.map((division) => (
+            {divisions.map((division) => (
               <Card 
-                key={division} 
+                key={division.id} 
                 className="group cursor-pointer hover:border-primary hover:shadow-md transition-all border-2 border-transparent bg-white overflow-hidden"
-                onClick={() => setCurrentDivision(division)}
+                onClick={() => setCurrentDivisionName(division.name)}
               >
                 <CardContent className="p-8 flex items-center justify-between">
                   <div className="flex items-center gap-4">
@@ -194,7 +190,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                       <Building2 className="h-8 w-8" />
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">{division}</h3>
+                      <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">{division.name}</h3>
                       <p className="text-sm text-muted-foreground">Select to view sections</p>
                     </div>
                   </div>
@@ -208,43 +204,50 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     }
 
     // Step 2: Selection of Section
-    if (currentDivision && !currentSection) {
-      const sections = DIVISION_SECTIONS_MAP[currentDivision] || [];
+    if (currentDivisionName && !currentSectionName) {
+      const divId = divisions.find(d => d.name === currentDivisionName)?.id;
+      const filteredSections = sections.filter(s => s.divisionId === divId);
+      
       return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => setCurrentDivision(null)} className="gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setCurrentDivisionName(null)} className="gap-2">
               <ArrowLeft className="h-4 w-4" /> Back to Divisions
             </Button>
             <div className="h-4 w-px bg-border" />
-            <h2 className="text-lg font-semibold text-primary">{currentDivision}</h2>
+            <h2 className="text-lg font-semibold text-primary">{currentDivisionName}</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sections.map((section) => (
+            {filteredSections.map((section) => (
               <Card 
-                key={section} 
+                key={section.id} 
                 className="group cursor-pointer hover:border-accent hover:shadow-md transition-all border-2 border-transparent bg-white"
-                onClick={() => setCurrentSection(section)}
+                onClick={() => setCurrentSectionName(section.name)}
               >
                 <CardContent className="p-6 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-3 rounded-xl bg-accent/10 text-accent group-hover:bg-accent group-hover:text-white transition-colors">
                       <LayoutGrid className="h-5 w-5" />
                     </div>
-                    <span className="font-semibold text-sm group-hover:text-accent transition-colors">{section}</span>
+                    <span className="font-semibold text-sm group-hover:text-accent transition-colors">{section.name}</span>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
                 </CardContent>
               </Card>
             ))}
+            {filteredSections.length === 0 && (
+              <div className="col-span-full py-12 text-center text-muted-foreground">
+                No sections found for this division.
+              </div>
+            )}
           </div>
         </div>
       );
     }
 
     // Step 3: Selection of Year
-    if (currentSection && !currentYear) {
+    if (currentSectionName && !currentYear) {
       return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
           <div className="flex items-center gap-4">
@@ -252,8 +255,8 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               variant="ghost" 
               size="sm" 
               onClick={() => {
-                if (user?.role === 'Admin') setCurrentSection(null);
-                else setCurrentDivision(null);
+                if (user?.role === 'Admin') setCurrentSectionName(null);
+                else setCurrentDivisionName(null);
               }} 
               className="gap-2"
             >
@@ -261,8 +264,8 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             </Button>
             <div className="h-4 w-px bg-border" />
             <div className="flex flex-col">
-              <h2 className="text-lg font-semibold text-primary">{currentSection}</h2>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{currentDivision}</span>
+              <h2 className="text-lg font-semibold text-primary">{currentSectionName}</h2>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{currentDivisionName}</span>
             </div>
           </div>
           
@@ -296,7 +299,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             <ArrowLeft className="h-3 w-3 mr-1" /> {currentYear}
           </Button>
           <div className="flex flex-col">
-            <h2 className="text-xs font-bold text-primary leading-tight">{currentSection}</h2>
+            <h2 className="text-xs font-bold text-primary leading-tight">{currentSectionName}</h2>
             <span className="text-[9px] text-muted-foreground uppercase tracking-widest">FY {currentYear}</span>
           </div>
         </div>

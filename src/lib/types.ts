@@ -1,30 +1,6 @@
 
 export type Role = 'Admin' | 'Manager';
 
-export type Division = 
-  | 'Office of the Head'
-  | 'Operations Division'
-  | 'Technical and Media Server Support Division'
-  | 'Project Management Division';
-
-export type Section = 
-  | 'Office of the Head'
-  | 'Post Administration Section'
-  | 'Video Edit Section'
-  | 'Videographics Section'
-  | 'Audio Post Section'
-  | 'Music Production Section'
-  | 'Digital Cinematography and Standards Section'
-  | 'Content Management Section'
-  | 'Technical Support and TOC Section'
-  | 'IT Solutions and Data Center Operations Section'
-  | 'Media Server Support Section'
-  | 'Facility Maintenance Section'
-  | 'Agile Content Section'
-  | 'Promotional Content Section'
-  | 'Original Content Section'
-  | 'CODE Compliance Unit';
-
 export type Classification = 'Hardware' | 'Software' | 'Others';
 
 export type BudgetCategory = 'CAPEX' | 'OPEX';
@@ -42,8 +18,8 @@ export type Account =
 export interface BudgetEntry {
   id: string;
   year: number;
-  division: Division;
-  section: Section;
+  division: string;
+  section: string;
   classification: Classification;
   category: BudgetCategory;
   account: Account;
@@ -65,11 +41,27 @@ export interface User {
   username: string;
   name: string;
   role: Role;
-  section?: Section;
-  division?: Division;
+  section?: string;
+  division?: string;
 }
 
 export interface BrandingConfig {
   appName: string;
   appAcronym: string;
+}
+
+export interface Location {
+  id: string;
+  name: string;
+}
+
+export interface Division {
+  id: string;
+  name: string;
+}
+
+export interface Section {
+  id: string;
+  name: string;
+  divisionId: string;
 }

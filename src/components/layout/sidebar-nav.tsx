@@ -9,9 +9,10 @@ import {
   PlusCircle, 
   Users, 
   LogOut,
-  ShieldCheck,
   TrendingUp,
-  Settings
+  Settings,
+  Building2,
+  MapPin
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -43,6 +44,7 @@ export function SidebarNav() {
 
   const adminItems = [
     { name: 'User Management', icon: Users, href: '/admin/users' },
+    { name: 'Organization', icon: Building2, href: '/admin/organization' },
     { name: 'System Settings', icon: Settings, href: '/admin/settings' },
   ];
 

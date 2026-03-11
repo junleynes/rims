@@ -18,8 +18,9 @@ import {
 } from '@/components/ui/select';
 import { useAuth } from '@/components/auth-context';
 import { useBudgets } from '@/components/budget-context';
-import { SECTIONS, DIVISIONS, CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
-import { Section, Division, Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
+import { useSystemData } from '@/components/system-data-context';
+import { CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
+import { Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 interface BudgetFormProps {
@@ -30,14 +31,15 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { addBudget, updateBudget } = useBudgets();
+  const { divisions, sections } = useSystemData();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<Omit<BudgetEntry, 'id' | 'createdAt'>>({
     year: initialData?.year || new Date().getFullYear() + 1,
-    division: initialData?.division || (user?.division || DIVISIONS[0]) as Division,
-    section: initialData?.section || (user?.section || SECTIONS[0]) as Section,
+    division: initialData?.division || (user?.division || divisions[0]?.name || ''),
+    section: initialData?.section || (user?.section || sections[0]?.name || ''),
     classification: initialData?.classification || CLASSIFICATIONS[0],
     category: initialData?.category || 'CAPEX',
     account: initialData?.account || 'Capex',
@@ -63,6 +65,11 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
       }
     }
   }, [formData.category, initialData]);
+
+  const filteredSections = sections.filter(s => {
+    const divId = divisions.find(d => d.name === formData.division)?.id;
+    return s.divisionId === divId;
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,14 +145,14 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 <Label htmlFor="division">Division</Label>
                 <Select 
                   value={formData.division} 
-                  onValueChange={(v) => setFormData(prev => ({ ...prev, division: v as Division }))}
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, division: v, section: '' }))}
                 >
                   <SelectTrigger id="division">
                     <SelectValue placeholder="Select Division" />
                   </SelectTrigger>
                   <SelectContent>
-                    {DIVISIONS.map(d => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    {divisions.map(d => (
+                      <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -155,14 +162,15 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 <Label htmlFor="section">Section/Unit</Label>
                 <Select 
                   value={formData.section} 
-                  onValueChange={(v) => setFormData(prev => ({ ...prev, section: v as Section }))}
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, section: v }))}
+                  disabled={!formData.division}
                 >
                   <SelectTrigger id="section">
                     <SelectValue placeholder="Select Section" />
                   </SelectTrigger>
                   <SelectContent>
-                    {SECTIONS.map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    {filteredSections.map(s => (
+                      <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
