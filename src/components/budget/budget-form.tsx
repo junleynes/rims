@@ -54,21 +54,19 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     remarks: initialData?.remarks || '',
   });
 
-  // Dynamically generate year options: 2 years back and 2 years forward
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years = [];
+    // Only current year +/- 2 as requested
     for (let i = currentYear - 2; i <= currentYear + 2; i++) {
       years.push(i.toString());
     }
-    // Also ensure the initial data year is included if it's outside the range
     if (initialData?.year && !years.includes(initialData.year.toString())) {
       years.push(initialData.year.toString());
     }
     return Array.from(new Set(years)).sort();
   }, [initialData?.year]);
 
-  // Automatically update account when category changes if not in edit mode with existing data
   useEffect(() => {
     if (!initialData) {
       if (formData.category === 'CAPEX') {
@@ -178,7 +176,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                   disabled={!formData.division}
                 >
                   <SelectTrigger id="section">
-                    <SelectValue placeholder="Select Section" />
+                    <SelectValue placeholder="Select Section/Unit" />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredSections.map(s => (
@@ -242,7 +240,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="projectTitle">Project title or description</Label>
+              <Label htmlFor="projectTitle">Project Title or Description</Label>
               <Input 
                 id="projectTitle" 
                 placeholder="Brief title for the project..."
@@ -266,7 +264,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="quantity">quantity</Label>
+                <Label htmlFor="quantity">Quantity</Label>
                 <Input 
                   id="quantity" 
                   type="number"
@@ -276,7 +274,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unitCostBudget">unit cost (budget) (₱)</Label>
+                <Label htmlFor="unitCostBudget">Unit Cost (Budget) (₱)</Label>
                 <Input 
                   id="unitCostBudget" 
                   type="number"
@@ -286,7 +284,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label>total cost (budget)</Label>
+                <Label>Total Cost (Budget)</Label>
                 <div className="h-10 px-3 py-2 rounded-md bg-secondary flex items-center font-bold text-primary">
                   ₱ {(formData.quantity * formData.unitCostBudget).toLocaleString()}
                 </div>
@@ -295,7 +293,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t">
               <div className="space-y-2">
-                <Label htmlFor="unitCostActual">unit cost (actual) (₱)</Label>
+                <Label htmlFor="unitCostActual">Unit Cost (Actual) (₱)</Label>
                 <Input 
                   id="unitCostActual" 
                   type="number"
@@ -305,13 +303,13 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label>total cost (actual)</Label>
+                <Label>Total Cost (Actual)</Label>
                 <div className="h-10 px-3 py-2 rounded-md bg-muted/50 flex items-center font-bold text-muted-foreground">
                   ₱ {(formData.quantity * (formData.unitCostActual || 0)).toLocaleString()}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="prNumber">Purchase Requisition number</Label>
+                <Label htmlFor="prNumber">PR Number</Label>
                 <Input 
                   id="prNumber" 
                   placeholder="PR-XXXXX"
@@ -323,7 +321,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="dateDelivered">date delivered</Label>
+                <Label htmlFor="dateDelivered">Date Delivered</Label>
                 <Input 
                   id="dateDelivered" 
                   type="date"
@@ -332,7 +330,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="remarks">remarks</Label>
+                <Label htmlFor="remarks">Remarks</Label>
                 <Input 
                   id="remarks" 
                   placeholder="Additional notes..."

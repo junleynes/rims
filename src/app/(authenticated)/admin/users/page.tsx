@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -113,13 +112,13 @@ export default function UserManagementPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Section</Label>
+              <Label className="text-xs">Section/Unit</Label>
               <Select 
                 value={formData.section} 
                 onValueChange={(v) => setFormData(prev => ({ ...prev, section: v }))}
                 disabled={!formData.division || formData.division === 'None'}
               >
-                <SelectTrigger><SelectValue placeholder="Select Section" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select Section/Unit" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None (Full Division)</SelectItem>
                   {filteredSections.map(s => (
@@ -173,7 +172,7 @@ export default function UserManagementPage() {
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs font-medium">{u.division || 'Unassigned / Global'}</span>
                       {u.section && u.section !== 'None' && (
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-tight">Section: {u.section}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-tight">Section/Unit: {u.section}</span>
                       )}
                     </div>
                   </TableCell>
