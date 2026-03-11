@@ -1,13 +1,15 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Division, Section, Location } from '@/lib/types';
+import { User, Division, Section, Location, StatusOption } from '@/lib/types';
 import { DIVISIONS, SECTIONS, MOCK_USERS, DIVISION_SECTIONS_MAP, LOCATIONS } from '@/lib/mock-data';
 
 interface SystemDataContextType {
   divisions: Division[];
   sections: Section[];
   locations: Location[];
+  statusOptions: StatusOption[];
   users: User[];
   addDivision: (name: string) => void;
   updateDivision: (id: string, name: string) => void;
@@ -18,6 +20,9 @@ interface SystemDataContextType {
   addLocation: (name: string) => void;
   updateLocation: (id: string, name: string) => void;
   deleteLocation: (id: string) => void;
+  addStatusOption: (name: string) => void;
+  updateStatusOption: (id: string, name: string) => void;
+  deleteStatusOption: (id: string) => void;
   addUser: (user: Omit<User, 'id'>) => void;
   updateUser: (id: string, user: Partial<User>) => void;
   deleteUser: (id: string) => void;
@@ -25,17 +30,25 @@ interface SystemDataContextType {
 
 const SystemDataContext = createContext<SystemDataContextType | undefined>(undefined);
 
+const INITIAL_STATUS_OPTIONS = [
+  { id: 'working', name: 'working' },
+  { id: 'defective', name: 'defective' },
+  { id: 'turned-over', name: 'turned over to SAMD' },
+  { id: 'others', name: 'others:' }
+];
+
 export function SystemDataProvider({ children }: { children: React.ReactNode }) {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    // Initial load from local storage or mock data
     const savedDivs = localStorage.getItem('rims_divisions');
     const savedSecs = localStorage.getItem('rims_sections');
     const savedLocs = localStorage.getItem('rims_locations');
+    const savedStatus = localStorage.getItem('rims_status_options');
     const savedUsers = localStorage.getItem('rims_users');
 
     if (savedDivs) setDivisions(JSON.parse(savedDivs));
@@ -62,17 +75,20 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
       setLocations(initialLocs);
     }
 
+    if (savedStatus) setStatusOptions(JSON.parse(savedStatus));
+    else setStatusOptions(INITIAL_STATUS_OPTIONS);
+
     if (savedUsers) setUsers(JSON.parse(savedUsers));
     else setUsers(MOCK_USERS);
   }, []);
 
-  // Save to local storage on changes
   useEffect(() => {
     if (divisions.length) localStorage.setItem('rims_divisions', JSON.stringify(divisions));
     if (sections.length) localStorage.setItem('rims_sections', JSON.stringify(sections));
     if (locations.length) localStorage.setItem('rims_locations', JSON.stringify(locations));
+    if (statusOptions.length) localStorage.setItem('rims_status_options', JSON.stringify(statusOptions));
     if (users.length) localStorage.setItem('rims_users', JSON.stringify(users));
-  }, [divisions, sections, locations, users]);
+  }, [divisions, sections, locations, statusOptions, users]);
 
   const addDivision = (name: string) => {
     const newDiv = { id: Math.random().toString(36).substr(2, 9), name };
@@ -114,6 +130,19 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
     setLocations(prev => prev.filter(l => l.id !== id));
   };
 
+  const addStatusOption = (name: string) => {
+    const newStatus = { id: Math.random().toString(36).substr(2, 9), name };
+    setStatusOptions(prev => [...prev, newStatus]);
+  };
+
+  const updateStatusOption = (id: string, name: string) => {
+    setStatusOptions(prev => prev.map(s => s.id === id ? { ...s, name } : s));
+  };
+
+  const deleteStatusOption = (id: string) => {
+    setStatusOptions(prev => prev.filter(s => s.id !== id));
+  };
+
   const addUser = (user: Omit<User, 'id'>) => {
     const newUser = { ...user, id: Math.random().toString(36).substr(2, 9) };
     setUsers(prev => [...prev, newUser]);
@@ -129,10 +158,11 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
 
   return (
     <SystemDataContext.Provider value={{ 
-      divisions, sections, locations, users,
+      divisions, sections, locations, statusOptions, users,
       addDivision, updateDivision, deleteDivision,
       addSection, updateSection, deleteSection,
       addLocation, updateLocation, deleteLocation,
+      addStatusOption, updateStatusOption, deleteStatusOption,
       addUser, updateUser, deleteUser
     }}>
       {children}

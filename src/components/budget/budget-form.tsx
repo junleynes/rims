@@ -20,7 +20,7 @@ import { useAuth } from '@/components/auth-context';
 import { useBudgets } from '@/components/budget-context';
 import { useSystemData } from '@/components/system-data-context';
 import { CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
-import { Classification, Account, BudgetEntry, BudgetCategory, BudgetStatus } from '@/lib/types';
+import { Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { aiBudgetDescriptionAssistant } from '@/ai/flows/ai-budget-description-assistant';
 
@@ -32,7 +32,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { addBudget, updateBudget } = useBudgets();
-  const { divisions, sections, locations, users } = useSystemData();
+  const { divisions, sections, locations, users, statusOptions } = useSystemData();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +57,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     dateDelivered: initialData?.dateDelivered || '',
     grSisNumber: initialData?.grSisNumber || '',
     accountablePerson: initialData?.accountablePerson || '',
-    status: initialData?.status || 'working',
+    status: initialData?.status || (statusOptions[0]?.name || 'working'),
     statusOthers: initialData?.statusOthers || '',
     remarks: initialData?.remarks || '',
   });
@@ -428,16 +428,15 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 <Label htmlFor="status">Status</Label>
                 <Select 
                   value={formData.status} 
-                  onValueChange={(v) => setFormData(prev => ({ ...prev, status: v as BudgetStatus, statusOthers: v === 'others:' ? prev.statusOthers : '' }))}
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, status: v, statusOthers: v === 'others:' ? prev.statusOthers : '' }))}
                 >
                   <SelectTrigger id="status">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="working">working</SelectItem>
-                    <SelectItem value="defective">defective</SelectItem>
-                    <SelectItem value="turned over to SAMD">turned over to SAMD</SelectItem>
-                    <SelectItem value="others:">others:</SelectItem>
+                    {statusOptions.map(opt => (
+                      <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -28,10 +28,11 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function OrganizationPage() {
   const { 
-    divisions, sections, locations,
+    divisions, sections, locations, statusOptions,
     addDivision, updateDivision, deleteDivision,
     addSection, updateSection, deleteSection,
-    addLocation, updateLocation, deleteLocation
+    addLocation, updateLocation, deleteLocation,
+    addStatusOption, updateStatusOption, deleteStatusOption
   } = useSystemData();
   const { toast } = useToast();
 
@@ -39,9 +40,11 @@ export default function OrganizationPage() {
   const [newLocName, setNewLocName] = useState('');
   const [newSecName, setNewSecName] = useState('');
   const [newSecDivId, setNewSecDivId] = useState('');
+  const [newStatusName, setNewStatusName] = useState('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [editingType, setEditingType] = useState<'division' | 'location' | 'status' | null>(null);
 
   const handleAddDivision = () => {
     if (!newDivName) return;
@@ -64,11 +67,34 @@ export default function OrganizationPage() {
     toast({ title: "Section Added" });
   };
 
+  const handleAddStatus = () => {
+    if (!newStatusName) return;
+    addStatusOption(newStatusName);
+    setNewStatusName('');
+    toast({ title: "Status Option Added" });
+  };
+
+  const startEditing = (id: string, name: string, type: 'division' | 'location' | 'status') => {
+    setEditingId(id);
+    setEditingName(name);
+    setEditingType(type);
+  };
+
+  const saveEdit = () => {
+    if (!editingId || !editingType) return;
+    if (editingType === 'division') updateDivision(editingId, editingName);
+    if (editingType === 'location') updateLocation(editingId, editingName);
+    if (editingType === 'status') updateStatusOption(editingId, editingName);
+    setEditingId(null);
+    setEditingType(null);
+    toast({ title: "Updated successfully" });
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary">Organization Management</h1>
-        <p className="text-muted-foreground">Manage Divisions, Sections, and physical Locations.</p>
+        <p className="text-muted-foreground">Manage Divisions, Sections, physical Locations, and Status options.</p>
       </div>
 
       <Tabs defaultValue="divisions" className="space-y-4">
@@ -76,6 +102,7 @@ export default function OrganizationPage() {
           <TabsTrigger value="divisions">Divisions</TabsTrigger>
           <TabsTrigger value="sections">Sections</TabsTrigger>
           <TabsTrigger value="locations">Locations</TabsTrigger>
+          <TabsTrigger value="statuses">Statuses</TabsTrigger>
         </TabsList>
 
         <TabsContent value="divisions" className="space-y-4">
@@ -107,7 +134,7 @@ export default function OrganizationPage() {
                   {divisions.map((div) => (
                     <TableRow key={div.id}>
                       <TableCell>
-                        {editingId === div.id ? (
+                        {editingId === div.id && editingType === 'division' ? (
                           <Input 
                             value={editingName} 
                             onChange={(e) => setEditingName(e.target.value)} 
@@ -115,9 +142,9 @@ export default function OrganizationPage() {
                         ) : div.name}
                       </TableCell>
                       <TableCell className="text-right">
-                        {editingId === div.id ? (
+                        {editingId === div.id && editingType === 'division' ? (
                           <div className="flex justify-end gap-1">
-                            <Button size="icon" variant="ghost" onClick={() => { updateDivision(div.id, editingName); setEditingId(null); }}>
+                            <Button size="icon" variant="ghost" onClick={saveEdit}>
                               <Check className="h-4 w-4 text-green-500" />
                             </Button>
                             <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}>
@@ -126,7 +153,7 @@ export default function OrganizationPage() {
                           </div>
                         ) : (
                           <div className="flex justify-end gap-1">
-                            <Button size="icon" variant="ghost" onClick={() => { setEditingId(div.id); setEditingName(div.name); }}>
+                            <Button size="icon" variant="ghost" onClick={() => startEditing(div.id, div.name, 'division')}>
                               <Edit2 className="h-4 w-4" />
                             </Button>
                             <Button size="icon" variant="ghost" onClick={() => deleteDivision(div.id)}>
@@ -225,11 +252,99 @@ export default function OrganizationPage() {
                 <TableBody>
                   {locations.map((loc) => (
                     <TableRow key={loc.id}>
-                      <TableCell>{loc.name}</TableCell>
+                      <TableCell>
+                        {editingId === loc.id && editingType === 'location' ? (
+                          <Input 
+                            value={editingName} 
+                            onChange={(e) => setEditingName(e.target.value)} 
+                          />
+                        ) : loc.name}
+                      </TableCell>
                       <TableCell className="text-right">
-                        <Button size="icon" variant="ghost" onClick={() => deleteLocation(loc.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {editingId === loc.id && editingType === 'location' ? (
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" onClick={saveEdit}>
+                              <Check className="h-4 w-4 text-green-500" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}>
+                              <X className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" onClick={() => startEditing(loc.id, loc.name, 'location')}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => deleteLocation(loc.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="statuses" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Manage Status Options</CardTitle>
+              <CardDescription>Manage the options available in the budget status dropdown.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="New Status Name (e.g. working)" 
+                  value={newStatusName} 
+                  onChange={(e) => setNewStatusName(e.target.value)} 
+                />
+                <Button onClick={handleAddStatus} className="gap-2">
+                  <Plus className="h-4 w-4" /> Add
+                </Button>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Status Name</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {statusOptions.map((status) => (
+                    <TableRow key={status.id}>
+                      <TableCell>
+                        {editingId === status.id && editingType === 'status' ? (
+                          <Input 
+                            value={editingName} 
+                            onChange={(e) => setEditingName(e.target.value)} 
+                          />
+                        ) : status.name}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingId === status.id && editingType === 'status' ? (
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" onClick={saveEdit}>
+                              <Check className="h-4 w-4 text-green-500" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}>
+                              <X className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" onClick={() => startEditing(status.id, status.name, 'status')}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => deleteStatusOption(status.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
