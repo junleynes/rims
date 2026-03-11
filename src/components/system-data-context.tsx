@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Division, Section, Location } from '@/lib/types';
-import { DIVISIONS, SECTIONS, MOCK_USERS, DIVISION_SECTIONS_MAP } from '@/lib/mock-data';
+import { DIVISIONS, SECTIONS, MOCK_USERS, DIVISION_SECTIONS_MAP, LOCATIONS } from '@/lib/mock-data';
 
 interface SystemDataContextType {
   divisions: Division[];
@@ -58,7 +57,10 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
     }
 
     if (savedLocs) setLocations(JSON.parse(savedLocs));
-    else setLocations([{ id: 'main-office', name: 'Main Office' }, { id: 'broadcast-center', name: 'Broadcast Center' }]);
+    else {
+      const initialLocs = LOCATIONS.map(l => ({ id: l.toLowerCase().replace(/\s+/g, '-'), name: l }));
+      setLocations(initialLocs);
+    }
 
     if (savedUsers) setUsers(JSON.parse(savedUsers));
     else setUsers(MOCK_USERS);

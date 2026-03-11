@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -19,7 +18,7 @@ import {
 import { useAuth } from '@/components/auth-context';
 import { useBudgets } from '@/components/budget-context';
 import { useSystemData } from '@/components/system-data-context';
-import { CLASSIFICATIONS, OPEX_ACCOUNTS, LOCATIONS } from '@/lib/mock-data';
+import { CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
 import { Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -31,7 +30,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { addBudget, updateBudget } = useBudgets();
-  const { divisions, sections, locations: customLocations } = useSystemData();
+  const { divisions, sections, locations } = useSystemData();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -40,7 +39,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     year: initialData?.year || new Date().getFullYear(),
     division: initialData?.division || (user?.division || divisions[0]?.name || ''),
     section: initialData?.section || (user?.section || sections[0]?.name || ''),
-    location: initialData?.location || (LOCATIONS[0]),
+    location: initialData?.location || (locations[0]?.name || ''),
     classification: initialData?.classification || CLASSIFICATIONS[0],
     category: initialData?.category || 'CAPEX',
     account: initialData?.account || 'Capex',
@@ -59,9 +58,11 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years = [];
+    // Show current year +/- 2 years
     for (let i = currentYear - 2; i <= currentYear + 2; i++) {
       years.push(i.toString());
     }
+    // Always include the current data's year if it's outside the +/- 2 range
     if (initialData?.year && !years.includes(initialData.year.toString())) {
       years.push(initialData.year.toString());
     }
@@ -197,8 +198,8 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                     <SelectValue placeholder="Select Location" />
                   </SelectTrigger>
                   <SelectContent>
-                    {LOCATIONS.map(loc => (
-                      <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                    {locations.map(loc => (
+                      <SelectItem key={loc.id} value={loc.name}>{loc.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

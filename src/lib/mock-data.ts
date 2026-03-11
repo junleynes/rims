@@ -1,4 +1,3 @@
-
 import { BudgetEntry, User, Section, Division, Classification, Account } from './types';
 
 export const DIVISIONS: Division[] = [
