@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -87,14 +86,22 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     }
   }, [user]);
 
-  // Available years for selection logic
+  // Available years for selection logic - now dynamic
   const availableYears = useMemo(() => {
-    const years = (budgets || [])
+    const currentYearNum = new Date().getFullYear();
+    const dynamicYears = [];
+    // Always show a rolling window (last 2 years + next 5 years)
+    for (let i = currentYearNum - 1; i <= currentYearNum + 5; i++) {
+      dynamicYears.push(i.toString());
+    }
+
+    // Also include any years present in the current data (e.g. historical data)
+    const existingDataYears = (budgets || [])
       .filter(b => (!currentDivisionName || b.division === currentDivisionName) && (!currentSectionName || b.section === currentSectionName))
       .map(b => b.year?.toString())
       .filter(Boolean);
-    const baseYears = ['2025', '2026', '2027', '2028'];
-    return Array.from(new Set([...years, ...baseYears])).sort();
+    
+    return Array.from(new Set([...dynamicYears, ...existingDataYears])).sort();
   }, [budgets, currentDivisionName, currentSectionName]);
 
   const filteredBudgets = useMemo(() => {

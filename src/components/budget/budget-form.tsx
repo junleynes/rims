@@ -1,7 +1,6 @@
-
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Save, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -37,7 +36,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState<Omit<BudgetEntry, 'id' | 'createdAt'>>({
-    year: initialData?.year || new Date().getFullYear() + 1,
+    year: initialData?.year || new Date().getFullYear(),
     division: initialData?.division || (user?.division || divisions[0]?.name || ''),
     section: initialData?.section || (user?.section || sections[0]?.name || ''),
     classification: initialData?.classification || CLASSIFICATIONS[0],
@@ -54,6 +53,20 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     dateDelivered: initialData?.dateDelivered || '',
     remarks: initialData?.remarks || '',
   });
+
+  // Dynamically generate year options: 2 years back and 10 years forward
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear - 2; i <= currentYear + 10; i++) {
+      years.push(i.toString());
+    }
+    // Also ensure the initial data year is included if it's outside the range
+    if (initialData?.year && !years.includes(initialData.year.toString())) {
+      years.push(initialData.year.toString());
+    }
+    return years.sort();
+  }, [initialData?.year]);
 
   // Automatically update account when category changes if not in edit mode with existing data
   useEffect(() => {
@@ -133,10 +146,9 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                     <SelectValue placeholder="Select Year" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="2025">2025</SelectItem>
-                    <SelectItem value="2026">2026</SelectItem>
-                    <SelectItem value="2027">2027</SelectItem>
-                    <SelectItem value="2028">2028</SelectItem>
+                    {yearOptions.map(year => (
+                      <SelectItem key={year} value={year}>{year}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
