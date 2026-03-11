@@ -24,7 +24,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock } from 'lucide-react';
+import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound } from 'lucide-react';
 import { Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -56,6 +56,14 @@ export default function UserManagementPage() {
     toast({ 
       title: !currentStatus ? "2FA Enabled" : "2FA Disabled", 
       description: `Two-factor authentication has been ${!currentStatus ? 'enabled' : 'disabled'} for this user.` 
+    });
+  };
+
+  const handleResetPassword = (userName: string) => {
+    // In this prototype, we just simulate the reset
+    toast({
+      title: "Password Reset Successful",
+      description: `Password for ${userName} has been reset to default: 'password'`,
     });
   };
 
@@ -209,15 +217,25 @@ export default function UserManagementPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button 
-                      size="icon" 
-                      variant="ghost" 
-                      onClick={() => deleteUser(u.id)}
-                      disabled={u.username === 'admin'}
-                      title={u.username === 'admin' ? "System root account cannot be deleted" : "Delete User"}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        onClick={() => handleResetPassword(u.name)}
+                        title="Reset Password"
+                      >
+                        <KeyRound className="h-4 w-4 text-primary" />
+                      </Button>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        onClick={() => deleteUser(u.id)}
+                        disabled={u.username === 'admin'}
+                        title={u.username === 'admin' ? "System root account cannot be deleted" : "Delete User"}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
