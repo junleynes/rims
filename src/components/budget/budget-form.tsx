@@ -31,7 +31,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { addBudget, updateBudget } = useBudgets();
-  const { divisions, sections, locations } = useSystemData();
+  const { divisions, sections, locations, users } = useSystemData();
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -394,22 +394,29 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="grSisNumber">GR or SIS number</Label>
+                <Label htmlFor="grSisNumber">Goods Receipt or Stock Issuance Slip number</Label>
                 <Input 
                   id="grSisNumber" 
-                  placeholder="Goods Receipt or Stock Issuance number"
+                  placeholder="GR/SIS #"
                   value={formData.grSisNumber}
                   onChange={(e) => setFormData(prev => ({ ...prev, grSisNumber: e.target.value }))}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="accountablePerson">Accountable Person</Label>
-                <Input 
-                  id="accountablePerson" 
-                  placeholder="Full Name"
-                  value={formData.accountablePerson}
-                  onChange={(e) => setFormData(prev => ({ ...prev, accountablePerson: e.target.value }))}
-                />
+                <Select 
+                  value={formData.accountablePerson} 
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, accountablePerson: v }))}
+                >
+                  <SelectTrigger id="accountablePerson">
+                    <SelectValue placeholder="Select Accountable Person" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map(u => (
+                      <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
