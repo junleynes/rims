@@ -16,7 +16,8 @@ import {
   CalendarDays,
   Filter,
   Globe,
-  MapPin
+  MapPin,
+  Activity
 } from 'lucide-react';
 import { 
   Table, 
@@ -110,7 +111,8 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
         (b.projectTitle || '').toLowerCase().includes(search.toLowerCase()) || 
         (b.itemDescription || '').toLowerCase().includes(search.toLowerCase()) ||
         (b.section || '').toLowerCase().includes(search.toLowerCase()) ||
-        (b.location || '').toLowerCase().includes(search.toLowerCase());
+        (b.location || '').toLowerCase().includes(search.toLowerCase()) ||
+        (b.accountablePerson || '').toLowerCase().includes(search.toLowerCase());
       return matchesCategory && matchesSearch;
     });
   }, [budgets, scope, currentDivisionName, currentSectionName, currentYear, selectedDivisionFlat, selectedCategory, search, user]);
@@ -176,6 +178,21 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       </div>
     </div>
   );
+
+  const getStatusBadge = (budget: BudgetEntry) => {
+    const statusText = budget.status === 'others:' ? budget.statusOthers : budget.status;
+    let colorClass = "bg-muted text-muted-foreground";
+    
+    if (budget.status === 'working') colorClass = "bg-green-100 text-green-700 border-green-200";
+    if (budget.status === 'defective') colorClass = "bg-red-100 text-red-700 border-red-200";
+    if (budget.status === 'turned over to SAMD') colorClass = "bg-blue-100 text-blue-700 border-blue-200";
+    
+    return (
+      <Badge variant="outline" className={cn("text-[9px] font-bold uppercase py-0 px-2", colorClass)}>
+        {statusText}
+      </Badge>
+    );
+  };
 
   if (scope === 'drilldown') {
     if (!currentDivisionName && user?.role === 'Admin') {
@@ -304,7 +321,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               <TableHead>Category</TableHead>
               {scope !== 'drilldown' && <TableHead>Section/Unit</TableHead>}
               <TableHead>Location</TableHead>
-              <TableHead>Account/Class</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead className="min-w-[200px]">Project Title</TableHead>
               <TableHead>Budget Cost</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -340,8 +357,8 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                       {budget.location}
                     </div>
                   </TableCell>
-                  <TableCell className="text-[11px] font-medium max-w-[150px] truncate">
-                    {budget.category === 'CAPEX' ? budget.classification : budget.account}
+                  <TableCell>
+                    {getStatusBadge(budget)}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">

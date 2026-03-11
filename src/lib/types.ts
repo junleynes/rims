@@ -5,6 +5,8 @@ export type Classification = 'Hardware' | 'Software' | 'Others';
 
 export type BudgetCategory = 'CAPEX' | 'OPEX';
 
+export type BudgetStatus = 'working' | 'defective' | 'turned over to SAMD' | 'others:';
+
 export type Account = 
   | 'Capex'
   | 'Seminars and Trainings - online or face to face'
@@ -35,6 +37,8 @@ export interface BudgetEntry {
   dateDelivered?: string;
   grSisNumber?: string;
   accountablePerson?: string;
+  status: BudgetStatus;
+  statusOthers?: string;
   remarks: string;
   createdAt: string;
 }

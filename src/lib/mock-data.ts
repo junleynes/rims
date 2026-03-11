@@ -1,3 +1,4 @@
+
 import { BudgetEntry, User, Section, Division, Classification, Account } from './types';
 
 export const DIVISIONS: Division[] = [
@@ -106,6 +107,7 @@ export const MOCK_BUDGETS: BudgetEntry[] = [
     quantity: 1,
     unitCostBudget: 3000000,
     totalCostBudget: 3000000,
+    status: 'working',
     remarks: 'Critical for upcoming sports season.',
     createdAt: '2025-01-15T10:00:00Z',
   }
