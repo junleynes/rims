@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Search, 
@@ -79,6 +79,14 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   const [selectedCategory, setSelectedCategory] = useState<BudgetCategory | 'All'>('All');
   const [search, setSearch] = useState('');
 
+  // Enforce access control for Managers
+  useEffect(() => {
+    if (user?.role === 'Manager') {
+      if (user.division) setCurrentDivisionName(user.division);
+      if (user.section) setCurrentSectionName(user.section);
+    }
+  }, [user]);
+
   // Available years for selection logic
   const availableYears = useMemo(() => {
     const years = (budgets || [])
@@ -91,6 +99,12 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
 
   const filteredBudgets = useMemo(() => {
     return (budgets || []).filter(b => {
+      // Role-based hard filter for Managers
+      if (user?.role === 'Manager') {
+        if (user.division && b.division !== user.division) return false;
+        if (user.section && b.section !== user.section) return false;
+      }
+
       // Scope Logic
       if (scope === 'drilldown') {
         if (currentDivisionName && b.division !== currentDivisionName) return false;
@@ -109,7 +123,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       
       return matchesCategory && matchesSearch;
     });
-  }, [budgets, scope, currentDivisionName, currentSectionName, currentYear, selectedDivisionFlat, selectedCategory, search]);
+  }, [budgets, scope, currentDivisionName, currentSectionName, currentYear, selectedDivisionFlat, selectedCategory, search, user]);
 
   const renderHeaderControls = () => (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-border/50 mb-6">
@@ -131,13 +145,20 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
 
       <div className="flex flex-wrap items-center gap-2">
         {scope === 'division' && (
-          <Select value={selectedDivisionFlat} onValueChange={setSelectedDivisionFlat}>
+          <Select 
+            value={selectedDivisionFlat} 
+            onValueChange={setSelectedDivisionFlat}
+            disabled={user?.role === 'Manager' && !!user.division}
+          >
             <SelectTrigger className="h-8 w-[160px] text-xs">
               <SelectValue placeholder="Select Division" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="All">All Divisions</SelectItem>
-              {divisions.map(d => <SelectItem key={d.id} value={d.name} className="text-xs">{d.name}</SelectItem>)}
+              {user?.role !== 'Manager' && <SelectItem value="All">All Divisions</SelectItem>}
+              {divisions
+                .filter(d => user?.role === 'Manager' ? d.name === user.division : true)
+                .map(d => <SelectItem key={d.id} value={d.name} className="text-xs">{d.name}</SelectItem>)
+              }
             </SelectContent>
           </Select>
         )}
@@ -172,7 +193,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
 
   // DRILL-DOWN VIEWS
   if (scope === 'drilldown') {
-    // Step 1: Selection of Division
+    // Step 1: Selection of Division (Admins Only)
     if (!currentDivisionName && user?.role === 'Admin') {
       return (
         <div className="space-y-6">
@@ -203,7 +224,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       );
     }
 
-    // Step 2: Selection of Section
+    // Step 2: Selection of Section (Admins or Multi-section Managers)
     if (currentDivisionName && !currentSectionName) {
       const divId = divisions.find(d => d.name === currentDivisionName)?.id;
       const filteredSections = sections.filter(s => s.divisionId === divId);
@@ -211,9 +232,11 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => setCurrentDivisionName(null)} className="gap-2">
-              <ArrowLeft className="h-4 w-4" /> Back to Divisions
-            </Button>
+            {user?.role === 'Admin' && (
+              <Button variant="ghost" size="sm" onClick={() => setCurrentDivisionName(null)} className="gap-2">
+                <ArrowLeft className="h-4 w-4" /> Back to Divisions
+              </Button>
+            )}
             <div className="h-4 w-px bg-border" />
             <h2 className="text-lg font-semibold text-primary">{currentDivisionName}</h2>
           </div>
@@ -256,8 +279,9 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               size="sm" 
               onClick={() => {
                 if (user?.role === 'Admin') setCurrentSectionName(null);
-                else setCurrentDivisionName(null);
+                // Managers stay locked to their section
               }} 
+              disabled={user?.role === 'Manager'}
               className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" /> Back to Sections
@@ -288,7 +312,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     }
   }
 
-  // FLAT VIEWS (Whole or Division) or Final Table for Drill-down
+  // FINAL TABLE DISPLAY
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
       {renderHeaderControls()}
@@ -296,7 +320,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       {scope === 'drilldown' && (
         <div className="flex items-center gap-3 mb-2 px-2">
           <Button variant="outline" size="sm" onClick={() => setCurrentYear(null)} className="h-7 text-xs">
-            <ArrowLeft className="h-3 w-3 mr-1" /> {currentYear}
+            <ArrowLeft className="h-3 w-3 mr-1" /> Change Year
           </Button>
           <div className="flex flex-col">
             <h2 className="text-xs font-bold text-primary leading-tight">{currentSectionName}</h2>

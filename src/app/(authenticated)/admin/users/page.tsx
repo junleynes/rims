@@ -39,26 +39,34 @@ export default function UserManagementPage() {
   });
 
   const handleAddUser = () => {
-    if (!formData.name || !formData.username) return;
+    if (!formData.name || !formData.username) {
+      toast({ title: "Validation Error", description: "Name and Username are required.", variant: "destructive" });
+      return;
+    }
     addUser(formData);
     setFormData({ name: '', username: '', role: 'Manager', division: '', section: '' });
-    toast({ title: "User Created" });
+    toast({ title: "User Created", description: "The user account has been successfully generated." });
   };
+
+  const filteredSections = sections.filter(s => {
+    const divId = divisions.find(d => d.name === formData.division)?.id;
+    return s.divisionId === divId;
+  });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary">User Management</h1>
-        <p className="text-muted-foreground">Manage system users and access roles.</p>
+        <p className="text-muted-foreground">Manage system users and their organizational access boundaries.</p>
       </div>
 
-      <Card>
+      <Card className="border-none shadow-sm">
         <CardHeader>
-          <CardTitle>Add New User</CardTitle>
-          <CardDescription>Create a new account with specific organizational scope.</CardDescription>
+          <CardTitle>Create New Account</CardTitle>
+          <CardDescription>Assign roles and scope access to specific divisions or sections.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div className="space-y-1">
               <Label className="text-xs">Full Name</Label>
               <Input 
@@ -92,37 +100,54 @@ export default function UserManagementPage() {
               <Label className="text-xs">Division</Label>
               <Select 
                 value={formData.division} 
-                onValueChange={(v) => setFormData(prev => ({ ...prev, division: v }))}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, division: v, section: '' }))}
               >
-                <SelectTrigger><SelectValue placeholder="Any" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select Division" /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="None">None (System Wide)</SelectItem>
                   {divisions.map(d => (
                     <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Section</Label>
+              <Select 
+                value={formData.section} 
+                onValueChange={(v) => setFormData(prev => ({ ...prev, section: v }))}
+                disabled={!formData.division || formData.division === 'None'}
+              >
+                <SelectTrigger><SelectValue placeholder="Select Section" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="None">None (Full Division)</SelectItem>
+                  {filteredSections.map(s => (
+                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-end">
               <Button onClick={handleAddUser} className="w-full gap-2">
-                <Plus className="h-4 w-4" /> Create User
+                <Plus className="h-4 w-4" /> Create
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-none shadow-sm">
         <CardHeader>
-          <CardTitle>Existing Users</CardTitle>
+          <CardTitle>Account Registry</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Division/Section</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>User Identity</TableHead>
+                <TableHead>System Role</TableHead>
+                <TableHead>Organization Scope</TableHead>
+                <TableHead className="text-right">Management</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -130,19 +155,26 @@ export default function UserManagementPage() {
                 <TableRow key={u.id}>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-semibold">{u.name}</span>
+                      <span className="font-semibold text-primary">{u.name}</span>
                       <span className="text-xs text-muted-foreground">@{u.username}</span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {u.role === 'Admin' ? <Shield className="h-3 w-3 text-primary" /> : <UserIcon className="h-3 w-3" />}
-                      {u.role}
+                      {u.role === 'Admin' ? (
+                        <Badge variant="default" className="gap-1 px-2 py-0.5"><Shield className="h-3 w-3" /> Admin</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="gap-1 px-2 py-0.5"><UserIcon className="h-3 w-3" /> Manager</Badge>
+                      )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs">
-                    {u.division || 'All Divisions'}
-                    {u.section && ` / ${u.section}`}
+                  <TableCell>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs font-medium">{u.division || 'Unassigned / Global'}</span>
+                      {u.section && u.section !== 'None' && (
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-tight">Section: {u.section}</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button 
@@ -150,6 +182,7 @@ export default function UserManagementPage() {
                       variant="ghost" 
                       onClick={() => deleteUser(u.id)}
                       disabled={u.username === 'admin'}
+                      title={u.username === 'admin' ? "System root account cannot be deleted" : "Delete User"}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
