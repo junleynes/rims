@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save, X } from 'lucide-react';
+import { Loader2, Save, X, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import { useSystemData } from '@/components/system-data-context';
 import { CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
 import { Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { aiBudgetDescriptionAssistant } from '@/ai/flows/ai-budget-description-assistant';
 
 interface BudgetFormProps {
   initialData?: BudgetEntry;
@@ -34,6 +35,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const [formData, setFormData] = useState<Omit<BudgetEntry, 'id' | 'createdAt'>>({
     year: initialData?.year || new Date().getFullYear(),
@@ -52,17 +54,17 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     totalCostActual: initialData?.totalCostActual || 0,
     prNumber: initialData?.prNumber || '',
     dateDelivered: initialData?.dateDelivered || '',
+    grSisNumber: initialData?.grSisNumber || '',
+    accountablePerson: initialData?.accountablePerson || '',
     remarks: initialData?.remarks || '',
   });
 
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years = [];
-    // Show current year +/- 2 years
     for (let i = currentYear - 2; i <= currentYear + 2; i++) {
       years.push(i.toString());
     }
-    // Always include the current data's year if it's outside the +/- 2 range
     if (initialData?.year && !years.includes(initialData.year.toString())) {
       years.push(initialData.year.toString());
     }
@@ -83,6 +85,36 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     const divId = divisions.find(d => d.name === formData.division)?.id;
     return s.divisionId === divId;
   });
+
+  const handleAiAssist = async () => {
+    setIsAiLoading(true);
+    try {
+      const subcategory = formData.category === 'CAPEX' ? formData.classification : formData.account;
+      const result = await aiBudgetDescriptionAssistant({
+        category: formData.category,
+        subcategory: subcategory
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        projectTitle: result.suggestedActionPlan,
+        itemDescription: result.suggestedDescription
+      }));
+
+      toast({
+        title: "AI Suggestions Generated",
+        description: "Review and refine the generated project title and description.",
+      });
+    } catch (error) {
+      toast({
+        title: "AI Assistant Error",
+        description: "Failed to generate suggestions. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,7 +156,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     <div className="max-w-4xl mx-auto py-8 px-4">
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card className="shadow-lg border-primary/10">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-2xl font-bold text-primary">
                 {initialData ? 'Edit Budget Entry' : 'Budget Encoding'}
@@ -133,6 +165,19 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 {initialData ? 'Update existing budget details.' : 'Enter details as per the official budget format.'}
               </CardDescription>
             </div>
+            {!initialData && (
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                className="gap-2 text-primary border-primary/20 hover:bg-primary/5"
+                onClick={handleAiAssist}
+                disabled={isAiLoading}
+              >
+                {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                AI Assist
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -259,7 +304,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="projectTitle">Project Title or Description</Label>
+              <Label htmlFor="projectTitle">Project title or description</Label>
               <Input 
                 id="projectTitle" 
                 placeholder="Brief title for the project..."
@@ -293,7 +338,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unitCostBudget">Unit Cost (Budget) (₱)</Label>
+                <Label htmlFor="unitCostBudget">Unit cost (budget) (₱)</Label>
                 <Input 
                   id="unitCostBudget" 
                   type="number"
@@ -303,7 +348,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Total Cost (Budget)</Label>
+                <Label>Total cost (budget)</Label>
                 <div className="h-10 px-3 py-2 rounded-md bg-secondary flex items-center font-bold text-primary">
                   ₱ {(formData.quantity * formData.unitCostBudget).toLocaleString()}
                 </div>
@@ -312,7 +357,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t">
               <div className="space-y-2">
-                <Label htmlFor="unitCostActual">Unit Cost (Actual) (₱)</Label>
+                <Label htmlFor="unitCostActual">Unit cost (actual) (₱)</Label>
                 <Input 
                   id="unitCostActual" 
                   type="number"
@@ -322,13 +367,13 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Total Cost (Actual)</Label>
+                <Label>Total cost (actual)</Label>
                 <div className="h-10 px-3 py-2 rounded-md bg-muted/50 flex items-center font-bold text-muted-foreground">
                   ₱ {(formData.quantity * (formData.unitCostActual || 0)).toLocaleString()}
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="prNumber">PR Number</Label>
+                <Label htmlFor="prNumber">Purchase Requisition number</Label>
                 <Input 
                   id="prNumber" 
                   placeholder="PR-XXXXX"
@@ -338,9 +383,9 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="dateDelivered">Date Delivered</Label>
+                <Label htmlFor="dateDelivered">Date delivered</Label>
                 <Input 
                   id="dateDelivered" 
                   type="date"
@@ -349,14 +394,33 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="remarks">Remarks</Label>
+                <Label htmlFor="grSisNumber">GR or SIS number</Label>
                 <Input 
-                  id="remarks" 
-                  placeholder="Additional notes..."
-                  value={formData.remarks}
-                  onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
+                  id="grSisNumber" 
+                  placeholder="Goods Receipt or Stock Issuance number"
+                  value={formData.grSisNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, grSisNumber: e.target.value }))}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="accountablePerson">Accountable Person</Label>
+                <Input 
+                  id="accountablePerson" 
+                  placeholder="Full Name"
+                  value={formData.accountablePerson}
+                  onChange={(e) => setFormData(prev => ({ ...prev, accountablePerson: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="remarks">Remarks</Label>
+              <Input 
+                id="remarks" 
+                placeholder="Additional notes..."
+                value={formData.remarks}
+                onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
+              />
             </div>
           </CardContent>
           <div className="p-6 border-t border-primary/10 bg-muted/30 flex justify-end gap-3">

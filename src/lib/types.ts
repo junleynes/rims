@@ -33,6 +33,8 @@ export interface BudgetEntry {
   totalCostActual?: number;
   prNumber?: string;
   dateDelivered?: string;
+  grSisNumber?: string;
+  accountablePerson?: string;
   remarks: string;
   createdAt: string;
 }
