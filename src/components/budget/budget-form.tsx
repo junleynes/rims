@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save, X, Sparkles } from 'lucide-react';
+import { Loader2, Save, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +21,6 @@ import { useSystemData } from '@/components/system-data-context';
 import { CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
 import { Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { aiBudgetDescriptionAssistant } from '@/ai/flows/ai-budget-description-assistant';
 
 interface BudgetFormProps {
   initialData?: BudgetEntry;
@@ -36,7 +34,6 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const [formData, setFormData] = useState<Omit<BudgetEntry, 'id' | 'createdAt'>>({
     year: initialData?.year || new Date().getFullYear(),
@@ -89,36 +86,6 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     return s.divisionId === divId;
   });
 
-  const handleAiAssist = async () => {
-    setIsAiLoading(true);
-    try {
-      const subcategory = formData.category === 'CAPEX' ? formData.classification : formData.account;
-      const result = await aiBudgetDescriptionAssistant({
-        category: formData.category,
-        subcategory: subcategory
-      });
-      
-      setFormData(prev => ({
-        ...prev,
-        projectTitle: result.suggestedActionPlan,
-        itemDescription: result.suggestedDescription
-      }));
-
-      toast({
-        title: "AI Suggestions Generated",
-        description: "Review and refine the generated project title and description.",
-      });
-    } catch (error) {
-      toast({
-        title: "AI Assistant Error",
-        description: "Failed to generate suggestions. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -168,19 +135,6 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 {initialData ? 'Update existing budget details.' : 'Enter details as per the official budget format.'}
               </CardDescription>
             </div>
-            {!initialData && (
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                className="gap-2 text-primary border-primary/20 hover:bg-primary/5"
-                onClick={handleAiAssist}
-                disabled={isAiLoading}
-              >
-                {isAiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                AI Assist
-              </Button>
-            )}
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
