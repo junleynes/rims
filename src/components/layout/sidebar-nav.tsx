@@ -12,7 +12,8 @@ import {
   TrendingUp,
   Settings,
   Building2,
-  FileBarChart
+  FileBarChart,
+  UserCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -167,8 +168,14 @@ export function SidebarNav() {
       </SidebarContent>
 
       <SidebarFooter className="p-4 mt-auto border-t border-border/50">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center px-2">
+        <div className="flex flex-col gap-2">
+          <Link 
+            href="/profile" 
+            className={cn(
+              "flex items-center gap-3 group-data-[collapsible=icon]:justify-center px-2 py-2 rounded-xl transition-colors",
+              pathname === '/profile' ? "bg-primary/10" : "hover:bg-muted/50"
+            )}
+          >
             <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm">
               <AvatarFallback className="bg-secondary text-primary font-bold">
                 {user.name.charAt(0)}
@@ -177,10 +184,10 @@ export function SidebarNav() {
             <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
               <span className="text-[14px] font-bold truncate text-primary leading-tight">{user.name}</span>
               <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-tight">
-                {user.role} {user.section ? `• ${user.section}` : ''}
+                Profile Settings
               </span>
             </div>
-          </div>
+          </Link>
           <Button 
             variant="ghost" 
             size="sm" 

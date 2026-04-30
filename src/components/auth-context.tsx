@@ -12,6 +12,7 @@ interface AuthContextType {
   verify2FA: (code: string) => boolean;
   cancel2FA: () => void;
   logout: () => void;
+  updateCurrentUser: (updatedUser: User) => void;
   isLoading: boolean;
 }
 
@@ -31,8 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = (username: string) => {
-    // In a real app, we'd fetch from the registry (SystemDataContext) 
-    // but for login we simulate using the mock + any updates in localStorage
     const savedUsersStr = localStorage.getItem('rims_users');
     const allUsers: User[] = savedUsersStr ? JSON.parse(savedUsersStr) : MOCK_USERS;
     
@@ -40,10 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     if (foundUser) {
       if (foundUser.twoFactorEnabled) {
-        // Step 1: Set as pending for 2FA
         setPendingUser(foundUser);
       } else {
-        // Direct login
         setUser(foundUser);
         localStorage.setItem('budgetguard_user', JSON.stringify(foundUser));
       }
@@ -53,7 +50,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const verify2FA = (code: string) => {
-    // Demo logic: code is always 123456
     if (code === '123456' && pendingUser) {
       setUser(pendingUser);
       localStorage.setItem('budgetguard_user', JSON.stringify(pendingUser));
@@ -73,8 +69,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('budgetguard_user');
   };
 
+  const updateCurrentUser = (updatedUser: User) => {
+    setUser(updatedUser);
+    localStorage.setItem('budgetguard_user', JSON.stringify(updatedUser));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, pendingUser, login, verify2FA, cancel2FA, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, pendingUser, login, verify2FA, cancel2FA, logout, updateCurrentUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
