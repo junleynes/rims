@@ -55,6 +55,7 @@ export interface User {
 export interface BrandingConfig {
   appName: string;
   appAcronym: string;
+  logoUrl?: string;
 }
 
 export interface Location {

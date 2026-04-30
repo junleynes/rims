@@ -12,6 +12,7 @@ interface BrandingContextType {
 const defaultBranding: BrandingConfig = {
   appName: 'Resource Inventory Management System',
   appAcronym: 'R.I.M.S',
+  logoUrl: '',
 };
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);

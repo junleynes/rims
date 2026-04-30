@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -28,6 +29,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import Image from 'next/image';
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -52,8 +54,18 @@ export function SidebarNav() {
     <Sidebar variant="inset" collapsible="icon" className="border-r-0">
       <SidebarHeader className="p-6 pb-2">
         <div className="flex items-center gap-3">
-          <div className="bg-primary p-2 rounded-xl shadow-sm">
-            <TrendingUp className="text-primary-foreground h-5 w-5" />
+          <div className="bg-primary h-10 w-10 rounded-xl shadow-sm flex items-center justify-center overflow-hidden shrink-0">
+            {config.logoUrl ? (
+              <Image 
+                src={config.logoUrl} 
+                alt="Logo" 
+                width={40} 
+                height={40} 
+                className="object-cover h-full w-full"
+              />
+            ) : (
+              <TrendingUp className="text-primary-foreground h-5 w-5" />
+            )}
           </div>
           <span className="font-bold text-xl tracking-tight text-primary group-data-[collapsible=icon]:hidden">
             {config.appAcronym}
