@@ -202,12 +202,12 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             {divisions.map((division) => (
               <Card 
                 key={division.id} 
-                className="group cursor-pointer hover:border-primary hover:shadow-md transition-all border-2 border-transparent bg-white overflow-hidden"
+                className="group cursor-pointer hover:border-primary hover:shadow-xl transition-all border-none bg-white overflow-hidden shadow-sm"
                 onClick={() => setCurrentDivisionName(division.name)}
               >
                 <CardContent className="p-8 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-4 rounded-2xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-blue-500 text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
                       <Building2 className="h-8 w-8" />
                     </div>
                     <div>
@@ -230,28 +230,28 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
           <div className="flex items-center gap-4">
             {user?.role === 'Admin' && (
-              <Button variant="ghost" size="sm" onClick={() => setCurrentDivisionName(null)} className="gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setCurrentDivisionName(null)} className="gap-2 font-bold text-primary">
                 <ArrowLeft className="h-4 w-4" /> Back to Divisions
               </Button>
             )}
             <div className="h-4 w-px bg-border" />
-            <h2 className="text-lg font-semibold text-primary">{currentDivisionName}</h2>
+            <h2 className="text-lg font-bold text-primary">{currentDivisionName}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSections.map((section) => (
               <Card 
                 key={section.id} 
-                className="group cursor-pointer hover:border-accent hover:shadow-md transition-all border-2 border-transparent bg-white"
+                className="group cursor-pointer hover:border-accent hover:shadow-xl transition-all border-none bg-white shadow-sm"
                 onClick={() => setCurrentSectionName(section.name)}
               >
                 <CardContent className="p-6 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-xl bg-accent/10 text-accent group-hover:bg-accent group-hover:text-white transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-emerald-500 text-white shadow-md group-hover:scale-110 transition-transform duration-300">
                       <LayoutGrid className="h-5 w-5" />
                     </div>
-                    <span className="font-semibold text-sm group-hover:text-accent transition-colors">{section.name}</span>
+                    <span className="font-bold text-sm group-hover:text-emerald-600 transition-colors">{section.name}</span>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent" />
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500" />
                 </CardContent>
               </Card>
             ))}
@@ -270,26 +270,28 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                 if (user?.role === 'Admin') setCurrentSectionName(null);
               }} 
               disabled={user?.role === 'Manager'}
-              className="gap-2"
+              className="gap-2 font-bold text-primary"
             >
               <ArrowLeft className="h-4 w-4" /> Back to Sections
             </Button>
             <div className="h-4 w-px bg-border" />
             <div className="flex flex-col">
-              <h2 className="text-lg font-semibold text-primary">{currentSectionName}</h2>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{currentDivisionName}</span>
+              <h2 className="text-lg font-bold text-primary leading-tight">{currentSectionName}</h2>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-black">{currentDivisionName}</span>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {availableYears.map((year) => (
               <Card 
                 key={year} 
-                className="group cursor-pointer hover:border-primary hover:shadow-md transition-all border-2 border-transparent bg-white"
+                className="group cursor-pointer hover:border-primary hover:shadow-xl transition-all border-none bg-white shadow-sm"
                 onClick={() => setCurrentYear(year)}
               >
-                <CardContent className="p-6 flex flex-col items-center justify-center gap-2">
-                  <CalendarDays className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                  <span className="text-xl font-bold group-hover:text-primary transition-colors">{year}</span>
+                <CardContent className="p-6 flex flex-col items-center justify-center gap-3">
+                  <div className="flex items-center justify-center h-14 w-14 rounded-2xl bg-orange-500 text-white shadow-md group-hover:scale-110 transition-transform duration-300">
+                    <CalendarDays className="h-7 w-7" />
+                  </div>
+                  <span className="text-xl font-black group-hover:text-orange-600 transition-colors">{year}</span>
                 </CardContent>
               </Card>
             ))}
@@ -304,12 +306,12 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       {renderHeaderControls()}
       {scope === 'drilldown' && (
         <div className="flex items-center gap-3 mb-2 px-2">
-          <Button variant="outline" size="sm" onClick={() => setCurrentYear(null)} className="h-7 text-xs">
+          <Button variant="outline" size="sm" onClick={() => setCurrentYear(null)} className="h-7 text-xs font-bold bg-white">
             <ArrowLeft className="h-3 w-3 mr-1" /> Change Year
           </Button>
           <div className="flex flex-col">
-            <h2 className="text-xs font-bold text-primary leading-tight">{currentSectionName}</h2>
-            <span className="text-[9px] text-muted-foreground uppercase tracking-widest">FY {currentYear}</span>
+            <h2 className="text-xs font-black text-primary leading-tight uppercase">{currentSectionName}</h2>
+            <span className="text-[9px] text-muted-foreground uppercase tracking-widest font-bold">FY {currentYear}</span>
           </div>
         </div>
       )}
@@ -317,13 +319,13 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead>Category</TableHead>
-              {scope !== 'drilldown' && <TableHead>Section/Unit</TableHead>}
-              <TableHead>Location</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="min-w-[200px]">Project / Item Title</TableHead>
-              <TableHead>Allocated Cost</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="font-bold">Category</TableHead>
+              {scope !== 'drilldown' && <TableHead className="font-bold">Section/Unit</TableHead>}
+              <TableHead className="font-bold">Location</TableHead>
+              <TableHead className="font-bold">Status</TableHead>
+              <TableHead className="min-w-[200px] font-bold">Project / Item Title</TableHead>
+              <TableHead className="font-bold">Allocated Cost</TableHead>
+              <TableHead className="text-right font-bold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -338,7 +340,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                     <Badge 
                       variant={budget.category === 'CAPEX' ? 'default' : 'secondary'} 
                       className={cn(
-                        "rounded-md text-[10px] px-2 py-0.5 uppercase",
+                        "rounded-md text-[10px] px-2 py-0.5 font-black uppercase",
                         budget.category === 'CAPEX' ? "bg-primary" : "bg-accent"
                       )}
                     >
@@ -346,13 +348,13 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                     </Badge>
                   </TableCell>
                   {scope !== 'drilldown' && (
-                    <TableCell className="text-[10px] font-medium max-w-[120px] truncate text-muted-foreground">
+                    <TableCell className="text-[10px] font-black max-w-[120px] truncate text-muted-foreground uppercase">
                       {budget.section}
                     </TableCell>
                   )}
                   <TableCell>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3" />
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                      <MapPin className="h-3 w-3 text-red-500" />
                       {budget.location}
                     </div>
                   </TableCell>
@@ -362,32 +364,33 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                   <TableCell>
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-primary group-hover:underline text-sm">{budget.projectTitle || 'Untitled'}</span>
+                        <span className="font-bold text-primary group-hover:underline text-sm">{budget.projectTitle || 'Untitled'}</span>
                         {budget.attachmentUrl && (
-                          <Paperclip className="h-3 w-3 text-muted-foreground" />
+                          <Paperclip className="h-3.5 w-3.5 text-blue-500" />
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-[9px] text-muted-foreground uppercase">{budget.prNumber || 'NO PR #'}</span>
-                        <span className="text-[9px] text-muted-foreground font-bold">FY {budget.year}</span>
+                        <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">{budget.prNumber || 'NO PR #'}</span>
+                        <div className="h-1 w-1 rounded-full bg-muted-foreground/30" />
+                        <span className="text-[9px] text-muted-foreground font-black">FY {budget.year}</span>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-bold whitespace-nowrap text-sm">
+                  <TableCell className="font-black whitespace-nowrap text-sm text-primary">
                     ₱ {(budget.totalCostBudget || 0).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2" onClick={() => router.push(`/budgets/${budget.id}/edit`)}>
-                          <Edit2 className="h-4 w-4" /> Edit Record
+                      <DropdownMenuContent align="end" className="rounded-xl shadow-xl">
+                        <DropdownMenuItem className="gap-2 font-semibold" onClick={() => router.push(`/budgets/${budget.id}/edit`)}>
+                          <Edit2 className="h-4 w-4 text-blue-500" /> Edit Record
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => onDelete?.(budget.id)}>
+                        <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive font-semibold" onClick={() => onDelete?.(budget.id)}>
                           <Trash2 className="h-4 w-4" /> Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
@@ -397,11 +400,17 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={scope !== 'drilldown' ? 8 : 7} className="h-32 text-center text-muted-foreground">
-                  <div className="flex flex-col items-center gap-2">
-                    <p>No log entries found for the selected scope.</p>
-                    <Button variant="outline" size="sm" onClick={() => router.push('/budgets/new')}>
-                      Add Resource
+                <TableCell colSpan={scope !== 'drilldown' ? 8 : 7} className="h-48 text-center text-muted-foreground">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="p-4 bg-muted/30 rounded-full">
+                      <Globe className="h-10 w-10 text-muted-foreground/50" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-bold">No log entries found</p>
+                      <p className="text-xs">Try adjusting your filters or adding a new resource.</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => router.push('/budgets/new')} className="font-bold">
+                      Add Your First Resource
                     </Button>
                   </div>
                 </TableCell>
