@@ -24,8 +24,18 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound } from 'lucide-react';
-import { Role } from '@/lib/types';
+import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 export default function UserManagementPage() {
@@ -40,6 +50,9 @@ export default function UserManagementPage() {
     section: '',
     twoFactorEnabled: true
   });
+
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [userToReset, setUserToReset] = useState<User | null>(null);
 
   const handleAddUser = () => {
     if (!formData.name || !formData.username) {
@@ -59,12 +72,21 @@ export default function UserManagementPage() {
     });
   };
 
-  const handleResetPassword = (userName: string) => {
-    // In this prototype, we just simulate the reset
-    toast({
-      title: "Password Reset Successful",
-      description: `Password for ${userName} has been reset to default: 'password'`,
-    });
+  const initiateReset = (user: User) => {
+    setUserToReset(user);
+    setResetDialogOpen(true);
+  };
+
+  const confirmReset = () => {
+    if (userToReset) {
+      // In this prototype, we just simulate the reset to 'password'
+      toast({
+        title: "Password Reset Successful",
+        description: `Password for ${userToReset.name} (@${userToReset.username}) has been reset to system default: 'password'`,
+      });
+    }
+    setResetDialogOpen(false);
+    setUserToReset(null);
   };
 
   const filteredSections = sections.filter(s => {
@@ -221,8 +243,9 @@ export default function UserManagementPage() {
                       <Button 
                         size="icon" 
                         variant="ghost" 
-                        onClick={() => handleResetPassword(u.name)}
+                        onClick={() => initiateReset(u)}
                         title="Reset Password"
+                        className="hover:bg-primary/10"
                       >
                         <KeyRound className="h-4 w-4 text-primary" />
                       </Button>
@@ -232,6 +255,7 @@ export default function UserManagementPage() {
                         onClick={() => deleteUser(u.id)}
                         disabled={u.username === 'admin'}
                         title={u.username === 'admin' ? "System root account cannot be deleted" : "Delete User"}
+                        className="hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -243,6 +267,24 @@ export default function UserManagementPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset User Password?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reset the password for <strong>{userToReset?.name}</strong> to the system default: <code className="bg-muted px-1.5 py-0.5 rounded font-bold">password</code>. 
+              The user will need to use this password for their next login.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmReset} className="bg-primary hover:bg-primary/90">
+              Confirm Reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
