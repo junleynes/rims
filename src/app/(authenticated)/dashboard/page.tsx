@@ -6,6 +6,7 @@ import { useAuth } from '@/components/auth-context';
 import { useBudgets } from '@/components/budget-context';
 import { StatsCards } from '@/components/dashboard/stats-cards';
 import { OpexChart } from '@/components/dashboard/opex-chart';
+import { ExpenditureChart } from '@/components/dashboard/expenditure-chart';
 import { 
   Select, 
   SelectContent, 
@@ -75,12 +76,13 @@ export default function DashboardPage() {
 
       <StatsCards budgets={filteredBudgets} section={user?.role === 'Manager' ? user.section : undefined} />
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ExpenditureChart budgets={filteredBudgets} />
+        <OpexChart budgets={filteredBudgets} />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <OpexChart budgets={filteredBudgets} />
-        </div>
-        
-        <div className="space-y-6">
+        <div className="lg:col-span-3">
           <Card className="border-none shadow-lg bg-white overflow-hidden h-full">
             <div className="h-2 bg-accent" />
             <CardHeader className="flex flex-row items-center justify-between">
@@ -90,9 +92,9 @@ export default function DashboardPage() {
               </div>
               <Zap className="h-5 w-5 text-accent animate-pulse" />
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               {recentBudgets.length > 0 ? (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {recentBudgets.map((b) => (
                     <div key={b.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/50 transition-all cursor-default border border-transparent hover:border-border">
                       <div className={`p-2 rounded-lg ${b.category === 'CAPEX' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent-foreground'}`}>
@@ -106,7 +108,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-20 text-muted-foreground text-sm border-2 border-dashed rounded-xl">
+                <div className="text-center py-10 text-muted-foreground text-sm border-2 border-dashed rounded-xl">
                   No recent entries for this year.
                 </div>
               )}
