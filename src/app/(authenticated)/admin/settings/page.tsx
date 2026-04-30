@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RefreshCw, Download, Upload, Database, ImageIcon, X, TrendingUp, Palette, Check } from 'lucide-react';
+import { Save, RefreshCw, Download, Upload, Database, ImageIcon, X, TrendingUp, Palette, Check, Moon, Sun } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
@@ -28,12 +29,13 @@ export default function SettingsPage() {
   const [appAcronym, setAppAcronym] = useState(config.appAcronym);
   const [logoUrl, setLogoUrl] = useState(config.logoUrl || '');
   const [theme, setTheme] = useState(config.theme || 'default');
+  const [darkMode, setDarkMode] = useState(!!config.darkMode);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = () => {
     setIsSaving(true);
     setTimeout(() => {
-      updateConfig({ appName, appAcronym, logoUrl, theme });
+      updateConfig({ appName, appAcronym, logoUrl, theme, darkMode });
       toast({
         title: "Settings Saved",
         description: "Branding settings have been updated successfully.",
@@ -47,6 +49,7 @@ export default function SettingsPage() {
     setAppAcronym('R.I.M.S');
     setLogoUrl('');
     setTheme('default');
+    setDarkMode(false);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,7 +124,7 @@ export default function SettingsPage() {
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary">System Settings</h1>
-        <p className="text-muted-foreground">Manage application identity, local data, and global preferences.</p>
+        <p className="text-muted-foreground">Manage application identity, appearance, and local data.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -130,7 +133,7 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>Branding Configuration</CardTitle>
               <CardDescription>
-                Change the application name, acronym, and logo.
+                Customize how the application looks and identifies itself.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -153,6 +156,19 @@ export default function SettingsPage() {
                     placeholder="e.g. R.I.M.S"
                     className="w-full"
                   />
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-semibold flex items-center gap-2">
+                      {darkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                      Dark Mode
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Toggle application-wide dark theme.</p>
+                  </div>
+                  <Switch checked={darkMode} onCheckedChange={setDarkMode} />
                 </div>
               </div>
 
@@ -282,7 +298,7 @@ export default function SettingsPage() {
             <CardContent className="space-y-8">
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Sidebar Brand</Label>
-                <div className="bg-white p-4 rounded-xl border shadow-sm flex items-center gap-3">
+                <div className="bg-card p-4 rounded-xl border shadow-sm flex items-center gap-3">
                   <div className={cn(
                     "h-10 w-10 rounded-xl flex items-center justify-center overflow-hidden",
                     theme === 'default' ? 'bg-[#2E86AB]' : 
@@ -301,17 +317,17 @@ export default function SettingsPage() {
 
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Header Display</Label>
-                <div className="bg-white p-4 rounded-xl border shadow-sm">
+                <div className="bg-card p-4 rounded-xl border shadow-sm">
                   <h2 className="font-bold text-base text-primary leading-tight">{appName}</h2>
                   <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1">FY 2026/2027</p>
                 </div>
               </div>
 
               <div className="p-4 bg-primary text-primary-foreground rounded-xl shadow-md space-y-2 transition-colors">
-                <p className="text-xs font-bold opacity-70">Theme Accent Color</p>
+                <p className="text-xs font-bold opacity-70">Theme Mode</p>
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-accent border-2 border-white/20 shadow-inner" />
-                  <span className="text-sm font-bold capitalize">{theme} Professional</span>
+                  <span className="text-sm font-bold capitalize">{darkMode ? 'Dark' : 'Light'} - {theme}</span>
                 </div>
               </div>
             </CardContent>

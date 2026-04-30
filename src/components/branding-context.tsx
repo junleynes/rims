@@ -14,6 +14,7 @@ const defaultBranding: BrandingConfig = {
   appAcronym: 'R.I.M.S',
   logoUrl: '',
   theme: 'default',
+  darkMode: false,
 };
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
@@ -27,25 +28,34 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       try {
         const parsed = JSON.parse(saved);
         setConfig(parsed);
-        if (parsed.theme) {
-          document.documentElement.setAttribute('data-theme', parsed.theme);
-        }
+        applyBranding(parsed);
       } catch (e) {
         console.error("Failed to parse branding config", e);
       }
     }
   }, []);
 
+  const applyBranding = (branding: BrandingConfig) => {
+    // Apply Color Theme
+    if (branding.theme) {
+      document.documentElement.setAttribute('data-theme', branding.theme);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+
+    // Apply Dark Mode
+    if (branding.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
   const updateConfig = (newConfig: Partial<BrandingConfig>) => {
     const updated = { ...config, ...newConfig };
     setConfig(updated);
     localStorage.setItem('rims_branding', JSON.stringify(updated));
-    
-    if (updated.theme) {
-      document.documentElement.setAttribute('data-theme', updated.theme);
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
+    applyBranding(updated);
   };
 
   return (
