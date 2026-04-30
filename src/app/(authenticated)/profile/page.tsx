@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Save, User as UserIcon, Shield, Lock, KeyRound, Building, LayoutGrid } from 'lucide-react';
+import { Save, User as UserIcon, Shield, Lock, KeyRound, Building, LayoutGrid, Briefcase, UserCheck } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export default function ProfilePage() {
@@ -29,10 +29,8 @@ export default function ProfilePage() {
     setIsSaving(true);
     try {
       const updatedData = { name, twoFactorEnabled };
-      // 1. Update in the central system registry (server-side persistence)
       await updateUser(user.id, updatedData);
       
-      // 2. Update the local session state
       const updatedUser = { ...user, ...updatedData };
       updateCurrentUser(updatedUser);
 
@@ -68,7 +66,6 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Profile Card */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="border-none shadow-lg">
             <CardHeader className="pb-4">
@@ -105,7 +102,19 @@ export default function ProfilePage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Briefcase className="h-3 w-3" /> Position
+                    </Label>
+                    <p className="font-semibold text-sm">{user.position || 'Unassigned'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <UserCheck className="h-3 w-3" /> Reporting To
+                    </Label>
+                    <p className="font-semibold text-sm">{user.reportingTo || 'N/A'}</p>
+                  </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
                       <Building className="h-3 w-3" /> Division
@@ -169,7 +178,6 @@ export default function ProfilePage() {
           </Card>
         </div>
 
-        {/* Right Column: Context/Info */}
         <div className="space-y-6">
           <Card className="border-none shadow-lg bg-primary text-primary-foreground overflow-hidden relative">
             <div className="absolute top-0 right-0 p-4 opacity-10">

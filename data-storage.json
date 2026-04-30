@@ -1,3 +1,4 @@
+
 {
   "resources": [
     {
@@ -25,6 +26,8 @@
       "username": "admin",
       "name": "System Administrator",
       "role": "Admin",
+      "position": "Chief Technology Officer",
+      "reportingTo": "Board of Directors",
       "twoFactorEnabled": true
     },
     {
@@ -34,6 +37,8 @@
       "role": "Manager",
       "section": "Media Server Support Section",
       "division": "Technical and Media Server Support Division",
+      "position": "Senior Media Engineer",
+      "reportingTo": "System Administrator",
       "twoFactorEnabled": false
     }
   ],

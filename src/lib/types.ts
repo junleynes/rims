@@ -50,6 +50,8 @@ export interface User {
   section?: string;
   division?: string;
   twoFactorEnabled?: boolean;
+  position?: string;
+  reportingTo?: string;
 }
 
 export interface BrandingConfig {

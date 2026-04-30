@@ -34,7 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound } from 'lucide-react';
+import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound, UserCheck, Briefcase } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -48,6 +48,8 @@ export default function UserManagementPage() {
     role: 'Manager' as Role,
     division: '',
     section: '',
+    position: '',
+    reportingTo: '',
     twoFactorEnabled: true
   });
 
@@ -60,7 +62,7 @@ export default function UserManagementPage() {
       return;
     }
     addUser(formData);
-    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', twoFactorEnabled: true });
+    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true });
     toast({ title: "User Created", description: "The user account has been successfully generated." });
   };
 
@@ -79,7 +81,6 @@ export default function UserManagementPage() {
 
   const confirmReset = () => {
     if (userToReset) {
-      // In this prototype, we just simulate the reset to 'password'
       toast({
         title: "Password Reset Successful",
         description: `Password for ${userToReset.name} (@${userToReset.username}) has been reset to system default: 'password'`,
@@ -107,7 +108,7 @@ export default function UserManagementPage() {
           <CardDescription>Assign roles and scope access to specific divisions or sections.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             <div className="space-y-1">
               <Label className="text-xs">Full Name</Label>
               <Input 
@@ -122,6 +123,22 @@ export default function UserManagementPage() {
                 placeholder="jdoe" 
                 value={formData.username} 
                 onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))} 
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Position / Job Title</Label>
+              <Input 
+                placeholder="e.g. Media Engineer" 
+                value={formData.position} 
+                onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))} 
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Reporting To</Label>
+              <Input 
+                placeholder="Manager Name" 
+                value={formData.reportingTo} 
+                onChange={(e) => setFormData(prev => ({ ...prev, reportingTo: e.target.value }))} 
               />
             </div>
             <div className="space-y-1">
@@ -168,18 +185,20 @@ export default function UserManagementPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1 flex flex-col justify-center items-center">
-              <Label className="text-xs mb-2">Enable 2FA</Label>
-              <Switch 
-                checked={formData.twoFactorEnabled} 
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, twoFactorEnabled: checked }))} 
-              />
+            <div className="space-y-1 flex flex-col justify-center">
+              <div className="flex items-center gap-3">
+                <Switch 
+                  checked={formData.twoFactorEnabled} 
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, twoFactorEnabled: checked }))} 
+                />
+                <Label className="text-xs">Enable 2FA Security</Label>
+              </div>
             </div>
-            <div className="flex items-end">
-              <Button onClick={handleAddUser} className="w-full gap-2">
-                <Plus className="h-4 w-4" /> Create
-              </Button>
-            </div>
+          </div>
+          <div className="mt-6 flex justify-end">
+            <Button onClick={handleAddUser} className="gap-2 px-8">
+              <Plus className="h-4 w-4" /> Create Account
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -193,10 +212,11 @@ export default function UserManagementPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>User Identity</TableHead>
-                <TableHead>System Role</TableHead>
+                <TableHead>Position & Role</TableHead>
                 <TableHead>Organization Scope</TableHead>
-                <TableHead className="text-center">2FA Security</TableHead>
-                <TableHead className="text-right">Management</TableHead>
+                <TableHead>Reporting Structure</TableHead>
+                <TableHead className="text-center">2FA</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -209,12 +229,17 @@ export default function UserManagementPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      {u.role === 'Admin' ? (
-                        <Badge variant="default" className="gap-1 px-2 py-0.5"><Shield className="h-3 w-3" /> Admin</Badge>
-                      ) : (
-                        <Badge variant="secondary" className="gap-1 px-2 py-0.5"><UserIcon className="h-3 w-3" /> Manager</Badge>
-                      )}
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
+                        <Briefcase className="h-3 w-3" /> {u.position || 'Unspecified Position'}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {u.role === 'Admin' ? (
+                          <Badge variant="default" className="gap-1 px-2 py-0.5"><Shield className="h-3 w-3" /> Admin</Badge>
+                        ) : (
+                          <Badge variant="secondary" className="gap-1 px-2 py-0.5"><UserIcon className="h-3 w-3" /> Manager</Badge>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -223,6 +248,12 @@ export default function UserManagementPage() {
                       {u.section && u.section !== 'None' && (
                         <span className="text-[10px] text-muted-foreground uppercase tracking-tight">Section/Unit: {u.section}</span>
                       )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground italic">
+                      <UserCheck className="h-3.5 w-3.5" />
+                      <span>{u.reportingTo || 'N/A'}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
