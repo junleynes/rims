@@ -38,6 +38,20 @@ import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound, UserChe
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
+const POSITION_OPTIONS = [
+  'Media Engineer',
+  'Senior Media Engineer',
+  'Video Editor',
+  'Technical Director',
+  'IT Specialist',
+  'Operations Manager',
+  'Chief Technology Officer',
+  'Project Manager',
+  'Audio Engineer',
+  'Broadcast Technician',
+  'Content Manager'
+];
+
 export default function UserManagementPage() {
   const { users, divisions, sections, addUser, deleteUser, updateUser } = useSystemData();
   const { toast } = useToast();
@@ -127,19 +141,36 @@ export default function UserManagementPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Position / Job Title</Label>
-              <Input 
-                placeholder="e.g. Media Engineer" 
+              <Select 
                 value={formData.position} 
-                onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))} 
-              />
+                onValueChange={(v) => setFormData(prev => ({ ...prev, position: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Position" />
+                </SelectTrigger>
+                <SelectContent>
+                  {POSITION_OPTIONS.map(pos => (
+                    <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Reporting To</Label>
-              <Input 
-                placeholder="Manager Name" 
+              <Select 
                 value={formData.reportingTo} 
-                onChange={(e) => setFormData(prev => ({ ...prev, reportingTo: e.target.value }))} 
-              />
+                onValueChange={(v) => setFormData(prev => ({ ...prev, reportingTo: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Manager" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="None">None</SelectItem>
+                  {users.map(u => (
+                    <SelectItem key={u.id} value={u.name}>{u.name} (@{u.username})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Role</Label>
