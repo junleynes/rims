@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -45,8 +44,8 @@ export default function DashboardPage() {
             <p className="text-muted-foreground flex items-center gap-2">
               <Calendar className="h-3.5 w-3.5" />
               {user?.role === 'Admin' 
-                ? `System-wide overview for fiscal year ${yearFilter}`
-                : `Budget overview for ${user?.section} - FY ${yearFilter}`
+                ? `System-wide resource overview for fiscal year ${yearFilter}`
+                : `Resource overview for ${user?.section} - FY ${yearFilter}`
               }
             </p>
           </div>
@@ -78,8 +77,8 @@ export default function DashboardPage() {
             <div className="h-2 bg-accent" />
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-lg">Recent Activities</CardTitle>
-                <CardDescription>Latest budget entries</CardDescription>
+                <CardTitle className="text-lg">Recent Resource Log</CardTitle>
+                <CardDescription>Latest inventory entries</CardDescription>
               </div>
               <Zap className="h-5 w-5 text-accent animate-pulse" />
             </CardHeader>
@@ -91,7 +90,7 @@ export default function DashboardPage() {
                       <FileText className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold truncate text-primary">{b.actionPlan || b.projectTitle}</p>
+                      <p className="text-sm font-bold truncate text-primary">{b.projectTitle}</p>
                       <p className="text-[10px] text-muted-foreground uppercase font-semibold">{b.section} • ₱{b.totalCostBudget.toLocaleString()}</p>
                     </div>
                   </div>
@@ -119,7 +118,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="space-y-4 relative z-10">
               <Button asChild className="w-full bg-white text-primary hover:bg-white/90 shadow-md font-bold h-12">
-                <Link href="/budgets/new">Encode New Item</Link>
+                <Link href="/budgets/new">Add Resource</Link>
               </Button>
               <Button variant="outline" className="w-full border-white/20 hover:bg-white/10 text-white h-12 font-semibold">
                 Generate Annual Report

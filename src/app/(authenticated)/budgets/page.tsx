@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -15,12 +14,12 @@ export default function BudgetsPage() {
     <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Budget Items</h1>
-          <p className="text-muted-foreground">Manage and track your section's expenditures.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Resource Log</h1>
+          <p className="text-muted-foreground">Manage and track your section's hardware and software resources.</p>
         </div>
         <Button asChild className="gap-2 bg-primary hover:bg-primary/90 shadow-lg">
           <Link href="/budgets/new">
-            <Plus className="h-4 w-4" /> Encode New Item
+            <Plus className="h-4 w-4" /> Add Resource
           </Link>
         </Button>
       </div>

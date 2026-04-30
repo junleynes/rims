@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -37,8 +36,8 @@ export function SidebarNav() {
 
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', color: 'bg-blue-500' },
-    { name: 'Budget Entries', icon: Table2, href: '/budgets', color: 'bg-emerald-500' },
-    { name: 'New Budget', icon: PlusCircle, href: '/budgets/new', color: 'bg-orange-500' },
+    { name: 'Resource Log', icon: Table2, href: '/budgets', color: 'bg-emerald-500' },
+    { name: 'Add Resource', icon: PlusCircle, href: '/budgets/new', color: 'bg-orange-500' },
   ];
 
   const adminItems = [
@@ -93,7 +92,7 @@ export function SidebarNav() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 mt-2">Overview</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 mt-2">Inventory</SidebarGroupLabel>
           <SidebarMenu>
             {navItems.slice(1).map((item) => (
               <SidebarMenuItem key={item.name}>

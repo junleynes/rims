@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -129,7 +128,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               <Building2 className="h-3 w-3" /> Division
             </TabsTrigger>
             <TabsTrigger value="whole" className="text-xs gap-2">
-              <Globe className="h-3 w-3" /> Whole
+              <Globe className="h-3 w-3" /> Whole Log
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -166,7 +165,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
         <div className="relative h-8">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input 
-            placeholder="Search items..." 
+            placeholder="Search log..." 
             className="pl-8 h-8 w-48 text-xs bg-muted/50 border-none"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -322,8 +321,8 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               {scope !== 'drilldown' && <TableHead>Section/Unit</TableHead>}
               <TableHead>Location</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="min-w-[200px]">Project Title</TableHead>
-              <TableHead>Budget Cost</TableHead>
+              <TableHead className="min-w-[200px]">Project / Item Title</TableHead>
+              <TableHead>Allocated Cost</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -386,7 +385,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem className="gap-2" onClick={() => router.push(`/budgets/${budget.id}/edit`)}>
-                          <Edit2 className="h-4 w-4" /> Edit Entry
+                          <Edit2 className="h-4 w-4" /> Edit Record
                         </DropdownMenuItem>
                         <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive" onClick={() => onDelete?.(budget.id)}>
                           <Trash2 className="h-4 w-4" /> Delete
@@ -400,9 +399,9 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               <TableRow>
                 <TableCell colSpan={scope !== 'drilldown' ? 8 : 7} className="h-32 text-center text-muted-foreground">
                   <div className="flex flex-col items-center gap-2">
-                    <p>No budget entries found for the selected scope.</p>
+                    <p>No log entries found for the selected scope.</p>
                     <Button variant="outline" size="sm" onClick={() => router.push('/budgets/new')}>
-                      Encode New Item
+                      Add Resource
                     </Button>
                   </div>
                 </TableCell>

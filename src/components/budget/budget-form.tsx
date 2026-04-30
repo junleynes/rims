@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -128,7 +127,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
 
       toast({
         title: "Success",
-        description: initialData ? "Budget entry updated successfully." : "Budget entry saved successfully.",
+        description: initialData ? "Item updated successfully." : "Item entry saved successfully.",
       });
       router.push('/budgets');
     } catch (error) {
@@ -149,17 +148,17 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
           <CardHeader className="bg-primary/5 border-b border-primary/10 flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-2xl font-bold text-primary">
-                {initialData ? 'Edit Budget Entry' : 'Budget Encoding'}
+                {initialData ? 'Edit Resource' : 'Item Entry'}
               </CardTitle>
               <CardDescription>
-                {initialData ? 'Update existing budget details.' : 'Enter details as per the official budget format.'}
+                {initialData ? 'Update existing resource details.' : 'Log a new hardware or software resource to the system.'}
               </CardDescription>
             </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="year">Budget Year</Label>
+                <Label htmlFor="year">Log Year</Label>
                 <Select 
                   value={formData.year.toString()} 
                   onValueChange={(v) => setFormData(prev => ({ ...prev, year: parseInt(v) }))}
@@ -281,10 +280,10 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="projectTitle">Project title or description</Label>
+              <Label htmlFor="projectTitle">Project Title or Item Name</Label>
               <Input 
                 id="projectTitle" 
-                placeholder="Brief title for the project..."
+                placeholder="Brief title for the project or resource..."
                 value={formData.projectTitle}
                 onChange={(e) => setFormData(prev => ({ ...prev, projectTitle: e.target.value }))}
                 required
@@ -315,7 +314,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="unitCostBudget">Unit cost (budget) (₱)</Label>
+                <Label htmlFor="unitCostBudget">Unit cost (₱)</Label>
                 <Input 
                   id="unitCostBudget" 
                   type="number"
@@ -325,7 +324,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Total cost (budget)</Label>
+                <Label>Total Cost</Label>
                 <div className="h-10 px-3 py-2 rounded-md bg-secondary flex items-center font-bold text-primary">
                   ₱ {(formData.quantity * formData.unitCostBudget).toLocaleString()}
                 </div>
@@ -350,7 +349,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="prNumber">Purchase Requisition number</Label>
+                <Label htmlFor="prNumber">PR # (Purchase Requisition)</Label>
                 <Input 
                   id="prNumber" 
                   placeholder="PR-XXXXX"
@@ -362,7 +361,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="dateDelivered">Date delivered</Label>
+                <Label htmlFor="dateDelivered">Date Delivered</Label>
                 <Input 
                   id="dateDelivered" 
                   type="date"
@@ -371,7 +370,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="grSisNumber">Goods Receipt or Stock Issuance Slip number</Label>
+                <Label htmlFor="grSisNumber">GR / SIS #</Label>
                 <Input 
                   id="grSisNumber" 
                   placeholder="GR/SIS #"
@@ -399,7 +398,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="status">Operational Status</Label>
                 <Select 
                   value={formData.status} 
                   onValueChange={(v) => setFormData(prev => ({ ...prev, status: v, statusOthers: v === 'others:' ? prev.statusOthers : '' }))}
@@ -510,7 +509,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
               className="bg-primary hover:bg-primary/90 gap-2 min-w-[120px]"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {initialData ? 'Update Budget' : 'Save Budget'}
+              {initialData ? 'Update Resource' : 'Save Resource'}
             </Button>
           </div>
         </Card>
