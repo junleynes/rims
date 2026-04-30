@@ -1,9 +1,12 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { BudgetEntry } from '@/lib/types';
-import { getResources, saveResources } from '@/app/actions/db-actions';
+import { useCollection, useFirestore, useUser } from '@/firebase';
+import { collection, doc, setDoc, deleteDoc, query, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 interface BudgetContextType {
   budgets: BudgetEntry[];
@@ -16,45 +19,65 @@ interface BudgetContextType {
 const BudgetContext = createContext<BudgetContextType | undefined>(undefined);
 
 export function BudgetProvider({ children }: { children: React.ReactNode }) {
-  const [budgets, setBudgets] = useState<BudgetEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const db = useFirestore();
+  const { user } = useUser();
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const data = await getResources();
-        setBudgets(data);
-      } catch (e) {
-        console.error("Failed to load resources from server", e);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    load();
-  }, []);
+  const budgetsQuery = useMemo(() => {
+    if (!db) return null;
+    return query(collection(db, 'resources'), orderBy('createdAt', 'desc'));
+  }, [db]);
 
-  const addBudget = async (entry: Omit<BudgetEntry, 'id' | 'createdAt'>) => {
-    const newEntry: BudgetEntry = {
+  const { data: budgetsData, loading: isLoading } = useCollection<BudgetEntry>(budgetsQuery);
+
+  const budgets = useMemo(() => {
+    return budgetsData || [];
+  }, [budgetsData]);
+
+  const addBudget = (entry: Omit<BudgetEntry, 'id' | 'createdAt'>) => {
+    if (!db) return;
+    const newDocRef = doc(collection(db, 'resources'));
+    const data = {
       ...entry,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-    } as BudgetEntry;
-    
-    const newBudgets = [newEntry, ...budgets];
-    setBudgets(newBudgets);
-    await saveResources(newBudgets);
+      id: newDocRef.id,
+      createdAt: serverTimestamp(),
+    };
+
+    setDoc(newDocRef, data)
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: newDocRef.path,
+          operation: 'create',
+          requestResourceData: data,
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
-  const updateBudget = async (id: string, entry: Partial<BudgetEntry>) => {
-    const newBudgets = budgets.map(b => b.id === id ? { ...b, ...entry } : b);
-    setBudgets(newBudgets);
-    await saveResources(newBudgets);
+  const updateBudget = (id: string, entry: Partial<BudgetEntry>) => {
+    if (!db) return;
+    const docRef = doc(db, 'resources', id);
+    setDoc(docRef, entry, { merge: true })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: entry,
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
-  const deleteBudget = async (id: string) => {
-    const newBudgets = budgets.filter(b => b.id !== id);
-    setBudgets(newBudgets);
-    await saveResources(newBudgets);
+  const deleteBudget = (id: string) => {
+    if (!db) return;
+    const docRef = doc(db, 'resources', id);
+    deleteDoc(docRef)
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete',
+        } satisfies SecurityRuleContext);
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   return (
