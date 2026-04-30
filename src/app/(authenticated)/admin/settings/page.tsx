@@ -8,8 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RefreshCw, Download, Upload, Database, ImageIcon, X, TrendingUp } from 'lucide-react';
+import { Save, RefreshCw, Download, Upload, Database, ImageIcon, X, TrendingUp, Palette, Check } from 'lucide-react';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
+
+const THEMES = [
+  { id: 'default', name: 'Oceanic (Default)', primary: 'bg-[#2E86AB]', accent: 'bg-[#31C1A5]' },
+  { id: 'forest', name: 'Forest', primary: 'bg-[#154726]', accent: 'bg-[#968215]' },
+  { id: 'sunset', name: 'Sunset', primary: 'bg-[#E03E1A]', accent: 'bg-[#D6B51E]' },
+  { id: 'midnight', name: 'Midnight', primary: 'bg-[#7C3AED]', accent: 'bg-[#D946EF]' },
+];
 
 export default function SettingsPage() {
   const { config, updateConfig } = useBranding();
@@ -19,12 +27,13 @@ export default function SettingsPage() {
   const [appName, setAppName] = useState(config.appName);
   const [appAcronym, setAppAcronym] = useState(config.appAcronym);
   const [logoUrl, setLogoUrl] = useState(config.logoUrl || '');
+  const [theme, setTheme] = useState(config.theme || 'default');
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = () => {
     setIsSaving(true);
     setTimeout(() => {
-      updateConfig({ appName, appAcronym, logoUrl });
+      updateConfig({ appName, appAcronym, logoUrl, theme });
       toast({
         title: "Settings Saved",
         description: "Branding settings have been updated successfully.",
@@ -37,6 +46,7 @@ export default function SettingsPage() {
     setAppName('Resource Inventory Management System');
     setAppAcronym('R.I.M.S');
     setLogoUrl('');
+    setTheme('default');
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,7 +118,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary">System Settings</h1>
         <p className="text-muted-foreground">Manage application identity, local data, and global preferences.</p>
@@ -143,6 +153,31 @@ export default function SettingsPage() {
                     placeholder="e.g. R.I.M.S"
                     className="w-full"
                   />
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Palette className="h-4 w-4" /> Theme Color Selection
+                </Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {THEMES.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTheme(t.id)}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left group",
+                        theme === t.id ? "border-primary bg-primary/5" : "border-transparent bg-muted/30 hover:bg-muted/50"
+                      )}
+                    >
+                      <div className="flex -space-x-2">
+                        <div className={cn("h-6 w-6 rounded-full border-2 border-white", t.primary)} />
+                        <div className={cn("h-6 w-6 rounded-full border-2 border-white", t.accent)} />
+                      </div>
+                      <span className="flex-1 text-xs font-bold">{t.name}</span>
+                      {theme === t.id && <Check className="h-4 w-4 text-primary" />}
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -248,7 +283,12 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Sidebar Brand</Label>
                 <div className="bg-white p-4 rounded-xl border shadow-sm flex items-center gap-3">
-                  <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center overflow-hidden">
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl flex items-center justify-center overflow-hidden",
+                    theme === 'default' ? 'bg-[#2E86AB]' : 
+                    theme === 'forest' ? 'bg-[#154726]' : 
+                    theme === 'sunset' ? 'bg-[#E03E1A]' : 'bg-[#7C3AED]'
+                  )}>
                     {logoUrl ? (
                       <Image src={logoUrl} alt="Preview" width={40} height={40} className="object-cover" />
                     ) : (
@@ -267,11 +307,11 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              <div className="p-4 bg-primary text-primary-foreground rounded-xl shadow-md space-y-2">
+              <div className="p-4 bg-primary text-primary-foreground rounded-xl shadow-md space-y-2 transition-colors">
                 <p className="text-xs font-bold opacity-70">Theme Accent Color</p>
                 <div className="flex items-center gap-2">
                   <div className="h-8 w-8 rounded-full bg-accent border-2 border-white/20 shadow-inner" />
-                  <span className="text-sm font-bold">Oceanic Professional</span>
+                  <span className="text-sm font-bold capitalize">{theme} Professional</span>
                 </div>
               </div>
             </CardContent>

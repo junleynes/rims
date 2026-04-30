@@ -31,7 +31,6 @@
     --chart-5: 150 60% 40%;
     --radius: 0.75rem;
     
-    /* Sidebar specific variables */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 196 60% 15%;
     --sidebar-primary: 196 60% 45%;
@@ -41,6 +40,28 @@
     --sidebar-border: 196 20% 88%;
     --sidebar-ring: 196 60% 45%;
   }
+
+  [data-theme='forest'] {
+    --primary: 142 71% 29%;
+    --accent: 47 95% 30%;
+    --ring: 142 71% 29%;
+    --sidebar-primary: 142 71% 29%;
+  }
+
+  [data-theme='sunset'] {
+    --primary: 12 76% 50%;
+    --accent: 48 96% 53%;
+    --ring: 12 76% 50%;
+    --sidebar-primary: 12 76% 50%;
+  }
+
+  [data-theme='midnight'] {
+    --primary: 262 83% 58%;
+    --accent: 316 70% 50%;
+    --ring: 262 83% 58%;
+    --sidebar-primary: 262 83% 58%;
+  }
+
   .dark {
     --background: 196 60% 5%;
     --foreground: 189 29% 97%;

@@ -13,6 +13,7 @@ const defaultBranding: BrandingConfig = {
   appName: 'Resource Inventory Management System',
   appAcronym: 'R.I.M.S',
   logoUrl: '',
+  theme: 'default',
 };
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
@@ -24,7 +25,11 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem('rims_branding');
     if (saved) {
       try {
-        setConfig(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setConfig(parsed);
+        if (parsed.theme) {
+          document.documentElement.setAttribute('data-theme', parsed.theme);
+        }
       } catch (e) {
         console.error("Failed to parse branding config", e);
       }
@@ -35,6 +40,12 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     const updated = { ...config, ...newConfig };
     setConfig(updated);
     localStorage.setItem('rims_branding', JSON.stringify(updated));
+    
+    if (updated.theme) {
+      document.documentElement.setAttribute('data-theme', updated.theme);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
   };
 
   return (

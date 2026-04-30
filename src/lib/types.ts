@@ -59,6 +59,7 @@ export interface BrandingConfig {
   appName: string;
   appAcronym: string;
   logoUrl?: string;
+  theme?: string;
 }
 
 export interface Location {
