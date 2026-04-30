@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Printer, Download, FileBarChart, PieChart as PieChartIcon, TrendingUp, Layers } from 'lucide-react';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, CartesianGrid, Cell } from 'recharts';
+import { cn } from '@/lib/utils';
 
 export default function ReportsPage() {
   const { budgets } = useBudgets();
