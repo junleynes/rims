@@ -13,7 +13,7 @@ import {
   Settings,
   Building2,
   FileBarChart,
-  UserCircle
+  Sitemap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -46,6 +46,7 @@ export function SidebarNav() {
 
   const adminItems = [
     { name: 'User Management', icon: Users, href: '/admin/users', color: 'bg-cyan-500' },
+    { name: 'Org Structure', icon: Sitemap, href: '/admin/org-structure', color: 'bg-indigo-500' },
     { name: 'Organization', icon: Building2, href: '/admin/organization', color: 'bg-purple-500' },
     { name: 'Reports', icon: FileBarChart, href: '/admin/reports', color: 'bg-rose-500' },
     { name: 'System Settings', icon: Settings, href: '/admin/settings', color: 'bg-amber-500' },
