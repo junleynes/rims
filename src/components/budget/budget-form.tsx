@@ -1,8 +1,9 @@
+
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save, X } from 'lucide-react';
+import { Loader2, Save, X, Paperclip, ImageIcon, FileText } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +22,7 @@ import { useSystemData } from '@/components/system-data-context';
 import { CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
 import { Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 interface BudgetFormProps {
   initialData?: BudgetEntry;
@@ -32,6 +34,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const { addBudget, updateBudget } = useBudgets();
   const { divisions, sections, locations, users, statusOptions } = useSystemData();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isLoading, setIsLoading] = useState(false);
 
@@ -57,6 +60,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     status: initialData?.status || (statusOptions[0]?.name || 'working'),
     statusOthers: initialData?.statusOthers || '',
     remarks: initialData?.remarks || '',
+    attachmentUrl: initialData?.attachmentUrl || '',
   });
 
   const yearOptions = useMemo(() => {
@@ -85,6 +89,22 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     const divId = divisions.find(d => d.name === formData.division)?.id;
     return s.divisionId === divId;
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, attachmentUrl: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeAttachment = () => {
+    setFormData(prev => ({ ...prev, attachmentUrl: '' }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -416,6 +436,63 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 value={formData.remarks}
                 onChange={(e) => setFormData(prev => ({ ...prev, remarks: e.target.value }))}
               />
+            </div>
+
+            <div className="space-y-4 pt-4 border-t">
+              <Label className="text-lg font-bold text-primary flex items-center gap-2">
+                <Paperclip className="h-5 w-5" /> Image or File Reference
+              </Label>
+              
+              <div className="flex flex-col gap-4">
+                {formData.attachmentUrl ? (
+                  <div className="relative w-full max-w-sm rounded-xl overflow-hidden border shadow-sm group">
+                    {formData.attachmentUrl.startsWith('data:image/') ? (
+                      <div className="relative aspect-video">
+                        <Image 
+                          src={formData.attachmentUrl} 
+                          alt="Attachment preview" 
+                          fill 
+                          className="object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="p-8 bg-muted/30 flex flex-col items-center justify-center gap-2">
+                        <FileText className="h-12 w-12 text-muted-foreground" />
+                        <span className="text-sm font-medium">Document Attached</span>
+                      </div>
+                    )}
+                    <Button 
+                      type="button" 
+                      variant="destructive" 
+                      size="icon" 
+                      className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={removeAttachment}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div 
+                    className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <div className="p-3 bg-primary/10 rounded-full text-primary">
+                      <ImageIcon className="h-8 w-8" />
+                    </div>
+                    <div className="text-center">
+                      <p className="font-bold">Click to upload reference</p>
+                      <p className="text-xs text-muted-foreground">PDF, JPEG, or PNG (Max 5MB)</p>
+                    </div>
+                    <Input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      className="hidden" 
+                      onChange={handleFileChange}
+                      accept="image/*,application/pdf"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
           <div className="p-6 border-t border-primary/10 bg-muted/30 flex justify-end gap-3">

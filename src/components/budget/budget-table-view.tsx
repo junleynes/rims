@@ -17,7 +17,7 @@ import {
   Filter,
   Globe,
   MapPin,
-  Activity
+  Paperclip
 } from 'lucide-react';
 import { 
   Table, 
@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BudgetEntry, Account, BudgetCategory } from '@/lib/types';
+import { BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useAuth } from '@/components/auth-context';
 import { useSystemData } from '@/components/system-data-context';
 import { cn } from '@/lib/utils';
@@ -362,7 +362,12 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col">
-                      <span className="font-semibold text-primary group-hover:underline text-sm">{budget.projectTitle || 'Untitled'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-primary group-hover:underline text-sm">{budget.projectTitle || 'Untitled'}</span>
+                        {budget.attachmentUrl && (
+                          <Paperclip className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[9px] text-muted-foreground uppercase">{budget.prNumber || 'NO PR #'}</span>
                         <span className="text-[9px] text-muted-foreground font-bold">FY {budget.year}</span>
