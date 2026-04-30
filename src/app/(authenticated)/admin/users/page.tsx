@@ -39,17 +39,11 @@ import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
 const POSITION_OPTIONS = [
-  'Media Engineer',
-  'Senior Media Engineer',
-  'Video Editor',
-  'Technical Director',
-  'IT Specialist',
-  'Operations Manager',
-  'Chief Technology Officer',
-  'Project Manager',
-  'Audio Engineer',
-  'Broadcast Technician',
-  'Content Manager'
+  'VP',
+  'AVP',
+  'Section Head',
+  'Unit Head',
+  'Assistant Manager'
 ];
 
 export default function UserManagementPage() {
