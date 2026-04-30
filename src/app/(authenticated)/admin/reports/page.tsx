@@ -8,15 +8,47 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Printer, Download, FileBarChart, PieChart as PieChartIcon, TrendingUp, Layers } from 'lucide-react';
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, CartesianGrid, Cell } from 'recharts';
+import { 
+  Printer, 
+  Download, 
+  FileBarChart, 
+  PieChart as PieChartIcon, 
+  TrendingUp, 
+  Layers,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
+} from 'lucide-react';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, CartesianGrid, Bar as RechartsBar } from 'recharts';
 import { cn } from '@/lib/utils';
+import { BudgetEntry } from '@/lib/types';
+
+type SortConfig = {
+  key: keyof BudgetEntry | 'variance';
+  direction: 'asc' | 'desc';
+} | null;
 
 export default function ReportsPage() {
   const { budgets } = useBudgets();
   const { divisions } = useSystemData();
   const [yearFilter, setYearFilter] = useState('2026');
   const [divisionFilter, setDivisionFilter] = useState('All');
+  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+
+  const handleSort = (key: keyof BudgetEntry | 'variance') => {
+    setSortConfig(current => {
+      if (current?.key === key) {
+        if (current.direction === 'asc') return { key, direction: 'desc' };
+        return null;
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
+  const getSortIcon = (key: keyof BudgetEntry | 'variance') => {
+    if (sortConfig?.key !== key) return <ArrowUpDown className="ml-2 h-3 w-3 opacity-30" />;
+    return sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-3 w-3 text-primary" /> : <ArrowDown className="ml-2 h-3 w-3 text-primary" />;
+  };
 
   const reportData = useMemo(() => {
     let filtered = budgets.filter(b => b.year.toString() === yearFilter);
@@ -40,8 +72,31 @@ export default function ReportsPage() {
       { name: 'OPEX', budget: summary.OPEX.budget, actual: summary.OPEX.actual }
     ];
 
+    // Sorting logic
+    if (sortConfig) {
+      filtered = [...filtered].sort((a, b) => {
+        let valA: any;
+        let valB: any;
+
+        if (sortConfig.key === 'variance') {
+          valA = a.totalCostBudget - (a.totalCostActual || 0);
+          valB = b.totalCostBudget - (b.totalCostActual || 0);
+        } else {
+          valA = a[sortConfig.key as keyof BudgetEntry];
+          valB = b[sortConfig.key as keyof BudgetEntry];
+        }
+
+        if (valA === valB) return 0;
+        if (valA === undefined || valA === null) return 1;
+        if (valB === undefined || valB === null) return -1;
+
+        const comparison = valA < valB ? -1 : 1;
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
+    }
+
     return { summary, chartData, filtered };
-  }, [budgets, yearFilter, divisionFilter]);
+  }, [budgets, yearFilter, divisionFilter, sortConfig]);
 
   const handlePrint = () => {
     window.print();
@@ -117,8 +172,8 @@ export default function ReportsPage() {
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
                 />
                 <Legend />
-                <Bar dataKey="budget" name="Allocated Budget" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="actual" name="Actual Expenditure" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                <RechartsBar dataKey="budget" name="Allocated Budget" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <RechartsBar dataKey="actual" name="Actual Expenditure" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -164,12 +219,42 @@ export default function ReportsPage() {
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="font-bold">Project / Item Title</TableHead>
-                <TableHead className="font-bold">Category</TableHead>
-                <TableHead className="font-bold">Section/Unit</TableHead>
-                <TableHead className="font-bold text-right">Allocated Cost</TableHead>
-                <TableHead className="font-bold text-right">Actual Cost</TableHead>
-                <TableHead className="font-bold text-right">Variance</TableHead>
+                <TableHead 
+                  className="font-bold cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => handleSort('projectTitle')}
+                >
+                  <div className="flex items-center">Project / Item Title {getSortIcon('projectTitle')}</div>
+                </TableHead>
+                <TableHead 
+                  className="font-bold cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => handleSort('category')}
+                >
+                  <div className="flex items-center">Category {getSortIcon('category')}</div>
+                </TableHead>
+                <TableHead 
+                  className="font-bold cursor-pointer hover:bg-muted transition-colors"
+                  onClick={() => handleSort('section')}
+                >
+                  <div className="flex items-center">Section/Unit {getSortIcon('section')}</div>
+                </TableHead>
+                <TableHead 
+                  className="font-bold cursor-pointer hover:bg-muted transition-colors text-right"
+                  onClick={() => handleSort('totalCostBudget')}
+                >
+                  <div className="flex items-center justify-end">Allocated Cost {getSortIcon('totalCostBudget')}</div>
+                </TableHead>
+                <TableHead 
+                  className="font-bold cursor-pointer hover:bg-muted transition-colors text-right"
+                  onClick={() => handleSort('totalCostActual')}
+                >
+                  <div className="flex items-center justify-end">Actual Cost {getSortIcon('totalCostActual')}</div>
+                </TableHead>
+                <TableHead 
+                  className="font-bold cursor-pointer hover:bg-muted transition-colors text-right"
+                  onClick={() => handleSort('variance')}
+                >
+                  <div className="flex items-center justify-end">Variance {getSortIcon('variance')}</div>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
