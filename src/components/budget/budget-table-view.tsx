@@ -16,7 +16,10 @@ import {
   Filter,
   Globe,
   MapPin,
-  Paperclip
+  Paperclip,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { 
   Table, 
@@ -56,6 +59,11 @@ interface BudgetTableViewProps {
 
 type ViewScope = 'drilldown' | 'whole' | 'division';
 
+type SortConfig = {
+  key: keyof BudgetEntry;
+  direction: 'asc' | 'desc';
+} | null;
+
 const CARD_COLORS = [
   'bg-blue-500',
   'bg-emerald-500',
@@ -87,6 +95,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   const [selectedDivisionFlat, setSelectedDivisionFlat] = useState<string | 'All'>('All');
   const [selectedCategory, setSelectedCategory] = useState<BudgetCategory | 'All'>('All');
   const [search, setSearch] = useState('');
+  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
 
   useEffect(() => {
     if (user?.role === 'Manager') {
@@ -107,8 +116,23 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     return Array.from(new Set([...dynamicYears, ...existingDataYears])).sort();
   }, [budgets]);
 
-  const filteredBudgets = useMemo(() => {
-    return (budgets || []).filter(b => {
+  const handleSort = (key: keyof BudgetEntry) => {
+    setSortConfig(current => {
+      if (current?.key === key) {
+        if (current.direction === 'asc') return { key, direction: 'desc' };
+        return null;
+      }
+      return { key, direction: 'asc' };
+    });
+  };
+
+  const getSortIcon = (key: keyof BudgetEntry) => {
+    if (sortConfig?.key !== key) return <ArrowUpDown className="ml-2 h-3 w-3 opacity-30" />;
+    return sortConfig.direction === 'asc' ? <ArrowUp className="ml-2 h-3 w-3 text-primary" /> : <ArrowDown className="ml-2 h-3 w-3 text-primary" />;
+  };
+
+  const filteredAndSortedBudgets = useMemo(() => {
+    let result = (budgets || []).filter(b => {
       if (user?.role === 'Manager') {
         if (user.division && b.division !== user.division) return false;
         if (user.section && b.section !== user.section) return false;
@@ -129,7 +153,23 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
         (b.accountablePerson || '').toLowerCase().includes(search.toLowerCase());
       return matchesCategory && matchesSearch;
     });
-  }, [budgets, scope, currentDivisionName, currentSectionName, currentYear, selectedDivisionFlat, selectedCategory, search, user]);
+
+    if (sortConfig) {
+      result = [...result].sort((a, b) => {
+        const valA = a[sortConfig.key];
+        const valB = b[sortConfig.key];
+
+        if (valA === valB) return 0;
+        if (valA === undefined || valA === null) return 1;
+        if (valB === undefined || valB === null) return -1;
+
+        const comparison = valA < valB ? -1 : 1;
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return result;
+  }, [budgets, scope, currentDivisionName, currentSectionName, currentYear, selectedDivisionFlat, selectedCategory, search, user, sortConfig]);
 
   const renderHeaderControls = () => (
     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-border/50 mb-6">
@@ -340,18 +380,50 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead className="font-bold">Category</TableHead>
-              {scope !== 'drilldown' && <TableHead className="font-bold">Section/Unit</TableHead>}
-              <TableHead className="font-bold">Location</TableHead>
-              <TableHead className="font-bold">Status</TableHead>
-              <TableHead className="min-w-[200px] font-bold">Project / Item Title</TableHead>
-              <TableHead className="font-bold">Allocated Cost</TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => handleSort('category')}
+              >
+                <div className="flex items-center">Category {getSortIcon('category')}</div>
+              </TableHead>
+              {scope !== 'drilldown' && (
+                <TableHead 
+                  className="font-bold cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => handleSort('section')}
+                >
+                  <div className="flex items-center">Section/Unit {getSortIcon('section')}</div>
+                </TableHead>
+              )}
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => handleSort('location')}
+              >
+                <div className="flex items-center">Location {getSortIcon('location')}</div>
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => handleSort('status')}
+              >
+                <div className="flex items-center">Status {getSortIcon('status')}</div>
+              </TableHead>
+              <TableHead 
+                className="min-w-[200px] font-bold cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => handleSort('projectTitle')}
+              >
+                <div className="flex items-center">Project / Item Title {getSortIcon('projectTitle')}</div>
+              </TableHead>
+              <TableHead 
+                className="font-bold cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => handleSort('totalCostBudget')}
+              >
+                <div className="flex items-center">Allocated Cost {getSortIcon('totalCostBudget')}</div>
+              </TableHead>
               <TableHead className="text-right font-bold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredBudgets.length > 0 ? (
-              filteredBudgets.map((budget) => (
+            {filteredAndSortedBudgets.length > 0 ? (
+              filteredAndSortedBudgets.map((budget) => (
                 <TableRow 
                   key={budget.id} 
                   className="hover:bg-muted/10 cursor-pointer group transition-colors"
