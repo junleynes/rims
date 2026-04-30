@@ -56,6 +56,21 @@ interface BudgetTableViewProps {
 
 type ViewScope = 'drilldown' | 'whole' | 'division';
 
+const CARD_COLORS = [
+  'bg-blue-500',
+  'bg-emerald-500',
+  'bg-orange-500',
+  'bg-cyan-500',
+  'bg-purple-500',
+  'bg-amber-500',
+  'bg-rose-500',
+  'bg-indigo-500',
+  'bg-teal-500',
+  'bg-pink-500',
+  'bg-violet-500',
+  'bg-lime-500',
+];
+
 export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   const { user } = useAuth();
   const { divisions, sections } = useSystemData();
@@ -199,7 +214,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
         <div className="space-y-6">
           {renderHeaderControls()}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {divisions.map((division) => (
+            {divisions.map((division, idx) => (
               <Card 
                 key={division.id} 
                 className="group cursor-pointer hover:border-primary hover:shadow-xl transition-all border-none bg-white overflow-hidden shadow-sm"
@@ -207,7 +222,10 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               >
                 <CardContent className="p-8 flex items-center justify-between">
                   <div className="flex items-center gap-6">
-                    <div className="flex items-center justify-center h-16 w-16 rounded-2xl bg-blue-500 text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
+                    <div className={cn(
+                      "flex items-center justify-center h-16 w-16 rounded-2xl text-white shadow-lg group-hover:scale-110 transition-transform duration-300",
+                      CARD_COLORS[idx % CARD_COLORS.length]
+                    )}>
                       <Building2 className="h-8 w-8" />
                     </div>
                     <div>
@@ -238,7 +256,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             <h2 className="text-lg font-bold text-primary">{currentDivisionName}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredSections.map((section) => (
+            {filteredSections.map((section, idx) => (
               <Card 
                 key={section.id} 
                 className="group cursor-pointer hover:border-accent hover:shadow-xl transition-all border-none bg-white shadow-sm"
@@ -246,7 +264,10 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               >
                 <CardContent className="p-6 flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-emerald-500 text-white shadow-md group-hover:scale-110 transition-transform duration-300">
+                    <div className={cn(
+                      "flex items-center justify-center h-12 w-12 rounded-xl text-white shadow-md group-hover:scale-110 transition-transform duration-300",
+                      CARD_COLORS[(idx + 3) % CARD_COLORS.length]
+                    )}>
                       <LayoutGrid className="h-5 w-5" />
                     </div>
                     <span className="font-bold text-sm group-hover:text-emerald-600 transition-colors">{section.name}</span>
