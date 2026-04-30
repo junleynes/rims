@@ -13,7 +13,8 @@ import {
   Settings,
   Building2,
   FileBarChart,
-  Network
+  Network,
+  UsersRound
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -38,11 +39,18 @@ export function SidebarNav() {
   const { user, logout } = useAuth();
   const { config } = useBranding();
 
+  if (!user) return null;
+
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', color: 'bg-blue-500' },
     { name: 'Resource Log', icon: Table2, href: '/budgets', color: 'bg-emerald-500' },
     { name: 'Add Resource', icon: PlusCircle, href: '/budgets/new', color: 'bg-orange-500' },
   ];
+
+  // Managers get a specific team management link
+  if (user.role === 'Manager') {
+    navItems.push({ name: 'My Team', icon: UsersRound, href: '/team', color: 'bg-cyan-500' });
+  }
 
   const adminItems = [
     { name: 'User Management', icon: Users, href: '/admin/users', color: 'bg-cyan-500' },
@@ -51,8 +59,6 @@ export function SidebarNav() {
     { name: 'Reports', icon: FileBarChart, href: '/admin/reports', color: 'bg-rose-500' },
     { name: 'System Settings', icon: Settings, href: '/admin/settings', color: 'bg-amber-500' },
   ];
-
-  if (!user) return null;
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r-0">

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSystemData } from '@/components/system-data-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,9 +34,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound, UserCheck, Briefcase, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound, UserCheck, Briefcase, Edit2, X, UserX } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function UserManagementPage() {
   const { users, divisions, sections, positions, addUser, deleteUser, updateUser } = useSystemData();
@@ -50,7 +51,8 @@ export default function UserManagementPage() {
     section: '',
     position: '',
     reportingTo: '',
-    twoFactorEnabled: true
+    twoFactorEnabled: true,
+    isStaffOnly: false
   });
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -58,49 +60,53 @@ export default function UserManagementPage() {
   const [userToReset, setUserToReset] = useState<User | null>(null);
 
   const handleAddOrUpdateUser = () => {
-    if (!formData.name || !formData.username) {
-      toast({ title: "Validation Error", description: "Name and Username are required.", variant: "destructive" });
+    if (!formData.name) {
+      toast({ title: "Validation Error", description: "Name is required.", variant: "destructive" });
       return;
     }
 
+    if (!formData.isStaffOnly && !formData.username) {
+      toast({ title: "Validation Error", description: "Username is required for system accounts.", variant: "destructive" });
+      return;
+    }
+
+    const payload = {
+      ...formData,
+      username: formData.isStaffOnly ? undefined : formData.username,
+      role: formData.isStaffOnly ? undefined : formData.role,
+    };
+
     if (editingUserId) {
-      updateUser(editingUserId, formData);
+      updateUser(editingUserId, payload);
       setEditingUserId(null);
-      toast({ title: "User Updated", description: "Account details have been successfully modified." });
+      toast({ title: "Updated Successfully" });
     } else {
-      addUser(formData);
-      toast({ title: "User Created", description: "The user account has been successfully generated." });
+      addUser(payload);
+      toast({ title: "Added Successfully" });
     }
     
-    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true });
+    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false });
   };
 
   const handleEditUser = (user: User) => {
     setEditingUserId(user.id);
     setFormData({
       name: user.name,
-      username: user.username,
-      role: user.role,
+      username: user.username || '',
+      role: user.role || 'Manager',
       division: user.division || '',
       section: user.section || '',
       position: user.position || '',
       reportingTo: user.reportingTo || '',
-      twoFactorEnabled: !!user.twoFactorEnabled
+      twoFactorEnabled: !!user.twoFactorEnabled,
+      isStaffOnly: !!user.isStaffOnly
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEdit = () => {
     setEditingUserId(null);
-    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true });
-  };
-
-  const toggle2FA = (userId: string, currentStatus: boolean) => {
-    updateUser(userId, { twoFactorEnabled: !currentStatus });
-    toast({ 
-      title: !currentStatus ? "2FA Enabled" : "2FA Disabled", 
-      description: `Two-factor authentication has been ${!currentStatus ? 'enabled' : 'disabled'} for this user.` 
-    });
+    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false });
   };
 
   const initiateReset = (user: User) => {
@@ -112,7 +118,7 @@ export default function UserManagementPage() {
     if (userToReset) {
       toast({
         title: "Password Reset Successful",
-        description: `Password for ${userToReset.name} (@${userToReset.username}) has been reset to system default: 'password'`,
+        description: `Password for ${userToReset.name} reset to default.`,
       });
     }
     setResetDialogOpen(false);
@@ -127,37 +133,67 @@ export default function UserManagementPage() {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-primary">User Management</h1>
-        <p className="text-muted-foreground">Manage system users, their organizational boundaries, and security settings.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">System Registry</h1>
+        <p className="text-muted-foreground">Manage system users (log-in enabled) and organizational staff (personnel records).</p>
       </div>
 
       <Card className="border-none shadow-sm">
         <CardHeader>
-          <CardTitle>{editingUserId ? 'Edit Account' : 'Create New Account'}</CardTitle>
-          <CardDescription>
-            {editingUserId ? 'Modify existing account properties and access levels.' : 'Assign roles and scope access to specific divisions or sections.'}
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>{editingUserId ? 'Modify Entry' : 'New Personnel/Account'}</CardTitle>
+              <CardDescription>
+                Define if this person has system access or is strictly for organizational tracking.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-3 bg-muted/50 p-2 rounded-lg border">
+              <Label className="text-xs font-bold uppercase tracking-tight">Staff Only (No Login)</Label>
+              <Switch 
+                checked={formData.isStaffOnly} 
+                onCheckedChange={(v) => setFormData(prev => ({ ...prev, isStaffOnly: v }))} 
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             <div className="space-y-1">
               <Label className="text-xs">Full Name</Label>
               <Input 
-                placeholder="John Doe" 
+                placeholder="Name" 
                 value={formData.name} 
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} 
               />
             </div>
+
+            {!formData.isStaffOnly && (
+              <>
+                <div className="space-y-1 animate-in slide-in-from-left-2">
+                  <Label className="text-xs">Username</Label>
+                  <Input 
+                    placeholder="jdoe" 
+                    value={formData.username} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))} 
+                  />
+                </div>
+                <div className="space-y-1 animate-in slide-in-from-left-2">
+                  <Label className="text-xs">System Role</Label>
+                  <Select 
+                    value={formData.role} 
+                    onValueChange={(v) => setFormData(prev => ({ ...prev, role: v as Role }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Manager">Manager</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
             <div className="space-y-1">
-              <Label className="text-xs">Username</Label>
-              <Input 
-                placeholder="jdoe" 
-                value={formData.username} 
-                onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))} 
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Position / Job Title</Label>
+              <Label className="text-xs">Position</Label>
               <Select 
                 value={formData.position} 
                 onValueChange={(v) => setFormData(prev => ({ ...prev, position: v }))}
@@ -173,44 +209,14 @@ export default function UserManagementPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Reporting To</Label>
-              <Select 
-                value={formData.reportingTo} 
-                onValueChange={(v) => setFormData(prev => ({ ...prev, reportingTo: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Manager" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="None">None</SelectItem>
-                  {users.filter(u => u.id !== editingUserId).map(u => (
-                    <SelectItem key={u.id} value={u.name}>{u.name} (@{u.username})</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Role</Label>
-              <Select 
-                value={formData.role} 
-                onValueChange={(v) => setFormData(prev => ({ ...prev, role: v as Role }))}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Admin">Admin</SelectItem>
-                  <SelectItem value="Manager">Manager</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
               <Label className="text-xs">Division</Label>
               <Select 
                 value={formData.division} 
                 onValueChange={(v) => setFormData(prev => ({ ...prev, division: v, section: '' }))}
               >
-                <SelectTrigger><SelectValue placeholder="Select Division" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Division" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="None">None (System Wide)</SelectItem>
+                  <SelectItem value="None">None</SelectItem>
                   {divisions.map(d => (
                     <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
                   ))}
@@ -224,34 +230,40 @@ export default function UserManagementPage() {
                 onValueChange={(v) => setFormData(prev => ({ ...prev, section: v }))}
                 disabled={!formData.division || formData.division === 'None'}
               >
-                <SelectTrigger><SelectValue placeholder="Select Section/Unit" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Section" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="None">None (Full Division)</SelectItem>
+                  <SelectItem value="None">None</SelectItem>
                   {filteredSections.map(s => (
                     <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1 flex flex-col justify-center">
-              <div className="flex items-center gap-3">
-                <Switch 
-                  checked={formData.twoFactorEnabled} 
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, twoFactorEnabled: checked }))} 
-                />
-                <Label className="text-xs">Enable 2FA Security</Label>
-              </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Reporting To</Label>
+              <Select 
+                value={formData.reportingTo} 
+                onValueChange={(v) => setFormData(prev => ({ ...prev, reportingTo: v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Manager" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="None">None</SelectItem>
+                  {users.filter(u => u.id !== editingUserId).map(u => (
+                    <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="mt-6 flex justify-end gap-3">
             {editingUserId && (
               <Button variant="outline" onClick={cancelEdit} className="gap-2 px-8">
-                <X className="h-4 w-4" /> Cancel Edit
+                <X className="h-4 w-4" /> Cancel
               </Button>
             )}
             <Button onClick={handleAddOrUpdateUser} className="gap-2 px-8">
-              {editingUserId ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-              {editingUserId ? 'Update Account' : 'Create Account'}
+              {editingUserId ? <Edit2 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {editingUserId ? 'Update Entry' : 'Create Entry'}
             </Button>
           </div>
         </CardContent>
@@ -259,17 +271,16 @@ export default function UserManagementPage() {
 
       <Card className="border-none shadow-sm">
         <CardHeader>
-          <CardTitle>Account Registry</CardTitle>
+          <CardTitle>Personnel & Account Registry</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User Identity</TableHead>
-                <TableHead>Position & Role</TableHead>
-                <TableHead>Organization Scope</TableHead>
-                <TableHead>Reporting Structure</TableHead>
-                <TableHead className="text-center">2FA</TableHead>
+                <TableHead>Identity</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Position</TableHead>
+                <TableHead>Org Scope</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -279,77 +290,48 @@ export default function UserManagementPage() {
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-semibold text-primary">{u.name}</span>
-                      <span className="text-xs text-muted-foreground">@{u.username}</span>
+                      {u.username && <span className="text-[10px] text-muted-foreground uppercase font-black">@{u.username}</span>}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                        <Briefcase className="h-3 w-3" /> {u.position || 'Unspecified Position'}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {u.role === 'Admin' ? (
-                          <Badge variant="default" className="gap-1 px-2 py-0.5"><Shield className="h-3 w-3" /> Admin</Badge>
-                        ) : (
-                          <Badge variant="secondary" className="gap-1 px-2 py-0.5"><UserIcon className="h-3 w-3" /> Manager</Badge>
-                        )}
-                      </div>
-                    </div>
+                    {u.isStaffOnly ? (
+                      <Badge variant="outline" className="gap-1 text-[10px] border-amber-200 text-amber-700 bg-amber-50">
+                        <UserX className="h-3 w-3" /> Staff Only
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="gap-1 text-[10px] bg-primary/10 text-primary border-primary/20">
+                        {u.role === 'Admin' ? <Shield className="h-3 w-3" /> : <UserIcon className="h-3 w-3" />}
+                        {u.role} Account
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs font-medium text-slate-600">
+                    {u.position || 'N/A'}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-xs font-medium">{u.division || 'Unassigned / Global'}</span>
+                      <span className="text-[10px] font-bold">{u.division || 'Global'}</span>
                       {u.section && u.section !== 'None' && (
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-tight">Section/Unit: {u.section}</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground italic">
-                      <UserCheck className="h-3.5 w-3.5" />
-                      <span>{u.reportingTo || 'N/A'}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Switch 
-                        checked={!!u.twoFactorEnabled} 
-                        onCheckedChange={() => toggle2FA(u.id, !!u.twoFactorEnabled)}
-                      />
-                      {u.twoFactorEnabled ? (
-                        <Lock className="h-4 w-4 text-green-500" title="2FA Active" />
-                      ) : (
-                        <Unlock className="h-4 w-4 text-muted-foreground" title="2FA Disabled" />
+                        <span className="text-[9px] text-muted-foreground uppercase tracking-tight">{u.section}</span>
                       )}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        onClick={() => handleEditUser(u)}
-                        title="Edit User"
-                        className="hover:bg-primary/10"
-                      >
+                      <Button size="icon" variant="ghost" onClick={() => handleEditUser(u)} className="h-8 w-8 hover:bg-primary/10">
                         <Edit2 className="h-4 w-4 text-primary" />
                       </Button>
+                      {!u.isStaffOnly && (
+                        <Button size="icon" variant="ghost" onClick={() => initiateReset(u)} className="h-8 w-8 hover:bg-primary/10">
+                          <KeyRound className="h-4 w-4 text-primary" />
+                        </Button>
+                      )}
                       <Button 
                         size="icon" 
                         variant="ghost" 
-                        onClick={() => initiateReset(u)}
-                        title="Reset Password"
-                        className="hover:bg-primary/10"
-                      >
-                        <KeyRound className="h-4 w-4 text-primary" />
-                      </Button>
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        onClick={() => deleteUser(u.id)}
+                        onClick={() => deleteUser(u.id)} 
                         disabled={u.username === 'admin'}
-                        title={u.username === 'admin' ? "System root account cannot be deleted" : "Delete User"}
-                        className="hover:bg-destructive/10"
+                        className="h-8 w-8 hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
@@ -365,17 +347,14 @@ export default function UserManagementPage() {
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reset User Password?</AlertDialogTitle>
+            <AlertDialogTitle>Reset Password?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will reset the password for <strong>{userToReset?.name}</strong> to the system default: <code className="bg-muted px-1.5 py-0.5 rounded font-bold">password</code>. 
-              The user will need to use this password for their next login.
+              Password for <strong>{userToReset?.name}</strong> will revert to 'password'.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmReset} className="bg-primary hover:bg-primary/90">
-              Confirm Reset
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmReset}>Confirm</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -44,14 +44,15 @@ export interface BudgetEntry {
 
 export interface User {
   id: string;
-  username: string;
+  username?: string;
   name: string;
-  role: Role;
+  role?: Role;
   section?: string;
   division?: string;
   twoFactorEnabled?: boolean;
   position?: string;
   reportingTo?: string;
+  isStaffOnly?: boolean;
 }
 
 export interface BrandingConfig {
