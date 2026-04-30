@@ -80,3 +80,8 @@ export interface StatusOption {
   id: string;
   name: string;
 }
+
+export interface Position {
+  id: string;
+  name: string;
+}

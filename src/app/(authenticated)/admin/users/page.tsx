@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSystemData } from '@/components/system-data-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,20 +34,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound, UserCheck, Briefcase } from 'lucide-react';
+import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound, UserCheck, Briefcase, Edit2, X } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
-const POSITION_OPTIONS = [
-  'VP',
-  'AVP',
-  'Section Head',
-  'Unit Head',
-  'Assistant Manager'
-];
-
 export default function UserManagementPage() {
-  const { users, divisions, sections, addUser, deleteUser, updateUser } = useSystemData();
+  const { users, divisions, sections, positions, addUser, deleteUser, updateUser } = useSystemData();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -61,17 +53,46 @@ export default function UserManagementPage() {
     twoFactorEnabled: true
   });
 
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [userToReset, setUserToReset] = useState<User | null>(null);
 
-  const handleAddUser = () => {
+  const handleAddOrUpdateUser = () => {
     if (!formData.name || !formData.username) {
       toast({ title: "Validation Error", description: "Name and Username are required.", variant: "destructive" });
       return;
     }
-    addUser(formData);
+
+    if (editingUserId) {
+      updateUser(editingUserId, formData);
+      setEditingUserId(null);
+      toast({ title: "User Updated", description: "Account details have been successfully modified." });
+    } else {
+      addUser(formData);
+      toast({ title: "User Created", description: "The user account has been successfully generated." });
+    }
+    
     setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true });
-    toast({ title: "User Created", description: "The user account has been successfully generated." });
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUserId(user.id);
+    setFormData({
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      division: user.division || '',
+      section: user.section || '',
+      position: user.position || '',
+      reportingTo: user.reportingTo || '',
+      twoFactorEnabled: !!user.twoFactorEnabled
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingUserId(null);
+    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true });
   };
 
   const toggle2FA = (userId: string, currentStatus: boolean) => {
@@ -112,8 +133,10 @@ export default function UserManagementPage() {
 
       <Card className="border-none shadow-sm">
         <CardHeader>
-          <CardTitle>Create New Account</CardTitle>
-          <CardDescription>Assign roles and scope access to specific divisions or sections.</CardDescription>
+          <CardTitle>{editingUserId ? 'Edit Account' : 'Create New Account'}</CardTitle>
+          <CardDescription>
+            {editingUserId ? 'Modify existing account properties and access levels.' : 'Assign roles and scope access to specific divisions or sections.'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -143,8 +166,8 @@ export default function UserManagementPage() {
                   <SelectValue placeholder="Select Position" />
                 </SelectTrigger>
                 <SelectContent>
-                  {POSITION_OPTIONS.map(pos => (
-                    <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                  {positions.map(pos => (
+                    <SelectItem key={pos.id} value={pos.name}>{pos.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -160,7 +183,7 @@ export default function UserManagementPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="None">None</SelectItem>
-                  {users.map(u => (
+                  {users.filter(u => u.id !== editingUserId).map(u => (
                     <SelectItem key={u.id} value={u.name}>{u.name} (@{u.username})</SelectItem>
                   ))}
                 </SelectContent>
@@ -220,9 +243,15 @@ export default function UserManagementPage() {
               </div>
             </div>
           </div>
-          <div className="mt-6 flex justify-end">
-            <Button onClick={handleAddUser} className="gap-2 px-8">
-              <Plus className="h-4 w-4" /> Create Account
+          <div className="mt-6 flex justify-end gap-3">
+            {editingUserId && (
+              <Button variant="outline" onClick={cancelEdit} className="gap-2 px-8">
+                <X className="h-4 w-4" /> Cancel Edit
+              </Button>
+            )}
+            <Button onClick={handleAddOrUpdateUser} className="gap-2 px-8">
+              {editingUserId ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {editingUserId ? 'Update Account' : 'Create Account'}
             </Button>
           </div>
         </CardContent>
@@ -246,7 +275,7 @@ export default function UserManagementPage() {
             </TableHeader>
             <TableBody>
               {users.map((u) => (
-                <TableRow key={u.id}>
+                <TableRow key={u.id} className={editingUserId === u.id ? "bg-primary/5" : ""}>
                   <TableCell>
                     <div className="flex flex-col">
                       <span className="font-semibold text-primary">{u.name}</span>
@@ -296,6 +325,15 @@ export default function UserManagementPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        onClick={() => handleEditUser(u)}
+                        title="Edit User"
+                        className="hover:bg-primary/10"
+                      >
+                        <Edit2 className="h-4 w-4 text-primary" />
+                      </Button>
                       <Button 
                         size="icon" 
                         variant="ghost" 

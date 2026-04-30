@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Division, Section, Location, StatusOption } from '@/lib/types';
+import { User, Division, Section, Location, StatusOption, Position } from '@/lib/types';
 import { getSystemData, saveSystemData } from '@/app/actions/db-actions';
 
 interface SystemDataContextType {
@@ -11,6 +11,7 @@ interface SystemDataContextType {
   locations: Location[];
   statusOptions: StatusOption[];
   users: User[];
+  positions: Position[];
   addDivision: (name: string) => void;
   updateDivision: (id: string, name: string) => void;
   deleteDivision: (id: string) => void;
@@ -26,6 +27,9 @@ interface SystemDataContextType {
   addUser: (user: Omit<User, 'id'>) => void;
   updateUser: (id: string, user: Partial<User>) => void;
   deleteUser: (id: string) => void;
+  addPosition: (name: string) => void;
+  updatePosition: (id: string, name: string) => void;
+  deletePosition: (id: string) => void;
   isLoading: boolean;
 }
 
@@ -37,6 +41,7 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
   const [locations, setLocations] = useState<Location[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -48,6 +53,7 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
         setLocations(data.locations);
         setStatusOptions(data.statusOptions);
         setUsers(data.users);
+        setPositions(data.positions);
       } catch (e) {
         console.error("Failed to load system data from server", e);
       } finally {
@@ -154,14 +160,34 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
     await saveSystemData({ users: next });
   };
 
+  const addPosition = async (name: string) => {
+    const newPos = { id: Math.random().toString(36).substr(2, 9), name };
+    const next = [...positions, newPos];
+    setPositions(next);
+    await saveSystemData({ positions: next });
+  };
+
+  const updatePosition = async (id: string, name: string) => {
+    const next = positions.map(p => p.id === id ? { ...p, name } : p);
+    setPositions(next);
+    await saveSystemData({ positions: next });
+  };
+
+  const deletePosition = async (id: string) => {
+    const next = positions.filter(p => p.id !== id);
+    setPositions(next);
+    await saveSystemData({ positions: next });
+  };
+
   return (
     <SystemDataContext.Provider value={{ 
-      divisions, sections, locations, statusOptions, users, isLoading,
+      divisions, sections, locations, statusOptions, users, positions, isLoading,
       addDivision, updateDivision, deleteDivision,
       addSection, updateSection, deleteSection,
       addLocation, updateLocation, deleteLocation,
       addStatusOption, updateStatusOption, deleteStatusOption,
-      addUser, updateUser, deleteUser
+      addUser, updateUser, deleteUser,
+      addPosition, updatePosition, deletePosition
     }}>
       {children}
     </SystemDataContext.Provider>

@@ -2,7 +2,7 @@
 'use server';
 
 import { readData, writeData } from '@/lib/server-db';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig } from '@/lib/types';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position } from '@/lib/types';
 
 export async function getResources() {
   const data = await readData();
@@ -23,7 +23,8 @@ export async function getSystemData() {
     locations: data.locations,
     statusOptions: data.statusOptions,
     users: data.users,
-    branding: data.branding
+    branding: data.branding,
+    positions: data.positions || []
   };
 }
 
@@ -33,7 +34,8 @@ export async function saveSystemData(update: {
   locations?: Location[],
   statusOptions?: StatusOption[],
   users?: User[],
-  branding?: BrandingConfig
+  branding?: BrandingConfig,
+  positions?: Position[]
 }) {
   const data = await readData();
   if (update.divisions) data.divisions = update.divisions;
@@ -42,5 +44,6 @@ export async function saveSystemData(update: {
   if (update.statusOptions) data.statusOptions = update.statusOptions;
   if (update.users) data.users = update.users;
   if (update.branding) data.branding = update.branding;
+  if (update.positions) data.positions = update.positions;
   await writeData(data);
 }

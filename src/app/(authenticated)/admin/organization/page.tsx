@@ -28,11 +28,12 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function OrganizationPage() {
   const { 
-    divisions, sections, locations, statusOptions,
+    divisions, sections, locations, statusOptions, positions,
     addDivision, updateDivision, deleteDivision,
     addSection, updateSection, deleteSection,
     addLocation, updateLocation, deleteLocation,
-    addStatusOption, updateStatusOption, deleteStatusOption
+    addStatusOption, updateStatusOption, deleteStatusOption,
+    addPosition, updatePosition, deletePosition
   } = useSystemData();
   const { toast } = useToast();
 
@@ -41,10 +42,11 @@ export default function OrganizationPage() {
   const [newSecName, setNewSecName] = useState('');
   const [newSecDivId, setNewSecDivId] = useState('');
   const [newStatusName, setNewStatusName] = useState('');
+  const [newPosName, setNewPosName] = useState('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
-  const [editingType, setEditingType] = useState<'division' | 'location' | 'status' | null>(null);
+  const [editingType, setEditingType] = useState<'division' | 'location' | 'status' | 'position' | null>(null);
 
   const handleAddDivision = () => {
     if (!newDivName) return;
@@ -74,7 +76,14 @@ export default function OrganizationPage() {
     toast({ title: "Status Option Added" });
   };
 
-  const startEditing = (id: string, name: string, type: 'division' | 'location' | 'status') => {
+  const handleAddPosition = () => {
+    if (!newPosName) return;
+    addPosition(newPosName);
+    setNewPosName('');
+    toast({ title: "Position Added" });
+  };
+
+  const startEditing = (id: string, name: string, type: 'division' | 'location' | 'status' | 'position') => {
     setEditingId(id);
     setEditingName(name);
     setEditingType(type);
@@ -85,6 +94,7 @@ export default function OrganizationPage() {
     if (editingType === 'division') updateDivision(editingId, editingName);
     if (editingType === 'location') updateLocation(editingId, editingName);
     if (editingType === 'status') updateStatusOption(editingId, editingName);
+    if (editingType === 'position') updatePosition(editingId, editingName);
     setEditingId(null);
     setEditingType(null);
     toast({ title: "Updated successfully" });
@@ -94,13 +104,14 @@ export default function OrganizationPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary">Organization Management</h1>
-        <p className="text-muted-foreground">Manage Divisions, Sections, physical Locations, and Status options.</p>
+        <p className="text-muted-foreground">Manage Divisions, Sections, Job Positions, and system dropdowns.</p>
       </div>
 
       <Tabs defaultValue="divisions" className="space-y-4">
         <TabsList>
           <TabsTrigger value="divisions">Divisions</TabsTrigger>
           <TabsTrigger value="sections">Sections</TabsTrigger>
+          <TabsTrigger value="positions">Positions</TabsTrigger>
           <TabsTrigger value="locations">Locations</TabsTrigger>
           <TabsTrigger value="statuses">Statuses</TabsTrigger>
         </TabsList>
@@ -215,6 +226,71 @@ export default function OrganizationPage() {
                         <Button size="icon" variant="ghost" onClick={() => deleteSection(sec.id)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="positions" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Manage Positions</CardTitle>
+              <CardDescription>Manage available job titles for system accounts.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="New Position Name (e.g. VP)" 
+                  value={newPosName} 
+                  onChange={(e) => setNewPosName(e.target.value)} 
+                />
+                <Button onClick={handleAddPosition} className="gap-2">
+                  <Plus className="h-4 w-4" /> Add
+                </Button>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Position Name</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {positions.map((pos) => (
+                    <TableRow key={pos.id}>
+                      <TableCell>
+                        {editingId === pos.id && editingType === 'position' ? (
+                          <Input 
+                            value={editingName} 
+                            onChange={(e) => setEditingName(e.target.value)} 
+                          />
+                        ) : pos.name}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingId === pos.id && editingType === 'position' ? (
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" onClick={saveEdit}>
+                              <Check className="h-4 w-4 text-green-500" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}>
+                              <X className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-1">
+                            <Button size="icon" variant="ghost" onClick={() => startEditing(pos.id, pos.name, 'position')}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => deletePosition(pos.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
