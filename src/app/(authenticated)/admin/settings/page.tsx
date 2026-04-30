@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RefreshCw } from 'lucide-react';
+import { Save, RefreshCw, Download, Upload, Database } from 'lucide-react';
 
 export default function SettingsPage() {
   const { config, updateConfig } = useBranding();
@@ -35,11 +35,68 @@ export default function SettingsPage() {
     setAppAcronym('R.I.M.S');
   };
 
+  const handleExportData = () => {
+    const data = {
+      resources: localStorage.getItem('budgetguard_data'),
+      divisions: localStorage.getItem('rims_divisions'),
+      sections: localStorage.getItem('rims_sections'),
+      locations: localStorage.getItem('rims_locations'),
+      status: localStorage.getItem('rims_status_options'),
+      users: localStorage.getItem('rims_users'),
+      branding: localStorage.getItem('rims_branding'),
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `rims-backup-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    
+    toast({
+      title: "Data Exported",
+      description: "A backup of your local database has been downloaded.",
+    });
+  };
+
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.resources) localStorage.setItem('budgetguard_data', data.resources);
+        if (data.divisions) localStorage.setItem('rims_divisions', data.divisions);
+        if (data.sections) localStorage.setItem('rims_sections', data.sections);
+        if (data.locations) localStorage.setItem('rims_locations', data.locations);
+        if (data.status) localStorage.setItem('rims_status_options', data.status);
+        if (data.users) localStorage.setItem('rims_users', data.users);
+        if (data.branding) localStorage.setItem('rims_branding', data.branding);
+        
+        toast({
+          title: "Import Successful",
+          description: "Your local database has been restored. Please refresh the page.",
+        });
+        
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err) {
+        toast({
+          title: "Import Failed",
+          description: "The file format is invalid.",
+          variant: "destructive",
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary">System Settings</h1>
-        <p className="text-muted-foreground">Manage application identity and global preferences.</p>
+        <p className="text-muted-foreground">Manage application identity, local data, and global preferences.</p>
       </div>
 
       <Card className="border-none shadow-lg">
@@ -85,9 +142,48 @@ export default function SettingsPage() {
         </CardFooter>
       </Card>
 
+      <Card className="border-none shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            Local Data Management
+          </CardTitle>
+          <CardDescription>
+            Since you are running this app locally, you can back up your data or restore from a previous session.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <Button onClick={handleExportData} variant="outline" className="flex-1 gap-2 py-8 border-dashed">
+              <Download className="h-5 w-5" />
+              <div className="text-left">
+                <p className="font-bold">Export Backup</p>
+                <p className="text-xs text-muted-foreground">Download database as JSON</p>
+              </div>
+            </Button>
+            
+            <div className="relative flex-1">
+              <Input 
+                type="file" 
+                accept=".json" 
+                onChange={handleImportData}
+                className="absolute inset-0 opacity-0 cursor-pointer h-full w-full z-10"
+              />
+              <Button variant="outline" className="w-full gap-2 py-8 border-dashed pointer-events-none">
+                <Upload className="h-5 w-5" />
+                <div className="text-left">
+                  <p className="font-bold">Import Backup</p>
+                  <p className="text-xs text-muted-foreground">Restore from JSON file</p>
+                </div>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="border-dashed border-2 bg-muted/10">
         <CardHeader>
-          <CardTitle className="text-sm font-medium">Preview</CardTitle>
+          <CardTitle className="text-sm font-medium">Identity Preview</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="p-4 bg-white rounded-lg border shadow-sm">
