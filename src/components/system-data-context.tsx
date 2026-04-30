@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Division, Section, Location, StatusOption } from '@/lib/types';
-import { DIVISIONS, SECTIONS, MOCK_USERS, DIVISION_SECTIONS_MAP, LOCATIONS } from '@/lib/mock-data';
+import { getSystemData, saveSystemData } from '@/app/actions/db-actions';
 
 interface SystemDataContextType {
   divisions: Division[];
@@ -26,16 +26,10 @@ interface SystemDataContextType {
   addUser: (user: Omit<User, 'id'>) => void;
   updateUser: (id: string, user: Partial<User>) => void;
   deleteUser: (id: string) => void;
+  isLoading: boolean;
 }
 
 const SystemDataContext = createContext<SystemDataContextType | undefined>(undefined);
-
-const INITIAL_STATUS_OPTIONS = [
-  { id: 'working', name: 'working' },
-  { id: 'defective', name: 'defective' },
-  { id: 'turned-over', name: 'turned over to SAMD' },
-  { id: 'others', name: 'others:' }
-];
 
 export function SystemDataProvider({ children }: { children: React.ReactNode }) {
   const [divisions, setDivisions] = useState<Division[]>([]);
@@ -43,122 +37,126 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
   const [locations, setLocations] = useState<Location[]>([]);
   const [statusOptions, setStatusOptions] = useState<StatusOption[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedDivs = localStorage.getItem('rims_divisions');
-    const savedSecs = localStorage.getItem('rims_sections');
-    const savedLocs = localStorage.getItem('rims_locations');
-    const savedStatus = localStorage.getItem('rims_status_options');
-    const savedUsers = localStorage.getItem('rims_users');
-
-    if (savedDivs) setDivisions(JSON.parse(savedDivs));
-    else {
-      const initialDivs = DIVISIONS.map(d => ({ id: d.toLowerCase().replace(/\s+/g, '-'), name: d }));
-      setDivisions(initialDivs);
+    async function load() {
+      try {
+        const data = await getSystemData();
+        setDivisions(data.divisions);
+        setSections(data.sections);
+        setLocations(data.locations);
+        setStatusOptions(data.statusOptions);
+        setUsers(data.users);
+      } catch (e) {
+        console.error("Failed to load system data from server", e);
+      } finally {
+        setIsLoading(false);
+      }
     }
-
-    if (savedSecs) setSections(JSON.parse(savedSecs));
-    else {
-      const initialSecs: Section[] = [];
-      Object.entries(DIVISION_SECTIONS_MAP).forEach(([divName, secNames]) => {
-        const divId = divName.toLowerCase().replace(/\s+/g, '-');
-        secNames.forEach(s => {
-          initialSecs.push({ id: s.toLowerCase().replace(/\s+/g, '-'), name: s, divisionId: divId });
-        });
-      });
-      setSections(initialSecs);
-    }
-
-    if (savedLocs) setLocations(JSON.parse(savedLocs));
-    else {
-      const initialLocs = LOCATIONS.map(l => ({ id: l.toLowerCase().replace(/\s+/g, '-'), name: l }));
-      setLocations(initialLocs);
-    }
-
-    if (savedStatus) setStatusOptions(JSON.parse(savedStatus));
-    else setStatusOptions(INITIAL_STATUS_OPTIONS);
-
-    if (savedUsers) setUsers(JSON.parse(savedUsers));
-    else setUsers(MOCK_USERS);
+    load();
   }, []);
 
-  useEffect(() => {
-    if (divisions.length) localStorage.setItem('rims_divisions', JSON.stringify(divisions));
-    if (sections.length) localStorage.setItem('rims_sections', JSON.stringify(sections));
-    if (locations.length) localStorage.setItem('rims_locations', JSON.stringify(locations));
-    if (statusOptions.length) localStorage.setItem('rims_status_options', JSON.stringify(statusOptions));
-    if (users.length) localStorage.setItem('rims_users', JSON.stringify(users));
-  }, [divisions, sections, locations, statusOptions, users]);
-
-  const addDivision = (name: string) => {
+  const addDivision = async (name: string) => {
     const newDiv = { id: Math.random().toString(36).substr(2, 9), name };
-    setDivisions(prev => [...prev, newDiv]);
+    const next = [...divisions, newDiv];
+    setDivisions(next);
+    await saveSystemData({ divisions: next });
   };
 
-  const updateDivision = (id: string, name: string) => {
-    setDivisions(prev => prev.map(d => d.id === id ? { ...d, name } : d));
+  const updateDivision = async (id: string, name: string) => {
+    const next = divisions.map(d => d.id === id ? { ...d, name } : d);
+    setDivisions(next);
+    await saveSystemData({ divisions: next });
   };
 
-  const deleteDivision = (id: string) => {
-    setDivisions(prev => prev.filter(d => d.id !== id));
-    setSections(prev => prev.filter(s => s.divisionId !== id));
+  const deleteDivision = async (id: string) => {
+    const nextDivs = divisions.filter(d => d.id !== id);
+    const nextSecs = sections.filter(s => s.divisionId !== id);
+    setDivisions(nextDivs);
+    setSections(nextSecs);
+    await saveSystemData({ divisions: nextDivs, sections: nextSecs });
   };
 
-  const addSection = (name: string, divisionId: string) => {
+  const addSection = async (name: string, divisionId: string) => {
     const newSec = { id: Math.random().toString(36).substr(2, 9), name, divisionId };
-    setSections(prev => [...prev, newSec]);
+    const next = [...sections, newSec];
+    setSections(next);
+    await saveSystemData({ sections: next });
   };
 
-  const updateSection = (id: string, name: string, divisionId: string) => {
-    setSections(prev => prev.map(s => s.id === id ? { ...s, name, divisionId } : s));
+  const updateSection = async (id: string, name: string, divisionId: string) => {
+    const next = sections.map(s => s.id === id ? { ...s, name, divisionId } : s);
+    setSections(next);
+    await saveSystemData({ sections: next });
   };
 
-  const deleteSection = (id: string) => {
-    setSections(prev => prev.filter(s => s.id !== id));
+  const deleteSection = async (id: string) => {
+    const next = sections.filter(s => s.id !== id);
+    setSections(next);
+    await saveSystemData({ sections: next });
   };
 
-  const addLocation = (name: string) => {
+  const addLocation = async (name: string) => {
     const newLoc = { id: Math.random().toString(36).substr(2, 9), name };
-    setLocations(prev => [...prev, newLoc]);
+    const next = [...locations, newLoc];
+    setLocations(next);
+    await saveSystemData({ locations: next });
   };
 
-  const updateLocation = (id: string, name: string) => {
-    setLocations(prev => prev.map(l => l.id === id ? { ...l, name } : l));
+  const updateLocation = async (id: string, name: string) => {
+    const next = locations.map(l => l.id === id ? { ...l, name } : l);
+    setLocations(next);
+    await saveSystemData({ locations: next });
   };
 
-  const deleteLocation = (id: string) => {
-    setLocations(prev => prev.filter(l => l.id !== id));
+  const deleteLocation = async (id: string) => {
+    const next = locations.filter(l => l.id !== id);
+    setLocations(next);
+    await saveSystemData({ locations: next });
   };
 
-  const addStatusOption = (name: string) => {
+  const addStatusOption = async (name: string) => {
     const newStatus = { id: Math.random().toString(36).substr(2, 9), name };
-    setStatusOptions(prev => [...prev, newStatus]);
+    const next = [...statusOptions, newStatus];
+    setStatusOptions(next);
+    await saveSystemData({ statusOptions: next });
   };
 
-  const updateStatusOption = (id: string, name: string) => {
-    setStatusOptions(prev => prev.map(s => s.id === id ? { ...s, name } : s));
+  const updateStatusOption = async (id: string, name: string) => {
+    const next = statusOptions.map(s => s.id === id ? { ...s, name } : s);
+    setStatusOptions(next);
+    await saveSystemData({ statusOptions: next });
   };
 
-  const deleteStatusOption = (id: string) => {
-    setStatusOptions(prev => prev.filter(s => s.id !== id));
+  const deleteStatusOption = async (id: string) => {
+    const next = statusOptions.filter(s => s.id !== id);
+    setStatusOptions(next);
+    await saveSystemData({ statusOptions: next });
   };
 
-  const addUser = (user: Omit<User, 'id'>) => {
+  const addUser = async (user: Omit<User, 'id'>) => {
     const newUser = { ...user, id: Math.random().toString(36).substr(2, 9) };
-    setUsers(prev => [...prev, newUser]);
+    const next = [...users, newUser];
+    setUsers(next);
+    await saveSystemData({ users: next });
   };
 
-  const updateUser = (id: string, user: Partial<User>) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, ...user } : u));
+  const updateUser = async (id: string, user: Partial<User>) => {
+    const next = users.map(u => u.id === id ? { ...u, ...user } : u);
+    setUsers(next);
+    await saveSystemData({ users: next });
   };
 
-  const deleteUser = (id: string) => {
-    setUsers(prev => prev.filter(u => u.id !== id));
+  const deleteUser = async (id: string) => {
+    const next = users.filter(u => u.id !== id);
+    setUsers(next);
+    await saveSystemData({ users: next });
   };
 
   return (
     <SystemDataContext.Provider value={{ 
-      divisions, sections, locations, statusOptions, users,
+      divisions, sections, locations, statusOptions, users, isLoading,
       addDivision, updateDivision, deleteDivision,
       addSection, updateSection, deleteSection,
       addLocation, updateLocation, deleteLocation,

@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BudgetEntry } from '@/lib/types';
-import { MOCK_BUDGETS } from '@/lib/mock-data';
+import { getResources, saveResources } from '@/app/actions/db-actions';
 
 interface BudgetContextType {
   budgets: BudgetEntry[];
@@ -20,36 +20,41 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedBudgets = localStorage.getItem('budgetguard_data');
-    if (savedBudgets) {
-      setBudgets(JSON.parse(savedBudgets));
-    } else {
-      setBudgets(MOCK_BUDGETS);
+    async function load() {
+      try {
+        const data = await getResources();
+        setBudgets(data);
+      } catch (e) {
+        console.error("Failed to load resources from server", e);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setIsLoading(false);
+    load();
   }, []);
 
-  useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem('budgetguard_data', JSON.stringify(budgets));
-    }
-  }, [budgets, isLoading]);
-
-  const addBudget = (entry: Omit<BudgetEntry, 'id' | 'createdAt'>) => {
+  const addBudget = async (entry: Omit<BudgetEntry, 'id' | 'createdAt'>) => {
     const newEntry: BudgetEntry = {
       ...entry,
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
     } as BudgetEntry;
-    setBudgets(prev => [newEntry, ...prev]);
+    
+    const newBudgets = [newEntry, ...budgets];
+    setBudgets(newBudgets);
+    await saveResources(newBudgets);
   };
 
-  const updateBudget = (id: string, entry: Partial<BudgetEntry>) => {
-    setBudgets(prev => prev.map(b => b.id === id ? { ...b, ...entry } : b));
+  const updateBudget = async (id: string, entry: Partial<BudgetEntry>) => {
+    const newBudgets = budgets.map(b => b.id === id ? { ...b, ...entry } : b);
+    setBudgets(newBudgets);
+    await saveResources(newBudgets);
   };
 
-  const deleteBudget = (id: string) => {
-    setBudgets(prev => prev.filter(b => b.id !== id));
+  const deleteBudget = async (id: string) => {
+    const newBudgets = budgets.filter(b => b.id !== id);
+    setBudgets(newBudgets);
+    await saveResources(newBudgets);
   };
 
   return (
