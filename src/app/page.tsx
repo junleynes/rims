@@ -37,9 +37,6 @@ function LoginPage() {
     setTimeout(() => {
       login(username, password)
         .then(() => {
-          if (!user && !pendingUser) {
-             // Logic handled by login function inside auth-context
-          }
           toast({
             title: "Access Verification",
             description: "Checking system registry...",
@@ -211,8 +208,8 @@ function LoginPage() {
             </div>
           )}
           <CardFooter className="flex flex-col gap-4 text-sm text-center bg-muted/20 pt-6">
-            <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} {config.appAcronym} System. All rights reserved.
+            <p className="text-[10px] text-muted-foreground italic">
+              {config.copyright}
             </p>
           </CardFooter>
         </Card>

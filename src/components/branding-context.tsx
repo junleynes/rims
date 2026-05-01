@@ -13,6 +13,7 @@ const defaultBranding: BrandingConfig = {
   appName: 'Resource Inventory Management System',
   appAcronym: 'R.I.M.S',
   loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
+  copyright: `© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`,
   logoUrl: '',
   theme: 'default',
   darkMode: false,

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RefreshCw, Download, Upload, Database, ImageIcon, X, TrendingUp, Palette, Check, Moon, Sun, LayoutPanelTop } from 'lucide-react';
+import { Save, RefreshCw, Download, Upload, Database, ImageIcon, X, TrendingUp, Palette, Check, Moon, Sun, LayoutPanelTop, Copyright } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +29,7 @@ export default function SettingsPage() {
   const [appName, setAppName] = useState(config.appName);
   const [appAcronym, setAppAcronym] = useState(config.appAcronym);
   const [loginDescription, setLoginDescription] = useState(config.loginDescription);
+  const [copyright, setCopyright] = useState(config.copyright);
   const [logoUrl, setLogoUrl] = useState(config.logoUrl || '');
   const [theme, setTheme] = useState(config.theme || 'default');
   const [darkMode, setDarkMode] = useState(!!config.darkMode);
@@ -37,7 +38,7 @@ export default function SettingsPage() {
   const handleSave = () => {
     setIsSaving(true);
     setTimeout(() => {
-      updateConfig({ appName, appAcronym, loginDescription, logoUrl, theme, darkMode });
+      updateConfig({ appName, appAcronym, loginDescription, copyright, logoUrl, theme, darkMode });
       toast({
         title: "Settings Saved",
         description: "Branding settings have been updated successfully.",
@@ -50,6 +51,7 @@ export default function SettingsPage() {
     setAppName('Resource Inventory Management System');
     setAppAcronym('R.I.M.S');
     setLoginDescription('A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.');
+    setCopyright(`© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`);
     setLogoUrl('');
     setTheme('default');
     setDarkMode(false);
@@ -167,6 +169,15 @@ export default function SettingsPage() {
                     onChange={(e) => setLoginDescription(e.target.value)}
                     placeholder="Welcome message for the login screen..."
                     className="min-h-[80px]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="copyright">Copyright Footer Text</Label>
+                  <Input 
+                    id="copyright" 
+                    value={copyright} 
+                    onChange={(e) => setCopyright(e.target.value)}
+                    placeholder="e.g. © 2025 R.I.M.S System"
                   />
                 </div>
               </div>
@@ -328,10 +339,11 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Header Display</Label>
-                <div className="bg-card p-4 rounded-xl border shadow-sm">
-                  <h2 className="font-bold text-base text-primary leading-tight">{appName}</h2>
-                  <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1">FY 2026/2027</p>
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Login Footer Preview</Label>
+                <div className="bg-muted/20 p-4 rounded-xl border shadow-inner">
+                  <p className="text-[10px] text-muted-foreground text-center font-medium italic">
+                    {copyright}
+                  </p>
                 </div>
               </div>
 

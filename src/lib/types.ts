@@ -59,6 +59,7 @@ export interface BrandingConfig {
   appName: string;
   appAcronym: string;
   loginDescription: string;
+  copyright: string;
   logoUrl?: string;
   theme?: string;
   darkMode?: boolean;
