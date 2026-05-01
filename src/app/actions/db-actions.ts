@@ -4,14 +4,14 @@
 import { readData, writeData } from '@/lib/server-db';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position } from '@/lib/types';
 
-export async function getResources() {
+export async function getBudgets() {
   const data = await readData();
   return data.resources;
 }
 
-export async function saveResources(resources: BudgetEntry[]) {
+export async function saveBudgets(budgets: BudgetEntry[]) {
   const data = await readData();
-  data.resources = resources;
+  data.resources = budgets;
   await writeData(data);
 }
 
@@ -24,7 +24,7 @@ export async function getSystemData() {
     statusOptions: data.statusOptions,
     users: data.users,
     branding: data.branding,
-    positions: data.positions || []
+    positions: data.positions
   };
 }
 
@@ -46,4 +46,5 @@ export async function saveSystemData(update: {
   if (update.branding) data.branding = update.branding;
   if (update.positions) data.positions = update.positions;
   await writeData(data);
+  return true;
 }

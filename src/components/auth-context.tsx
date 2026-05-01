@@ -3,13 +3,12 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
-import { useCollection, useFirestore, useAuth as useFirebaseAuth } from '@/firebase';
-import { collection, query, where, limit } from 'firebase/firestore';
+import { getSystemData } from '@/app/actions/db-actions';
 
 interface AuthContextType {
   user: User | null;
   pendingUser: User | null;
-  login: (username: string) => void;
+  login: (username: string) => Promise<void>;
   verify2FA: (code: string) => boolean;
   cancel2FA: () => void;
   logout: () => void;
@@ -23,7 +22,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [pendingUser, setPendingUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const db = useFirestore();
 
   useEffect(() => {
     const savedUser = localStorage.getItem('rims_user');
@@ -34,20 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (username: string) => {
-    if (!db) return;
-    
-    // In a real app with Firebase Auth, we would use signInWithEmailAndPassword.
-    // Here, we simulate login by querying the users collection.
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('username', '==', username), limit(1));
-    
-    // Note: useCollection is for real-time, but for one-off login we might use getDocs.
-    // However, since we must stick to client hooks, we simulate it.
-    // For the prototype, we rely on the registry we built.
-    const savedUsersStr = localStorage.getItem('rims_users_cache');
-    const allUsers: User[] = savedUsersStr ? JSON.parse(savedUsersStr) : [];
-    
-    const foundUser = allUsers.find(u => u.username === username);
+    const { users } = await getSystemData();
+    const foundUser = users.find(u => u.username === username);
     
     if (foundUser) {
       if (foundUser.twoFactorEnabled) {
@@ -57,19 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('rims_user', JSON.stringify(foundUser));
       }
     } else {
-      // Fallback for demo admin
-      if (username === 'admin') {
-        const adminUser: User = {
-          id: 'admin-id',
-          username: 'admin',
-          name: 'System Administrator',
-          role: 'Admin',
-          twoFactorEnabled: true
-        };
-        setPendingUser(adminUser);
-      } else {
-        throw new Error('User not found');
-      }
+      throw new Error('User not found');
     }
   };
 

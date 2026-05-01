@@ -2,7 +2,6 @@
 import fs from 'fs';
 import path from 'path';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position } from './types';
-import { MOCK_BUDGETS, MOCK_USERS, DIVISIONS, SECTIONS, DIVISION_SECTIONS_MAP, LOCATIONS } from './mock-data';
 
 const DB_PATH = path.join(process.cwd(), 'data-storage.json');
 
@@ -34,21 +33,39 @@ interface AppData {
 
 function ensureDataFile() {
   if (!fs.existsSync(DB_PATH)) {
-    const initialDivs = DIVISIONS.map(d => ({ id: d.id, name: d.name }));
-    const initialSecs = SECTIONS.map(s => ({ id: s.id, name: s.name, divisionId: s.divisionId }));
-    const initialLocs = LOCATIONS.map(l => ({ id: l.toLowerCase().replace(/\s+/g, '-'), name: l }));
-
     const initialData: AppData = {
-      resources: MOCK_BUDGETS,
-      users: MOCK_USERS,
-      divisions: initialDivs,
-      sections: initialSecs,
-      locations: initialLocs,
+      resources: [],
+      users: [
+        {
+          id: '1',
+          username: 'admin',
+          name: 'System Administrator',
+          role: 'Admin',
+          position: 'Chief Technology Officer',
+          reportingTo: 'Board of Directors',
+          twoFactorEnabled: true,
+        }
+      ],
+      divisions: [
+        { id: 'office-of-the-head', name: 'Office of the Head' },
+        { id: 'operations-division', name: 'Operations Division' },
+        { id: 'technical-and-media-server-support-division', name: 'Technical and Media Server Support Division' },
+        { id: 'project-management-division', name: 'Project Management Division' }
+      ],
+      sections: [],
+      locations: [
+        { id: '4th-floor', name: '4th floor' },
+        { id: '5th-floor', name: '5th floor' },
+        { id: '6th-floor', name: '6th floor' },
+        { id: 'deployed', name: 'Deployed' }
+      ],
       statusOptions: INITIAL_STATUS_OPTIONS,
       positions: INITIAL_POSITIONS,
       branding: {
         appName: 'Resource Inventory Management System',
         appAcronym: 'R.I.M.S',
+        theme: 'default',
+        darkMode: false
       }
     };
     fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2));
@@ -58,12 +75,7 @@ function ensureDataFile() {
 export async function readData(): Promise<AppData> {
   ensureDataFile();
   const raw = fs.readFileSync(DB_PATH, 'utf-8');
-  const data = JSON.parse(raw);
-  // Ensure positions exist if reading an older file
-  if (!data.positions) {
-    data.positions = INITIAL_POSITIONS;
-  }
-  return data;
+  return JSON.parse(raw);
 }
 
 export async function writeData(data: AppData) {

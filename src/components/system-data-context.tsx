@@ -1,12 +1,9 @@
 
 "use client";
 
-import React, { createContext, useContext, useMemo } from 'react';
-import { User, Division, Section, Location, StatusOption, Position, BrandingConfig } from '@/lib/types';
-import { useCollection, useDoc, useFirestore } from '@/firebase';
-import { collection, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User, Division, Section, Location, StatusOption, Position } from '@/lib/types';
+import { getSystemData, saveSystemData } from '@/app/actions/db-actions';
 
 interface SystemDataContextType {
   divisions: Division[];
@@ -39,128 +36,119 @@ interface SystemDataContextType {
 const SystemDataContext = createContext<SystemDataContextType | undefined>(undefined);
 
 export function SystemDataProvider({ children }: { children: React.ReactNode }) {
-  const db = useFirestore();
+  const [data, setData] = useState<{
+    divisions: Division[];
+    sections: Section[];
+    locations: Location[];
+    statusOptions: StatusOption[];
+    users: User[];
+    positions: Position[];
+  }>({
+    divisions: [],
+    sections: [],
+    locations: [],
+    statusOptions: [],
+    users: [],
+    positions: []
+  });
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: divisions = [], loading: ld1 } = useCollection<Division>(db ? collection(db, 'divisions') : null);
-  const { data: sections = [], loading: ld2 } = useCollection<Section>(db ? collection(db, 'sections') : null);
-  const { data: locations = [], loading: ld3 } = useCollection<Location>(db ? collection(db, 'locations') : null);
-  const { data: statusOptions = [], loading: ld4 } = useCollection<StatusOption>(db ? collection(db, 'statusOptions') : null);
-  const { data: users = [], loading: ld5 } = useCollection<User>(db ? collection(db, 'users') : null);
-  const { data: positions = [], loading: ld6 } = useCollection<Position>(db ? collection(db, 'positions') : null);
-
-  const isLoading = ld1 || ld2 || ld3 || ld4 || ld5 || ld6;
-
-  const handleMutation = (ref: any, data: any, op: 'create' | 'update' | 'delete') => {
-    if (op === 'delete') {
-      deleteDoc(ref).catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: ref.path, operation: op }));
-      });
-    } else {
-      setDoc(ref, data, { merge: op === 'update' }).catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: ref.path, operation: op, requestResourceData: data }));
-      });
+  useEffect(() => {
+    async function load() {
+      const result = await getSystemData();
+      setData(result);
+      setIsLoading(false);
     }
+    load();
+  }, []);
+
+  const sync = async (update: any) => {
+    const newData = { ...data, ...update };
+    setData(newData);
+    await saveSystemData(update);
   };
 
   const addDivision = (name: string) => {
-    if (!db) return;
-    const ref = doc(collection(db, 'divisions'));
-    handleMutation(ref, { id: ref.id, name }, 'create');
+    const newDiv = { id: Math.random().toString(36).substr(2, 9), name };
+    sync({ divisions: [...data.divisions, newDiv] });
   };
 
   const updateDivision = (id: string, name: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'divisions', id), { name }, 'update');
+    sync({ divisions: data.divisions.map(d => d.id === id ? { ...d, name } : d) });
   };
 
   const deleteDivision = (id: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'divisions', id), null, 'delete');
+    sync({ divisions: data.divisions.filter(d => d.id !== id) });
   };
 
   const addSection = (name: string, divisionId: string) => {
-    if (!db) return;
-    const ref = doc(collection(db, 'sections'));
-    handleMutation(ref, { id: ref.id, name, divisionId }, 'create');
+    const newSec = { id: Math.random().toString(36).substr(2, 9), name, divisionId };
+    sync({ sections: [...data.sections, newSec] });
   };
 
   const updateSection = (id: string, name: string, divisionId: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'sections', id), { name, divisionId }, 'update');
+    sync({ sections: data.sections.map(s => s.id === id ? { ...s, name, divisionId } : s) });
   };
 
   const deleteSection = (id: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'sections', id), null, 'delete');
+    sync({ sections: data.sections.filter(s => s.id !== id) });
   };
 
   const addLocation = (name: string) => {
-    if (!db) return;
-    const ref = doc(collection(db, 'locations'));
-    handleMutation(ref, { id: ref.id, name }, 'create');
+    const newLoc = { id: Math.random().toString(36).substr(2, 9), name };
+    sync({ locations: [...data.locations, newLoc] });
   };
 
   const updateLocation = (id: string, name: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'locations', id), { name }, 'update');
+    sync({ locations: data.locations.map(l => l.id === id ? { ...l, name } : l) });
   };
 
   const deleteLocation = (id: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'locations', id), null, 'delete');
+    sync({ locations: data.locations.filter(l => l.id !== id) });
   };
 
   const addStatusOption = (name: string) => {
-    if (!db) return;
-    const ref = doc(collection(db, 'statusOptions'));
-    handleMutation(ref, { id: ref.id, name }, 'create');
+    const newOpt = { id: Math.random().toString(36).substr(2, 9), name };
+    sync({ statusOptions: [...data.statusOptions, newOpt] });
   };
 
   const updateStatusOption = (id: string, name: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'statusOptions', id), { name }, 'update');
+    sync({ statusOptions: data.statusOptions.map(o => o.id === id ? { ...o, name } : o) });
   };
 
   const deleteStatusOption = (id: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'statusOptions', id), null, 'delete');
+    sync({ statusOptions: data.statusOptions.filter(o => o.id !== id) });
   };
 
   const addUser = (userData: Omit<User, 'id'>) => {
-    if (!db) return;
-    const ref = doc(collection(db, 'users'));
-    handleMutation(ref, { ...userData, id: ref.id }, 'create');
+    const newUser = { ...userData, id: Math.random().toString(36).substr(2, 9) };
+    sync({ users: [...data.users, newUser] });
   };
 
   const updateUser = (id: string, userData: Partial<User>) => {
-    if (!db) return;
-    handleMutation(doc(db, 'users', id), userData, 'update');
+    sync({ users: data.users.map(u => u.id === id ? { ...u, ...userData } : u) });
   };
 
   const deleteUser = (id: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'users', id), null, 'delete');
+    sync({ users: data.users.filter(u => u.id !== id) });
   };
 
   const addPosition = (name: string) => {
-    if (!db) return;
-    const ref = doc(collection(db, 'positions'));
-    handleMutation(ref, { id: ref.id, name }, 'create');
+    const newPos = { id: Math.random().toString(36).substr(2, 9), name };
+    sync({ positions: [...data.positions, newPos] });
   };
 
   const updatePosition = (id: string, name: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'positions', id), { name }, 'update');
+    sync({ positions: data.positions.map(p => p.id === id ? { ...p, name } : p) });
   };
 
   const deletePosition = (id: string) => {
-    if (!db) return;
-    handleMutation(doc(db, 'positions', id), null, 'delete');
+    sync({ positions: data.positions.filter(p => p.id !== id) });
   };
 
   return (
     <SystemDataContext.Provider value={{ 
-      divisions, sections, locations, statusOptions, users, positions, isLoading,
+      ...data, isLoading,
       addDivision, updateDivision, deleteDivision,
       addSection, updateSection, deleteSection,
       addLocation, updateLocation, deleteLocation,
