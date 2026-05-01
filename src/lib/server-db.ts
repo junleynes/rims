@@ -111,12 +111,24 @@ if (brandingCount.count === 0) {
   const insertDiv = db.prepare('INSERT INTO divisions (id, name) VALUES (?, ?)');
   initialDivisions.forEach(d => insertDiv.run(d.id, d.name));
 
-  // Initial Sections
+  // Initial Sections (Complete List)
   const initialSections = [
-    { id: 'office-of-the-head-sec', name: 'Office of the Head', divisionId: 'office-of-the-head' },
-    { id: 'post-admin-sec', name: 'Post Administration Section', divisionId: 'office-of-the-head' },
-    { id: 'video-edit-sec', name: 'Video Edit Section', divisionId: 'operations-division' },
-    { id: 'media-server-sec', name: 'Media Server Support Section', divisionId: 'technical-and-media-server-support-division' }
+    { id: 'office-of-the-head', name: 'Office of the Head', divisionId: 'office-of-the-head' },
+    { id: 'post-administration-section', name: 'Post Administration Section', divisionId: 'office-of-the-head' },
+    { id: 'video-edit-section', name: 'Video Edit Section', divisionId: 'operations-division' },
+    { id: 'videographics-section', name: 'Videographics Section', divisionId: 'operations-division' },
+    { id: 'audio-post-section', name: 'Audio Post Section', divisionId: 'operations-division' },
+    { id: 'music-production-section', name: 'Music Production Section', divisionId: 'operations-division' },
+    { id: 'digital-cinematography-and-standards-section', name: 'Digital Cinematography and Standards Section', divisionId: 'operations-division' },
+    { id: 'content-management-section', name: 'Content Management Section', divisionId: 'operations-division' },
+    { id: 'technical-support-and-toc-section', name: 'Technical Support and TOC Section', divisionId: 'technical-and-media-server-support-division' },
+    { id: 'it-solutions-and-data-center-operations-section', name: 'IT Solutions and Data Center Operations Section', divisionId: 'technical-and-media-server-support-division' },
+    { id: 'media-server-support-section', name: 'Media Server Support Section', divisionId: 'technical-and-media-server-support-division' },
+    { id: 'facility-maintenance-section', name: 'Facility Maintenance Section', divisionId: 'technical-and-media-server-support-division' },
+    { id: 'agile-content-section', name: 'Agile Content Section', divisionId: 'project-management-division' },
+    { id: 'promotional-content-section', name: 'Promotional Content Section', divisionId: 'project-management-division' },
+    { id: 'original-content-section', name: 'Original Content Section', divisionId: 'project-management-division' },
+    { id: 'code-compliance-unit', name: 'CODE Compliance Unit', divisionId: 'project-management-division' }
   ];
   const insertSec = db.prepare('INSERT INTO sections (id, name, divisionId) VALUES (?, ?, ?)');
   initialSections.forEach(s => insertSec.run(s.id, s.name, s.divisionId));
@@ -307,6 +319,16 @@ export async function savePositions(positions: Position[]) {
 
 export async function getBranding(): Promise<BrandingConfig> {
   const row = db.prepare('SELECT * FROM branding WHERE id = 1').get() as any;
+  if (!row) {
+    return {
+      appName: 'Resource Inventory Management System',
+      appAcronym: 'R.I.M.S',
+      loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
+      copyright: '© 2025 Resource Inventory Management System. All rights reserved.',
+      theme: 'default',
+      darkMode: false,
+    };
+  }
   return {
     ...row,
     darkMode: !!row.darkMode,
