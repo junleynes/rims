@@ -91,7 +91,9 @@ db.exec(`
   );
 `);
 
-// Seed default data if branding is empty
+// --- Granular Seeding Logic ---
+
+// 1. Branding
 const brandingCount = db.prepare('SELECT COUNT(*) as count FROM branding').get() as { count: number };
 if (brandingCount.count === 0) {
   db.prepare(`
@@ -100,8 +102,11 @@ if (brandingCount.count === 0) {
     'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
     '© 2025 Resource Inventory Management System. All rights reserved.', 'default', 0)
   `).run();
+}
 
-  // Initial Divisions
+// 2. Divisions
+const divisionCount = db.prepare('SELECT COUNT(*) as count FROM divisions').get() as { count: number };
+if (divisionCount.count === 0) {
   const initialDivisions = [
     { id: 'office-of-the-head', name: 'Office of the Head' },
     { id: 'operations-division', name: 'Operations Division' },
@@ -110,8 +115,11 @@ if (brandingCount.count === 0) {
   ];
   const insertDiv = db.prepare('INSERT INTO divisions (id, name) VALUES (?, ?)');
   initialDivisions.forEach(d => insertDiv.run(d.id, d.name));
+}
 
-  // Initial Sections (Complete List)
+// 3. Sections (The full 16-section list)
+const sectionCount = db.prepare('SELECT COUNT(*) as count FROM sections').get() as { count: number };
+if (sectionCount.count === 0) {
   const initialSections = [
     { id: 'office-of-the-head', name: 'Office of the Head', divisionId: 'office-of-the-head' },
     { id: 'post-administration-section', name: 'Post Administration Section', divisionId: 'office-of-the-head' },
@@ -132,8 +140,11 @@ if (brandingCount.count === 0) {
   ];
   const insertSec = db.prepare('INSERT INTO sections (id, name, divisionId) VALUES (?, ?, ?)');
   initialSections.forEach(s => insertSec.run(s.id, s.name, s.divisionId));
+}
 
-  // Initial Users
+// 4. Users
+const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
+if (userCount.count === 0) {
   db.prepare(`
     INSERT INTO users (id, username, name, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
     VALUES ('1', 'admin', 'System Administrator', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
@@ -143,8 +154,11 @@ if (brandingCount.count === 0) {
     INSERT INTO users (id, username, name, role, section, division, position, reportingTo, twoFactorEnabled, isStaffOnly)
     VALUES ('2', 'manager_media', 'Media Manager', 'Manager', 'Media Server Support Section', 'Technical and Media Server Support Division', 'Senior Media Engineer', 'System Administrator', 0, 0)
   `).run();
+}
 
-  // Initial Locations
+// 5. Locations
+const locationCount = db.prepare('SELECT COUNT(*) as count FROM locations').get() as { count: number };
+if (locationCount.count === 0) {
   const initialLocations = [
     { id: '4th-floor', name: '4th floor' },
     { id: '5th-floor', name: '5th floor' },
@@ -153,8 +167,11 @@ if (brandingCount.count === 0) {
   ];
   const insertLoc = db.prepare('INSERT INTO locations (id, name) VALUES (?, ?)');
   initialLocations.forEach(l => insertLoc.run(l.id, l.name));
+}
 
-  // Initial Status Options
+// 6. Status Options
+const statusCount = db.prepare('SELECT COUNT(*) as count FROM status_options').get() as { count: number };
+if (statusCount.count === 0) {
   const initialStatus = [
     { id: 'working', name: 'working' },
     { id: 'defective', name: 'defective' },
@@ -163,8 +180,11 @@ if (brandingCount.count === 0) {
   ];
   const insertStatus = db.prepare('INSERT INTO status_options (id, name) VALUES (?, ?)');
   initialStatus.forEach(s => insertStatus.run(s.id, s.name));
+}
 
-  // Initial Positions
+// 7. Positions
+const positionCount = db.prepare('SELECT COUNT(*) as count FROM positions').get() as { count: number };
+if (positionCount.count === 0) {
   const initialPositions = [
     { id: 'vp', name: 'VP' },
     { id: 'avp', name: 'AVP' },
