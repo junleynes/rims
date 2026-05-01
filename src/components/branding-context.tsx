@@ -12,6 +12,7 @@ interface BrandingContextType {
 const defaultBranding: BrandingConfig = {
   appName: 'Resource Inventory Management System',
   appAcronym: 'R.I.M.S',
+  loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
   logoUrl: '',
   theme: 'default',
   darkMode: false,
@@ -27,7 +28,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setConfig(parsed);
+        setConfig(prev => ({ ...prev, ...parsed }));
         applyBranding(parsed);
       } catch (e) {
         console.error("Failed to parse branding config", e);

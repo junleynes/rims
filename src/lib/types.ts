@@ -58,6 +58,7 @@ export interface User {
 export interface BrandingConfig {
   appName: string;
   appAcronym: string;
+  loginDescription: string;
   logoUrl?: string;
   theme?: string;
   darkMode?: boolean;

@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Save, RefreshCw, Download, Upload, Database, ImageIcon, X, TrendingUp, Palette, Check, Moon, Sun } from 'lucide-react';
+import { Save, RefreshCw, Download, Upload, Database, ImageIcon, X, TrendingUp, Palette, Check, Moon, Sun, LayoutPanelTop } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +28,7 @@ export default function SettingsPage() {
   
   const [appName, setAppName] = useState(config.appName);
   const [appAcronym, setAppAcronym] = useState(config.appAcronym);
+  const [loginDescription, setLoginDescription] = useState(config.loginDescription);
   const [logoUrl, setLogoUrl] = useState(config.logoUrl || '');
   const [theme, setTheme] = useState(config.theme || 'default');
   const [darkMode, setDarkMode] = useState(!!config.darkMode);
@@ -35,7 +37,7 @@ export default function SettingsPage() {
   const handleSave = () => {
     setIsSaving(true);
     setTimeout(() => {
-      updateConfig({ appName, appAcronym, logoUrl, theme, darkMode });
+      updateConfig({ appName, appAcronym, loginDescription, logoUrl, theme, darkMode });
       toast({
         title: "Settings Saved",
         description: "Branding settings have been updated successfully.",
@@ -47,6 +49,7 @@ export default function SettingsPage() {
   const handleReset = () => {
     setAppName('Resource Inventory Management System');
     setAppAcronym('R.I.M.S');
+    setLoginDescription('A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.');
     setLogoUrl('');
     setTheme('default');
     setDarkMode(false);
@@ -154,7 +157,16 @@ export default function SettingsPage() {
                     value={appAcronym} 
                     onChange={(e) => setAppAcronym(e.target.value)}
                     placeholder="e.g. R.I.M.S"
-                    className="w-full"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="loginDescription">Login Page Description</Label>
+                  <Textarea 
+                    id="loginDescription" 
+                    value={loginDescription} 
+                    onChange={(e) => setLoginDescription(e.target.value)}
+                    placeholder="Welcome message for the login screen..."
+                    className="min-h-[80px]"
                   />
                 </div>
               </div>
@@ -271,7 +283,7 @@ export default function SettingsPage() {
                 </Button>
                 
                 <div className="relative flex-1">
-                  <Input 
+                  <input 
                     type="file" 
                     accept=".json" 
                     onChange={handleImportData}

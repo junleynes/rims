@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '@/components/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useBranding } from '@/components/branding-context';
+import Image from 'next/image';
 
 function LoginPage() {
   const router = useRouter();
@@ -33,21 +34,23 @@ function LoginPage() {
     
     // Simulate network delay
     setTimeout(() => {
-      try {
-        login(username);
-        toast({
-          title: "Verification Required",
-          description: "A 2FA code has been generated for your account.",
+      login(username)
+        .then(() => {
+          toast({
+            title: "Verification Required",
+            description: "A 2FA code has been generated for your account.",
+          });
+        })
+        .catch((err) => {
+          toast({
+            title: "Authentication Failed",
+            description: "Please check your credentials.",
+            variant: "destructive",
+          });
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
-      } catch (err) {
-        toast({
-          title: "Authentication Failed",
-          description: "Please check your credentials.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
     }, 800);
   };
 
@@ -84,13 +87,19 @@ function LoginPage() {
         <div className="relative z-10 max-w-md">
           <div className="flex items-center gap-3 mb-8">
             <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
-              <TrendingUp className="h-10 w-10 text-accent" />
+              {config.logoUrl ? (
+                <div className="h-10 w-10 relative">
+                  <Image src={config.logoUrl} alt="Logo" fill className="object-contain" />
+                </div>
+              ) : (
+                <TrendingUp className="h-10 w-10 text-accent" />
+              )}
             </div>
             <h1 className="text-4xl font-bold tracking-tight">{config.appAcronym}</h1>
           </div>
           <h2 className="text-2xl font-semibold mb-4 text-accent">{config.appName}</h2>
           <p className="text-white/80 leading-relaxed text-lg mb-8">
-            A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.
+            {config.loginDescription}
           </p>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -111,7 +120,13 @@ function LoginPage() {
             <div className="animate-in fade-in slide-in-from-right-4 duration-300">
               <CardHeader className="text-center">
                 <div className="md:hidden flex justify-center mb-4">
-                  <TrendingUp className="h-12 w-12 text-primary" />
+                  {config.logoUrl ? (
+                    <div className="h-12 w-12 relative">
+                      <Image src={config.logoUrl} alt="Logo" fill className="object-contain" />
+                    </div>
+                  ) : (
+                    <TrendingUp className="h-12 w-12 text-primary" />
+                  )}
                 </div>
                 <CardTitle className="text-2xl font-bold">Sign In</CardTitle>
                 <CardDescription>Enter your credentials to access {config.appAcronym}</CardDescription>
@@ -122,7 +137,7 @@ function LoginPage() {
                     <Label htmlFor="username">Username</Label>
                     <Input 
                       id="username" 
-                      placeholder="e.g. admin or manager_media" 
+                      placeholder="Username" 
                       required
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
@@ -131,7 +146,7 @@ function LoginPage() {
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
-                      <Input id="password" type="password" placeholder="••••••••" required defaultValue="password" />
+                      <Input id="password" type="password" placeholder="••••••••" required />
                       <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
@@ -167,9 +182,6 @@ function LoginPage() {
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
                     />
-                    <p className="text-[10px] text-center text-muted-foreground italic">
-                      Demo Hint: Use 123456
-                    </p>
                   </div>
                   <Button type="submit" className="w-full bg-accent hover:bg-accent/90 py-6 text-lg" disabled={isLoading}>
                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Verify & Sign In'}
@@ -188,12 +200,8 @@ function LoginPage() {
             </div>
           )}
           <CardFooter className="flex flex-col gap-4 text-sm text-center bg-muted/20 pt-6">
-            <p className="text-muted-foreground">
-              Demo access: use <code className="bg-muted px-1 rounded">admin</code> or <code className="bg-muted px-1 rounded">manager_media</code>
-            </p>
-            <div className="h-px w-full bg-border" />
             <p className="text-xs text-muted-foreground">
-              &copy; 2025 {config.appAcronym} System. All rights reserved.
+              &copy; {new Date().getFullYear()} {config.appAcronym} System. All rights reserved.
             </p>
           </CardFooter>
         </Card>
