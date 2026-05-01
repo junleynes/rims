@@ -4,6 +4,7 @@
 import React, { useRef } from 'react';
 import { BudgetTableView } from '@/components/budget/budget-table-view';
 import { useBudgets } from '@/components/budget-context';
+import { useAuth } from '@/components/auth-context';
 import { Button } from '@/components/ui/button';
 import { Plus, Upload } from 'lucide-react';
 import Link from 'next/link';
@@ -12,6 +13,7 @@ import { BudgetEntry, Classification, BudgetCategory, Account } from '@/lib/type
 
 export default function BudgetsPage() {
   const { budgets, deleteBudget, importBudgets } = useBudgets();
+  const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,14 +44,19 @@ export default function BudgetsPage() {
             });
 
             // Mapping CSV fields to BudgetEntry structure
-            // Required Header names in CSV: Year, Division, Section, Location, Classification, Category, Account, Project Title, Item Description, Quantity, Unit Cost Budget, PR Number, Accountable Person, Status, Remarks
             const quantity = parseInt(row['Quantity']) || 1;
             const unitCostBudget = parseFloat(row['Unit Cost Budget']) || 0;
 
+            // Role-based logic for CSV Import: 
+            // Managers can only import to their own division/section.
+            // Admins can import for any division/section provided in the CSV.
+            const division = user?.role === 'Manager' ? (user.division || '') : (row['Division'] || '');
+            const section = user?.role === 'Manager' ? (user.section || '') : (row['Section'] || '');
+
             return {
               year: parseInt(row['Year']) || new Date().getFullYear(),
-              division: row['Division'] || '',
-              section: row['Section'] || '',
+              division: division,
+              section: section,
               location: row['Location'] || '',
               classification: (row['Classification'] as Classification) || 'Hardware',
               category: (row['Category'] as BudgetCategory) || 'CAPEX',
@@ -75,7 +82,9 @@ export default function BudgetsPage() {
         importBudgets(importedData);
         toast({
           title: "Import Successful",
-          description: `${importedData.length} items have been added to the log.`,
+          description: user?.role === 'Manager' 
+            ? `${importedData.length} items have been imported into ${user.section}.`
+            : `${importedData.length} items have been added to the system log.`,
         });
         
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -83,7 +92,7 @@ export default function BudgetsPage() {
         console.error(err);
         toast({
           title: "Import Failed",
-          description: "Check if the CSV format is correct. Headers should include: Year, Division, Section, Location, Classification, Category, Account, Project Title, Item Description, Quantity, Unit Cost Budget...",
+          description: "Check if the CSV format is correct. Required headers: Year, Division, Section, Location, Classification, Category, Account, Project Title, Item Description, Quantity, Unit Cost Budget",
           variant: "destructive",
         });
       }
@@ -92,10 +101,16 @@ export default function BudgetsPage() {
   };
 
   const triggerImport = () => {
+    let desc = "Ensure headers are: Year, Division, Section, Location, Classification, Category, Account, Project Title, Item Description, Quantity, Unit Cost Budget";
+    
+    if (user?.role === 'Manager') {
+      desc = `Importing for ${user.section}. All items in the CSV will be automatically assigned to your section. Headers: Year, Location, Classification, Category, Account, Project Title, Item Description, Quantity, Unit Cost Budget`;
+    }
+
     toast({
       title: "CSV Header Requirement",
-      description: "Ensure headers are: Year, Division, Section, Location, Classification, Category, Account, Project Title, Item Description, Quantity, Unit Cost Budget",
-      duration: 6000,
+      description: desc,
+      duration: 8000,
     });
     fileInputRef.current?.click();
   };
