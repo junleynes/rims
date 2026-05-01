@@ -26,8 +26,17 @@ export default function DashboardPage() {
 
   const filteredBudgets = budgets.filter(b => {
     const matchesYear = b.year.toString() === yearFilter;
-    const matchesSection = user?.role === 'Manager' ? b.section === user.section : true;
-    return matchesYear && matchesSection;
+    
+    // Visibility logic
+    let matchesVisibility = true;
+    if (user?.role === 'Manager') {
+      matchesVisibility = b.section === user.section;
+    } else if (user?.role === 'AVP') {
+      matchesVisibility = b.division === user.division;
+    }
+    // VP and Admin see everything across the whole department
+    
+    return matchesYear && matchesVisibility;
   });
 
   const recentBudgets = [...filteredBudgets]
@@ -45,19 +54,23 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold tracking-tight text-primary">Dashboard</h1>
             <p className="text-muted-foreground flex items-center gap-2">
               <Calendar className="h-3.5 w-3.5" />
-              {user?.role === 'Admin' 
-                ? `System-wide resource overview for fiscal year ${yearFilter}`
-                : `Resource overview for ${user?.section} - FY ${yearFilter}`
+              {user?.role === 'Admin' || user?.role === 'VP'
+                ? `Department-wide resource overview for fiscal year ${yearFilter}`
+                : user?.role === 'AVP'
+                  ? `Division overview for ${user?.division} - FY ${yearFilter}`
+                  : `Resource overview for ${user?.section} - FY ${yearFilter}`
               }
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button asChild variant="outline" className="gap-2 font-bold h-10 border-primary/20 hover:bg-primary/5 text-primary">
-            <Link href="/admin/reports">
-              <BarChart3 className="h-4 w-4" /> Reports
-            </Link>
-          </Button>
+          {(user?.role === 'Admin' || user?.role === 'VP' || user?.role === 'AVP') && (
+            <Button asChild variant="outline" className="gap-2 font-bold h-10 border-primary/20 hover:bg-primary/5 text-primary">
+              <Link href="/admin/reports">
+                <BarChart3 className="h-4 w-4" /> Reports
+              </Link>
+            </Button>
+          )}
           <div className="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border h-10">
             <span className="text-xs font-bold text-muted-foreground ml-2 uppercase tracking-tighter">Fiscal Year:</span>
             <Select value={yearFilter} onValueChange={setYearFilter}>
@@ -74,7 +87,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <StatsCards budgets={filteredBudgets} section={user?.role === 'Manager' ? user.section : undefined} />
+      <StatsCards budgets={filteredBudgets} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ExpenditureChart budgets={filteredBudgets} />

@@ -14,7 +14,9 @@ import {
   Building2,
   FileBarChart,
   Network,
-  UsersRound
+  UsersRound,
+  ShieldCheck,
+  Building
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -52,13 +54,18 @@ export function SidebarNav() {
     navItems.push({ name: 'My Team', icon: UsersRound, href: '/team', color: 'bg-cyan-500' });
   }
 
+  const managementItems = [
+    { name: 'Reports', icon: FileBarChart, href: '/admin/reports', color: 'bg-rose-500' },
+    { name: 'Org Structure', icon: Network, href: '/admin/org-structure', color: 'bg-indigo-500' },
+  ];
+
   const adminItems = [
     { name: 'User Management', icon: Users, href: '/admin/users', color: 'bg-cyan-500' },
-    { name: 'Org Structure', icon: Network, href: '/admin/org-structure', color: 'bg-indigo-500' },
     { name: 'Organization', icon: Building2, href: '/admin/organization', color: 'bg-purple-500' },
-    { name: 'Reports', icon: FileBarChart, href: '/admin/reports', color: 'bg-rose-500' },
     { name: 'System Settings', icon: Settings, href: '/admin/settings', color: 'bg-amber-500' },
   ];
+
+  const isManagement = user.role === 'Admin' || user.role === 'VP' || user.role === 'AVP';
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r-0">
@@ -142,6 +149,37 @@ export function SidebarNav() {
           </SidebarMenu>
         </SidebarGroup>
 
+        {isManagement && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 mt-2">Management</SidebarGroupLabel>
+            <SidebarMenu>
+              {managementItems.map((item) => (
+                <SidebarMenuItem key={item.name}>
+                  <SidebarMenuButton 
+                    asChild 
+                    isActive={pathname === item.href}
+                    tooltip={item.name}
+                    className={cn(
+                      "h-11 px-3 rounded-xl transition-all duration-200 mb-1",
+                      pathname === item.href ? "bg-blue-50 text-blue-700 hover:bg-blue-100" : "hover:bg-muted/50"
+                    )}
+                  >
+                    <Link href={item.href} className="flex items-center gap-3">
+                      <div className={cn(
+                        "flex items-center justify-center h-8 w-8 rounded-lg shadow-sm text-white shrink-0 transition-transform group-hover:scale-105",
+                        item.color
+                      )}>
+                        <item.icon className="h-4 w-4" />
+                      </div>
+                      <span className="font-semibold text-[14px]">{item.name}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
+
         {user.role === 'Admin' && (
           <SidebarGroup>
             <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 mt-2">Administration</SidebarGroupLabel>
@@ -191,7 +229,7 @@ export function SidebarNav() {
             <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
               <span className="text-[14px] font-bold truncate text-primary leading-tight">{user.name}</span>
               <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-tight">
-                Profile Settings
+                {user.role} - Settings
               </span>
             </div>
           </Link>

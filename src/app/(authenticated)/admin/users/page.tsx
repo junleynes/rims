@@ -34,7 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound, UserCheck, Briefcase, Edit2, X, UserX } from 'lucide-react';
+import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound, UserCheck, Briefcase, Edit2, X, UserX, Network, Building2 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -130,11 +130,21 @@ export default function UserManagementPage() {
     return s.divisionId === divId;
   });
 
+  const getRoleBadge = (role: Role | undefined) => {
+    if (!role) return null;
+    switch (role) {
+      case 'Admin': return <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary"><Shield className="h-3 w-3" /> Admin</Badge>;
+      case 'VP': return <Badge variant="secondary" className="gap-1 bg-purple-100 text-purple-700"><Building2 className="h-3 w-3" /> VP</Badge>;
+      case 'AVP': return <Badge variant="secondary" className="gap-1 bg-indigo-100 text-indigo-700"><Network className="h-3 w-3" /> AVP</Badge>;
+      case 'Manager': return <Badge variant="secondary" className="gap-1 bg-blue-100 text-blue-700"><UserIcon className="h-3 w-3" /> Manager</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary">System Registry</h1>
-        <p className="text-muted-foreground">Manage system users (log-in enabled) and organizational staff (personnel records).</p>
+        <p className="text-muted-foreground">Manage system users and organizational personnel records.</p>
       </div>
 
       <Card className="border-none shadow-sm">
@@ -184,8 +194,10 @@ export default function UserManagementPage() {
                   >
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Admin">Admin</SelectItem>
-                      <SelectItem value="Manager">Manager</SelectItem>
+                      <SelectItem value="Admin">Admin (Global)</SelectItem>
+                      <SelectItem value="VP">VP (Department-wide)</SelectItem>
+                      <SelectItem value="AVP">AVP (Division-wide)</SelectItem>
+                      <SelectItem value="Manager">Manager (Section-wide)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -299,10 +311,7 @@ export default function UserManagementPage() {
                         <UserX className="h-3 w-3" /> Staff Only
                       </Badge>
                     ) : (
-                      <Badge variant="secondary" className="gap-1 text-[10px] bg-primary/10 text-primary border-primary/20">
-                        {u.role === 'Admin' ? <Shield className="h-3 w-3" /> : <UserIcon className="h-3 w-3" />}
-                        {u.role} Account
-                      </Badge>
+                      getRoleBadge(u.role)
                     )}
                   </TableCell>
                   <TableCell className="text-xs font-medium text-slate-600">

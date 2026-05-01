@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -19,7 +20,8 @@ import {
   Paperclip,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Network
 } from 'lucide-react';
 import { 
   Table, 
@@ -101,6 +103,8 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     if (user?.role === 'Manager') {
       if (user.division) setCurrentDivisionName(user.division);
       if (user.section) setCurrentSectionName(user.section);
+    } else if (user?.role === 'AVP') {
+      if (user.division) setCurrentDivisionName(user.division);
     }
   }, [user]);
 
@@ -133,10 +137,15 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
 
   const filteredAndSortedBudgets = useMemo(() => {
     let result = (budgets || []).filter(b => {
+      // Hard Visibility Rules
       if (user?.role === 'Manager') {
-        if (user.division && b.division !== user.division) return false;
-        if (user.section && b.section !== user.section) return false;
+        if (b.section !== user.section) return false;
+      } else if (user?.role === 'AVP') {
+        if (b.division !== user.division) return false;
       }
+      // VP and Admin see everything
+
+      // UI Scope Filters
       if (scope === 'drilldown') {
         if (currentDivisionName && b.division !== currentDivisionName) return false;
         if (currentSectionName && b.section !== currentSectionName) return false;
@@ -144,6 +153,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       } else if (scope === 'division') {
         if (selectedDivisionFlat !== 'All' && b.division !== selectedDivisionFlat) return false;
       }
+
       const matchesCategory = selectedCategory === 'All' || b.category === selectedCategory;
       const matchesSearch = 
         (b.projectTitle || '').toLowerCase().includes(search.toLowerCase()) || 
@@ -193,15 +203,15 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
           <Select 
             value={selectedDivisionFlat} 
             onValueChange={setSelectedDivisionFlat}
-            disabled={user?.role === 'Manager' && !!user.division}
+            disabled={(user?.role === 'Manager' || user?.role === 'AVP') && !!user.division}
           >
             <SelectTrigger className="h-8 w-[160px] text-xs">
               <SelectValue placeholder="Select Division" />
             </SelectTrigger>
             <SelectContent>
-              {user?.role !== 'Manager' && <SelectItem value="All">All Divisions</SelectItem>}
+              {!(user?.role === 'Manager' || user?.role === 'AVP') && <SelectItem value="All">All Divisions</SelectItem>}
               {divisions
-                .filter(d => user?.role === 'Manager' ? d.name === user.division : true)
+                .filter(d => (user?.role === 'Manager' || user?.role === 'AVP') ? d.name === user.division : true)
                 .map(d => <SelectItem key={d.id} value={d.name} className="text-xs">{d.name}</SelectItem>)
               }
             </SelectContent>
@@ -249,7 +259,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   };
 
   if (scope === 'drilldown') {
-    if (!currentDivisionName && user?.role === 'Admin') {
+    if (!currentDivisionName && (user?.role === 'Admin' || user?.role === 'VP')) {
       return (
         <div className="space-y-6">
           {renderHeaderControls()}
@@ -287,7 +297,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
           <div className="flex items-center gap-4">
-            {user?.role === 'Admin' && (
+            {(user?.role === 'Admin' || user?.role === 'VP') && (
               <Button variant="ghost" size="sm" onClick={() => setCurrentDivisionName(null)} className="gap-2 font-bold text-primary">
                 <ArrowLeft className="h-4 w-4" /> Back to Divisions
               </Button>
@@ -296,26 +306,31 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             <h2 className="text-lg font-bold text-primary">{currentDivisionName}</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredSections.map((section, idx) => (
-              <Card 
-                key={section.id} 
-                className="group cursor-pointer hover:border-accent hover:shadow-xl transition-all border-none bg-white shadow-sm"
-                onClick={() => setCurrentSectionName(section.name)}
-              >
-                <CardContent className="p-6 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className={cn(
-                      "flex items-center justify-center h-12 w-12 rounded-xl text-white shadow-md group-hover:scale-110 transition-transform duration-300",
-                      CARD_COLORS[(idx + 3) % CARD_COLORS.length]
-                    )}>
-                      <LayoutGrid className="h-5 w-5" />
+            {filteredSections.map((section, idx) => {
+              // Manager restricted to their section
+              if (user?.role === 'Manager' && section.name !== user.section) return null;
+              
+              return (
+                <Card 
+                  key={section.id} 
+                  className="group cursor-pointer hover:border-accent hover:shadow-xl transition-all border-none bg-white shadow-sm"
+                  onClick={() => setCurrentSectionName(section.name)}
+                >
+                  <CardContent className="p-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "flex items-center justify-center h-12 w-12 rounded-xl text-white shadow-md group-hover:scale-110 transition-transform duration-300",
+                        CARD_COLORS[(idx + 3) % CARD_COLORS.length]
+                      )}>
+                        <LayoutGrid className="h-5 w-5" />
+                      </div>
+                      <span className="font-bold text-sm group-hover:text-emerald-600 transition-colors">{section.name}</span>
                     </div>
-                    <span className="font-bold text-sm group-hover:text-emerald-600 transition-colors">{section.name}</span>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500" />
-                </CardContent>
-              </Card>
-            ))}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500" />
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       );
@@ -328,7 +343,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               variant="ghost" 
               size="sm" 
               onClick={() => {
-                if (user?.role === 'Admin') setCurrentSectionName(null);
+                if (user?.role !== 'Manager') setCurrentSectionName(null);
               }} 
               disabled={user?.role === 'Manager'}
               className="gap-2 font-bold text-primary"
