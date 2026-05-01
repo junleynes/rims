@@ -21,6 +21,7 @@ function LoginPage() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
 
   // Auto-redirect if already logged in
@@ -34,11 +35,14 @@ function LoginPage() {
     
     // Simulate network delay
     setTimeout(() => {
-      login(username)
+      login(username, password)
         .then(() => {
+          if (!user && !pendingUser) {
+             // Logic handled by login function inside auth-context
+          }
           toast({
-            title: "Verification Required",
-            description: "A 2FA code has been generated for your account.",
+            title: "Access Verification",
+            description: "Checking system registry...",
           });
         })
         .catch((err) => {
@@ -146,7 +150,14 @@ function LoginPage() {
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
                     <div className="relative">
-                      <Input id="password" type="password" placeholder="••••••••" required />
+                      <Input 
+                        id="password" 
+                        type="password" 
+                        placeholder="••••••••" 
+                        required 
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
                       <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>
