@@ -1,13 +1,14 @@
 
 import Database from 'better-sqlite3';
 import path from 'path';
-import fs from 'fs';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position } from './types';
 
 const DB_PATH = path.join(process.cwd(), 'data.db');
 
 // Initialize database
 const db = new Database(DB_PATH);
+
+// Enable WAL mode for performance
 db.pragma('journal_mode = WAL');
 
 // Create tables if they don't exist
@@ -110,10 +111,25 @@ if (brandingCount.count === 0) {
   const insertDiv = db.prepare('INSERT INTO divisions (id, name) VALUES (?, ?)');
   initialDivisions.forEach(d => insertDiv.run(d.id, d.name));
 
+  // Initial Sections
+  const initialSections = [
+    { id: 'office-of-the-head-sec', name: 'Office of the Head', divisionId: 'office-of-the-head' },
+    { id: 'post-admin-sec', name: 'Post Administration Section', divisionId: 'office-of-the-head' },
+    { id: 'video-edit-sec', name: 'Video Edit Section', divisionId: 'operations-division' },
+    { id: 'media-server-sec', name: 'Media Server Support Section', divisionId: 'technical-and-media-server-support-division' }
+  ];
+  const insertSec = db.prepare('INSERT INTO sections (id, name, divisionId) VALUES (?, ?, ?)');
+  initialSections.forEach(s => insertSec.run(s.id, s.name, s.divisionId));
+
   // Initial Users
   db.prepare(`
     INSERT INTO users (id, username, name, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
     VALUES ('1', 'admin', 'System Administrator', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
+  `).run();
+
+  db.prepare(`
+    INSERT INTO users (id, username, name, role, section, division, position, reportingTo, twoFactorEnabled, isStaffOnly)
+    VALUES ('2', 'manager_media', 'Media Manager', 'Manager', 'Media Server Support Section', 'Technical and Media Server Support Division', 'Senior Media Engineer', 'System Administrator', 0, 0)
   `).run();
 
   // Initial Locations
@@ -142,7 +158,8 @@ if (brandingCount.count === 0) {
     { id: 'avp', name: 'AVP' },
     { id: 'section-head', name: 'Section Head' },
     { id: 'unit-head', name: 'Unit Head' },
-    { id: 'assistant-manager', name: 'Assistant Manager' }
+    { id: 'assistant-manager', name: 'Assistant Manager' },
+    { id: 'senior-engineer', name: 'Senior Media Engineer' }
   ];
   const insertPos = db.prepare('INSERT INTO positions (id, name) VALUES (?, ?)');
   initialPositions.forEach(p => insertPos.run(p.id, p.name));
