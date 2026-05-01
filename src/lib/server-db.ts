@@ -77,7 +77,26 @@ function ensureDataFile() {
 export async function readData(): Promise<AppData> {
   ensureDataFile();
   const raw = fs.readFileSync(DB_PATH, 'utf-8');
-  return JSON.parse(raw);
+  const parsed = JSON.parse(raw);
+  
+  // Ensure all keys exist for backward compatibility with older data-storage.json files
+  return {
+    resources: parsed.resources || [],
+    users: parsed.users || [],
+    divisions: parsed.divisions || [],
+    sections: parsed.sections || [],
+    locations: parsed.locations || [],
+    statusOptions: parsed.statusOptions || INITIAL_STATUS_OPTIONS,
+    positions: parsed.positions || INITIAL_POSITIONS,
+    branding: parsed.branding || {
+      appName: 'Resource Inventory Management System',
+      appAcronym: 'R.I.M.S',
+      loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
+      copyright: `© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`,
+      theme: 'default',
+      darkMode: false
+    }
+  };
 }
 
 export async function writeData(data: AppData) {

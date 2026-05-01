@@ -40,7 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 export default function UserManagementPage() {
-  const { users, divisions, sections, positions, addUser, deleteUser, updateUser } = useSystemData();
+  const { users = [], divisions = [], sections = [], positions = [], addUser, deleteUser, updateUser } = useSystemData();
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
