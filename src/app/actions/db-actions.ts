@@ -1,30 +1,36 @@
 
 'use server';
 
-import { readData, writeData } from '@/lib/server-db';
+import * as db from '@/lib/server-db';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position } from '@/lib/types';
 
 export async function getBudgets() {
-  const data = await readData();
-  return data.resources;
+  return db.getAllResources();
 }
 
 export async function saveBudgets(budgets: BudgetEntry[]) {
-  const data = await readData();
-  data.resources = budgets;
-  await writeData(data);
+  await db.saveResources(budgets);
 }
 
 export async function getSystemData() {
-  const data = await readData();
+  const [divisions, sections, locations, statusOptions, users, branding, positions] = await Promise.all([
+    db.getAllDivisions(),
+    db.getAllSections(),
+    db.getAllLocations(),
+    db.getAllStatusOptions(),
+    db.getAllUsers(),
+    db.getBranding(),
+    db.getAllPositions()
+  ]);
+
   return {
-    divisions: data.divisions,
-    sections: data.sections,
-    locations: data.locations,
-    statusOptions: data.statusOptions,
-    users: data.users,
-    branding: data.branding,
-    positions: data.positions
+    divisions,
+    sections,
+    locations,
+    statusOptions,
+    users,
+    branding,
+    positions
   };
 }
 
@@ -37,14 +43,12 @@ export async function saveSystemData(update: {
   branding?: BrandingConfig,
   positions?: Position[]
 }) {
-  const data = await readData();
-  if (update.divisions) data.divisions = update.divisions;
-  if (update.sections) data.sections = update.sections;
-  if (update.locations) data.locations = update.locations;
-  if (update.statusOptions) data.statusOptions = update.statusOptions;
-  if (update.users) data.users = update.users;
-  if (update.branding) data.branding = update.branding;
-  if (update.positions) data.positions = update.positions;
-  await writeData(data);
+  if (update.divisions) await db.saveDivisions(update.divisions);
+  if (update.sections) await db.saveSections(update.sections);
+  if (update.locations) await db.saveLocations(update.locations);
+  if (update.statusOptions) await db.saveStatusOptions(update.statusOptions);
+  if (update.users) await db.saveUsers(update.users);
+  if (update.branding) await db.saveBranding(update.branding);
+  if (update.positions) await db.savePositions(update.positions);
   return true;
 }

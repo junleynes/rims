@@ -1,105 +1,314 @@
 
-import fs from 'fs';
+import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position } from './types';
 
-const DB_PATH = path.join(process.cwd(), 'data-storage.json');
+const DB_PATH = path.join(process.cwd(), 'data.db');
 
-const INITIAL_STATUS_OPTIONS = [
-  { id: 'working', name: 'working' },
-  { id: 'defective', name: 'defective' },
-  { id: 'turned-over', name: 'turned over to SAMD' },
-  { id: 'others', name: 'others:' }
-];
+// Initialize database
+const db = new Database(DB_PATH);
+db.pragma('journal_mode = WAL');
 
-const INITIAL_POSITIONS = [
-  { id: 'vp', name: 'VP' },
-  { id: 'avp', name: 'AVP' },
-  { id: 'section-head', name: 'Section Head' },
-  { id: 'unit-head', name: 'Unit Head' },
-  { id: 'assistant-manager', name: 'Assistant Manager' }
-];
+// Create tables if they don't exist
+db.exec(`
+  CREATE TABLE IF NOT EXISTS resources (
+    id TEXT PRIMARY KEY,
+    year INTEGER,
+    division TEXT,
+    section TEXT,
+    location TEXT,
+    classification TEXT,
+    category TEXT,
+    account TEXT,
+    projectTitle TEXT,
+    itemDescription TEXT,
+    quantity INTEGER,
+    unitCostBudget REAL,
+    totalCostBudget REAL,
+    unitCostActual REAL,
+    totalCostActual REAL,
+    prNumber TEXT,
+    dateDelivered TEXT,
+    grSisNumber TEXT,
+    accountablePerson TEXT,
+    status TEXT,
+    statusOthers TEXT,
+    remarks TEXT,
+    attachmentUrl TEXT,
+    createdAt TEXT
+  );
 
-interface AppData {
-  resources: BudgetEntry[];
-  users: User[];
-  divisions: Division[];
-  sections: Section[];
-  locations: Location[];
-  statusOptions: StatusOption[];
-  branding: BrandingConfig;
-  positions: Position[];
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT,
+    name TEXT,
+    role TEXT,
+    section TEXT,
+    division TEXT,
+    twoFactorEnabled INTEGER,
+    position TEXT,
+    reportingTo TEXT,
+    isStaffOnly INTEGER
+  );
+
+  CREATE TABLE IF NOT EXISTS divisions (
+    id TEXT PRIMARY KEY,
+    name TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS sections (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    divisionId TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS locations (
+    id TEXT PRIMARY KEY,
+    name TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS status_options (
+    id TEXT PRIMARY KEY,
+    name TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS positions (
+    id TEXT PRIMARY KEY,
+    name TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS branding (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    appName TEXT,
+    appAcronym TEXT,
+    loginDescription TEXT,
+    copyright TEXT,
+    logoUrl TEXT,
+    theme TEXT,
+    darkMode INTEGER
+  );
+`);
+
+// Seed default data if branding is empty
+const brandingCount = db.prepare('SELECT COUNT(*) as count FROM branding').get() as { count: number };
+if (brandingCount.count === 0) {
+  db.prepare(`
+    INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
+    VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
+    'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
+    '© 2025 Resource Inventory Management System. All rights reserved.', 'default', 0)
+  `).run();
+
+  // Initial Divisions
+  const initialDivisions = [
+    { id: 'office-of-the-head', name: 'Office of the Head' },
+    { id: 'operations-division', name: 'Operations Division' },
+    { id: 'technical-and-media-server-support-division', name: 'Technical and Media Server Support Division' },
+    { id: 'project-management-division', name: 'Project Management Division' }
+  ];
+  const insertDiv = db.prepare('INSERT INTO divisions (id, name) VALUES (?, ?)');
+  initialDivisions.forEach(d => insertDiv.run(d.id, d.name));
+
+  // Initial Users
+  db.prepare(`
+    INSERT INTO users (id, username, name, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
+    VALUES ('1', 'admin', 'System Administrator', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
+  `).run();
+
+  // Initial Locations
+  const initialLocations = [
+    { id: '4th-floor', name: '4th floor' },
+    { id: '5th-floor', name: '5th floor' },
+    { id: '6th-floor', name: '6th floor' },
+    { id: 'deployed', name: 'Deployed' }
+  ];
+  const insertLoc = db.prepare('INSERT INTO locations (id, name) VALUES (?, ?)');
+  initialLocations.forEach(l => insertLoc.run(l.id, l.name));
+
+  // Initial Status Options
+  const initialStatus = [
+    { id: 'working', name: 'working' },
+    { id: 'defective', name: 'defective' },
+    { id: 'turned-over', name: 'turned over to SAMD' },
+    { id: 'others', name: 'others:' }
+  ];
+  const insertStatus = db.prepare('INSERT INTO status_options (id, name) VALUES (?, ?)');
+  initialStatus.forEach(s => insertStatus.run(s.id, s.name));
+
+  // Initial Positions
+  const initialPositions = [
+    { id: 'vp', name: 'VP' },
+    { id: 'avp', name: 'AVP' },
+    { id: 'section-head', name: 'Section Head' },
+    { id: 'unit-head', name: 'Unit Head' },
+    { id: 'assistant-manager', name: 'Assistant Manager' }
+  ];
+  const insertPos = db.prepare('INSERT INTO positions (id, name) VALUES (?, ?)');
+  initialPositions.forEach(p => insertPos.run(p.id, p.name));
 }
 
-function ensureDataFile() {
-  if (!fs.existsSync(DB_PATH)) {
-    const initialData: AppData = {
-      resources: [],
-      users: [
-        {
-          id: '1',
-          username: 'admin',
-          name: 'System Administrator',
-          role: 'Admin',
-          position: 'Chief Technology Officer',
-          reportingTo: 'Board of Directors',
-          twoFactorEnabled: true,
-        }
-      ],
-      divisions: [
-        { id: 'office-of-the-head', name: 'Office of the Head' },
-        { id: 'operations-division', name: 'Operations Division' },
-        { id: 'technical-and-media-server-support-division', name: 'Technical and Media Server Support Division' },
-        { id: 'project-management-division', name: 'Project Management Division' }
-      ],
-      sections: [],
-      locations: [
-        { id: '4th-floor', name: '4th floor' },
-        { id: '5th-floor', name: '5th floor' },
-        { id: '6th-floor', name: '6th floor' },
-        { id: 'deployed', name: 'Deployed' }
-      ],
-      statusOptions: INITIAL_STATUS_OPTIONS,
-      positions: INITIAL_POSITIONS,
-      branding: {
-        appName: 'Resource Inventory Management System',
-        appAcronym: 'R.I.M.S',
-        loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
-        copyright: `© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`,
-        theme: 'default',
-        darkMode: false
-      }
-    };
-    fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2));
-  }
+export async function getAllResources(): Promise<BudgetEntry[]> {
+  const rows = db.prepare('SELECT * FROM resources ORDER BY createdAt DESC').all() as any[];
+  return rows.map(row => ({
+    ...row,
+    unitCostActual: row.unitCostActual || 0,
+    totalCostActual: row.totalCostActual || 0,
+  }));
 }
 
-export async function readData(): Promise<AppData> {
-  ensureDataFile();
-  const raw = fs.readFileSync(DB_PATH, 'utf-8');
-  const parsed = JSON.parse(raw);
-  
-  // Ensure all keys exist for backward compatibility with older data-storage.json files
-  return {
-    resources: parsed.resources || [],
-    users: parsed.users || [],
-    divisions: parsed.divisions || [],
-    sections: parsed.sections || [],
-    locations: parsed.locations || [],
-    statusOptions: parsed.statusOptions || INITIAL_STATUS_OPTIONS,
-    positions: parsed.positions || INITIAL_POSITIONS,
-    branding: parsed.branding || {
-      appName: 'Resource Inventory Management System',
-      appAcronym: 'R.I.M.S',
-      loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
-      copyright: `© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`,
-      theme: 'default',
-      darkMode: false
+export async function saveResources(resources: BudgetEntry[]) {
+  const deleteStmt = db.prepare('DELETE FROM resources');
+  const insertStmt = db.prepare(`
+    INSERT INTO resources (
+      id, year, division, section, location, classification, category, account,
+      projectTitle, itemDescription, quantity, unitCostBudget, totalCostBudget,
+      unitCostActual, totalCostActual, prNumber, dateDelivered, grSisNumber,
+      accountablePerson, status, statusOthers, remarks, attachmentUrl, createdAt
+    ) VALUES (
+      @id, @year, @division, @section, @location, @classification, @category, @account,
+      @projectTitle, @itemDescription, @quantity, @unitCostBudget, @totalCostBudget,
+      @unitCostActual, @totalCostActual, @prNumber, @dateDelivered, @grSisNumber,
+      @accountablePerson, @status, @statusOthers, @remarks, @attachmentUrl, @createdAt
+    )
+  `);
+
+  const transaction = db.transaction((data: BudgetEntry[]) => {
+    deleteStmt.run();
+    for (const item of data) {
+      insertStmt.run(item);
     }
+  });
+
+  transaction(resources);
+}
+
+export async function getAllUsers(): Promise<User[]> {
+  const rows = db.prepare('SELECT * FROM users').all() as any[];
+  return rows.map(row => ({
+    ...row,
+    twoFactorEnabled: !!row.twoFactorEnabled,
+    isStaffOnly: !!row.isStaffOnly,
+  }));
+}
+
+export async function saveUsers(users: User[]) {
+  const deleteStmt = db.prepare('DELETE FROM users');
+  const insertStmt = db.prepare(`
+    INSERT INTO users (id, username, name, role, section, division, twoFactorEnabled, position, reportingTo, isStaffOnly)
+    VALUES (@id, @username, @name, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly)
+  `);
+
+  const transaction = db.transaction((data: User[]) => {
+    deleteStmt.run();
+    for (const user of data) {
+      insertStmt.run({
+        ...user,
+        twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
+        isStaffOnly: user.isStaffOnly ? 1 : 0,
+      });
+    }
+  });
+
+  transaction(users);
+}
+
+export async function getAllDivisions(): Promise<Division[]> {
+  return db.prepare('SELECT * FROM divisions').all() as Division[];
+}
+
+export async function saveDivisions(divisions: Division[]) {
+  const deleteStmt = db.prepare('DELETE FROM divisions');
+  const insertStmt = db.prepare('INSERT INTO divisions (id, name) VALUES (@id, @name)');
+  
+  const transaction = db.transaction((data: Division[]) => {
+    deleteStmt.run();
+    for (const d of data) insertStmt.run(d);
+  });
+  transaction(divisions);
+}
+
+export async function getAllSections(): Promise<Section[]> {
+  return db.prepare('SELECT * FROM sections').all() as Section[];
+}
+
+export async function saveSections(sections: Section[]) {
+  const deleteStmt = db.prepare('DELETE FROM sections');
+  const insertStmt = db.prepare('INSERT INTO sections (id, name, divisionId) VALUES (@id, @name, @divisionId)');
+  
+  const transaction = db.transaction((data: Section[]) => {
+    deleteStmt.run();
+    for (const s of data) insertStmt.run(s);
+  });
+  transaction(sections);
+}
+
+export async function getAllLocations(): Promise<Location[]> {
+  return db.prepare('SELECT * FROM locations').all() as Location[];
+}
+
+export async function saveLocations(locations: Location[]) {
+  const deleteStmt = db.prepare('DELETE FROM locations');
+  const insertStmt = db.prepare('INSERT INTO locations (id, name) VALUES (@id, @name)');
+  
+  const transaction = db.transaction((data: Location[]) => {
+    deleteStmt.run();
+    for (const l of data) insertStmt.run(l);
+  });
+  transaction(locations);
+}
+
+export async function getAllStatusOptions(): Promise<StatusOption[]> {
+  return db.prepare('SELECT * FROM status_options').all() as StatusOption[];
+}
+
+export async function saveStatusOptions(options: StatusOption[]) {
+  const deleteStmt = db.prepare('DELETE FROM status_options');
+  const insertStmt = db.prepare('INSERT INTO status_options (id, name) VALUES (@id, @name)');
+  
+  const transaction = db.transaction((data: StatusOption[]) => {
+    deleteStmt.run();
+    for (const o of data) insertStmt.run(o);
+  });
+  transaction(options);
+}
+
+export async function getAllPositions(): Promise<Position[]> {
+  return db.prepare('SELECT * FROM positions').all() as Position[];
+}
+
+export async function savePositions(positions: Position[]) {
+  const deleteStmt = db.prepare('DELETE FROM positions');
+  const insertStmt = db.prepare('INSERT INTO positions (id, name) VALUES (@id, @name)');
+  
+  const transaction = db.transaction((data: Position[]) => {
+    deleteStmt.run();
+    for (const p of data) insertStmt.run(p);
+  });
+  transaction(positions);
+}
+
+export async function getBranding(): Promise<BrandingConfig> {
+  const row = db.prepare('SELECT * FROM branding WHERE id = 1').get() as any;
+  return {
+    ...row,
+    darkMode: !!row.darkMode,
   };
 }
 
-export async function writeData(data: AppData) {
-  ensureDataFile();
-  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+export async function saveBranding(branding: BrandingConfig) {
+  db.prepare(`
+    UPDATE branding SET
+      appName = @appName,
+      appAcronym = @appAcronym,
+      loginDescription = @loginDescription,
+      copyright = @copyright,
+      logoUrl = @logoUrl,
+      theme = @theme,
+      darkMode = @darkMode
+    WHERE id = 1
+  `).run({
+    ...branding,
+    darkMode: branding.darkMode ? 1 : 0,
+  });
 }
