@@ -8,6 +8,7 @@ import { getBudgets, saveBudgets } from '@/app/actions/db-actions';
 interface BudgetContextType {
   budgets: BudgetEntry[];
   addBudget: (entry: Omit<BudgetEntry, 'id' | 'createdAt'>) => void;
+  importBudgets: (entries: Omit<BudgetEntry, 'id' | 'createdAt'>[]) => void;
   updateBudget: (id: string, entry: Partial<BudgetEntry>) => void;
   deleteBudget: (id: string) => void;
   isLoading: boolean;
@@ -22,7 +23,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function load() {
       const data = await getBudgets();
-      setBudgets(data);
+      setBudgets(data || []);
       setIsLoading(false);
     }
     load();
@@ -35,6 +36,17 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date().toISOString(),
     };
     const updated = [newEntry, ...budgets];
+    setBudgets(updated);
+    await saveBudgets(updated);
+  };
+
+  const importBudgets = async (entries: Omit<BudgetEntry, 'id' | 'createdAt'>[]) => {
+    const newEntries: BudgetEntry[] = entries.map(entry => ({
+      ...entry,
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString(),
+    }));
+    const updated = [...newEntries, ...budgets];
     setBudgets(updated);
     await saveBudgets(updated);
   };
@@ -52,7 +64,7 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <BudgetContext.Provider value={{ budgets, addBudget, updateBudget, deleteBudget, isLoading }}>
+    <BudgetContext.Provider value={{ budgets, addBudget, importBudgets, updateBudget, deleteBudget, isLoading }}>
       {children}
     </BudgetContext.Provider>
   );
