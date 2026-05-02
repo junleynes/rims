@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -15,7 +14,7 @@ const defaultBranding: BrandingConfig = {
   loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
   copyright: `© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`,
   logoUrl: '',
-  theme: 'default',
+  theme: 'sunset',
   darkMode: false,
 };
 

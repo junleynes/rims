@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -35,10 +34,13 @@ import { fetchSmtpConfig, updateSmtpConfig } from '@/app/actions/db-actions';
 import { SmtpConfig } from '@/lib/types';
 
 const THEMES = [
-  { id: 'default', name: 'Oceanic (Default)', primary: 'bg-[#2E86AB]', accent: 'bg-[#31C1A5]' },
+  { id: 'sunset', name: 'Sunset (Default)', primary: 'bg-[#E03E1A]', accent: 'bg-[#D6B51E]' },
+  { id: 'oceanic', name: 'Oceanic', primary: 'bg-[#2E86AB]', accent: 'bg-[#31C1A5]' },
   { id: 'forest', name: 'Forest', primary: 'bg-[#154726]', accent: 'bg-[#968215]' },
-  { id: 'sunset', name: 'Sunset', primary: 'bg-[#E03E1A]', accent: 'bg-[#D6B51E]' },
   { id: 'midnight', name: 'Midnight', primary: 'bg-[#7C3AED]', accent: 'bg-[#D946EF]' },
+  { id: 'rose', name: 'Rose', primary: 'bg-[#E11D48]', accent: 'bg-[#FB7185]' },
+  { id: 'slate', name: 'Slate', primary: 'bg-[#334155]', accent: 'bg-[#1E293B]' },
+  { id: 'amber', name: 'Amber', primary: 'bg-[#D97706]', accent: 'bg-[#B45309]' },
 ];
 
 export default function SettingsPage() {
@@ -51,7 +53,7 @@ export default function SettingsPage() {
   const [loginDescription, setLoginDescription] = useState(config.loginDescription);
   const [copyright, setCopyright] = useState(config.copyright);
   const [logoUrl, setLogoUrl] = useState(config.logoUrl || '');
-  const [theme, setTheme] = useState(config.theme || 'default');
+  const [theme, setTheme] = useState(config.theme || 'sunset');
   const [darkMode, setDarkMode] = useState(!!config.darkMode);
   
   const [smtp, setSmtp] = useState<SmtpConfig>({
@@ -92,7 +94,7 @@ export default function SettingsPage() {
     setLoginDescription('A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.');
     setCopyright(`© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`);
     setLogoUrl('');
-    setTheme('default');
+    setTheme('sunset');
     setDarkMode(false);
   };
 

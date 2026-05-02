@@ -1,4 +1,3 @@
-
 import Database from 'better-sqlite3';
 import path from 'path';
 import bcrypt from 'bcryptjs';
@@ -117,7 +116,7 @@ seedIfEmpty('branding', `
   INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
   VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
   'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
-  '© 2025 Resource Inventory Management System. All rights reserved.', 'default', 0)
+  '© 2025 Resource Inventory Management System. All rights reserved.', 'sunset', 0)
 `);
 
 // 2. Divisions
@@ -346,7 +345,7 @@ export async function getBranding(): Promise<BrandingConfig> {
       appAcronym: 'R.I.M.S',
       loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
       copyright: '© 2025 Resource Inventory Management System. All rights reserved.',
-      theme: 'default',
+      theme: 'sunset',
       darkMode: false,
     };
   }
