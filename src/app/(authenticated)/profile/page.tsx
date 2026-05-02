@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Save, User as UserIcon, Shield, Lock, KeyRound, Building, LayoutGrid, Briefcase, UserCheck } from 'lucide-react';
+import { Save, User as UserIcon, Shield, Lock, KeyRound, Building, LayoutGrid, Briefcase, UserCheck, Mail, Phone } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export default function ProfilePage() {
@@ -20,6 +20,8 @@ export default function ProfilePage() {
   const { toast } = useToast();
 
   const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [contactNumber, setContactNumber] = useState(user?.contactNumber || '');
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(!!user?.twoFactorEnabled);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -28,7 +30,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const updatedData = { name, twoFactorEnabled };
+      const updatedData = { name, email, contactNumber, twoFactorEnabled };
       await updateUser(user.id, updatedData);
       
       const updatedUser = { ...user, ...updatedData };
@@ -100,6 +102,32 @@ export default function ProfilePage() {
                     onChange={(e) => setName(e.target.value)} 
                     placeholder="Enter your full name"
                   />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="flex items-center gap-2">
+                      <Mail className="h-3.5 w-3.5" /> Email Address
+                    </Label>
+                    <Input 
+                      id="email" 
+                      type="email"
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)} 
+                      placeholder="email@example.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contactNumber" className="flex items-center gap-2">
+                      <Phone className="h-3.5 w-3.5" /> Contact Number
+                    </Label>
+                    <Input 
+                      id="contactNumber" 
+                      value={contactNumber} 
+                      onChange={(e) => setContactNumber(e.target.value)} 
+                      placeholder="+63 XXX XXX XXXX"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">

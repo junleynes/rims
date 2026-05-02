@@ -56,7 +56,9 @@ import {
   Building2,
   Copy,
   Check,
-  Eye
+  Eye,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -69,6 +71,8 @@ export default function UserManagementPage() {
   const [formData, setFormData] = useState({
     name: '',
     username: '',
+    email: '',
+    contactNumber: '',
     role: 'Manager' as Role,
     division: '',
     section: '',
@@ -110,7 +114,7 @@ export default function UserManagementPage() {
       toast({ title: "Added Successfully" });
     }
     
-    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false });
+    setFormData({ name: '', username: '', email: '', contactNumber: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false });
   };
 
   const handleEditUser = (user: User) => {
@@ -118,6 +122,8 @@ export default function UserManagementPage() {
     setFormData({
       name: user.name,
       username: user.username || '',
+      email: user.email || '',
+      contactNumber: user.contactNumber || '',
       role: user.role || 'Manager',
       division: user.division || '',
       section: user.section || '',
@@ -131,7 +137,7 @@ export default function UserManagementPage() {
 
   const cancelEdit = () => {
     setEditingUserId(null);
-    setFormData({ name: '', username: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false });
+    setFormData({ name: '', username: '', email: '', contactNumber: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false });
   };
 
   const initiateReset = (user: User) => {
@@ -209,6 +215,31 @@ export default function UserManagementPage() {
                 value={formData.name} 
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} 
               />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Email Address</Label>
+              <div className="relative">
+                <Input 
+                  placeholder="email@example.com" 
+                  type="email"
+                  value={formData.email} 
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))} 
+                />
+                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Contact Number</Label>
+              <div className="relative">
+                <Input 
+                  placeholder="+63 XXX XXX XXXX" 
+                  value={formData.contactNumber} 
+                  onChange={(e) => setFormData(prev => ({ ...prev, contactNumber: e.target.value }))} 
+                />
+                <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              </div>
             </div>
 
             {!formData.isStaffOnly && (
@@ -326,6 +357,7 @@ export default function UserManagementPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Identity</TableHead>
+                <TableHead>Contact</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Position</TableHead>
                 <TableHead>Org Scope</TableHead>
@@ -339,6 +371,16 @@ export default function UserManagementPage() {
                     <div className="flex flex-col">
                       <span className="font-semibold text-primary">{u.name}</span>
                       {u.username && <span className="text-[10px] text-muted-foreground uppercase font-black">@{u.username}</span>}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Mail className="h-3 w-3" /> {u.email || 'N/A'}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
+                        <Phone className="h-3 w-3" /> {u.contactNumber || 'N/A'}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>

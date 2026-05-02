@@ -48,6 +48,8 @@ db.exec(`
     username TEXT UNIQUE,
     password_hash TEXT,
     name TEXT NOT NULL,
+    email TEXT,
+    contactNumber TEXT,
     role TEXT,
     section TEXT,
     division TEXT,
@@ -154,8 +156,8 @@ seedIfEmpty('sections', `
 // 4. Users (Seeding with hashed password)
 const adminPasswordHash = bcrypt.hashSync('password', 10);
 seedIfEmpty('users', `
-  INSERT INTO users (id, username, password_hash, name, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
-  VALUES ('1', 'admin', ?, 'System Administrator', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
+  INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
+  VALUES ('1', 'admin', ?, 'System Administrator', 'admin@example.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
 `, [adminPasswordHash]);
 
 // 5. Locations
@@ -238,8 +240,8 @@ export async function getUserByUsername(username: string): Promise<any | null> {
 export async function saveUsers(users: User[]) {
   const deleteStmt = db.prepare('DELETE FROM users');
   const insertStmt = db.prepare(`
-    INSERT INTO users (id, username, password_hash, name, role, section, division, twoFactorEnabled, position, reportingTo, isStaffOnly)
-    VALUES (@id, @username, @password_hash, @name, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly)
+    INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, section, division, twoFactorEnabled, position, reportingTo, isStaffOnly)
+    VALUES (@id, @username, @password_hash, @name, @email, @contactNumber, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly)
   `);
 
   const existingHashes = db.prepare('SELECT id, password_hash FROM users').all() as any[];

@@ -43,6 +43,8 @@ const UserSchema = z.object({
   id: z.string(),
   username: z.string().optional(),
   name: z.string().min(1),
+  email: z.string().email().optional().or(z.literal('')),
+  contactNumber: z.string().optional(),
   role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).optional(),
   section: z.string().optional(),
   division: z.string().optional(),
@@ -121,6 +123,8 @@ export async function verifyUserCredentials(username: string, password?: string)
       id: userRecord.id,
       username: userRecord.username,
       name: userRecord.name,
+      email: userRecord.email,
+      contactNumber: userRecord.contactNumber,
       role: userRecord.role as any,
       section: userRecord.section,
       division: userRecord.division,
@@ -166,7 +170,7 @@ export async function resetUserPassword(userId: string) {
 
       await transporter.sendMail({
         from: `"${await db.getBranding().then(b => b.appName)}" <${smtp.fromEmail}>`,
-        to: targetUser.username ? `${targetUser.username}@example.com` : smtp.fromEmail, 
+        to: targetUser.email || (targetUser.username ? `${targetUser.username}@example.com` : smtp.fromEmail), 
         subject: "Temporary System Password",
         text: `Hello ${targetUser.name},\n\nYour password has been reset. Your temporary password is: ${tempPassword}\n\nPlease change it after logging in.\n\nBest regards,\nSystem Admin`,
       });

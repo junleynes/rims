@@ -46,6 +46,8 @@ export interface User {
   id: string;
   username?: string;
   name: string;
+  email?: string;
+  contactNumber?: string;
   role?: Role;
   section?: string;
   division?: string;
