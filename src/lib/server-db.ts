@@ -170,12 +170,15 @@ seedIfEmpty('sections', `
   ('code-compliance-unit', 'CODE Compliance Unit', 'project-management-division')
 `);
 
-// 4. Users (Seeding with hashed password)
+// 4. Users (Ensuring Admin account is always present)
 const adminPasswordHash = bcrypt.hashSync('password', 10);
-seedIfEmpty('users', `
-  INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
-  VALUES ('1', 'admin', ?, 'System Administrator', 'admin@example.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
-`, [adminPasswordHash]);
+const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
+if (!existingAdmin) {
+  db.prepare(`
+    INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
+    VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@example.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
+  `).run(adminPasswordHash);
+}
 
 // 5. Locations
 seedIfEmpty('locations', `
