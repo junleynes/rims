@@ -25,6 +25,7 @@ interface SystemDataContextType {
   updateStatusOption: (id: string, name: string) => void;
   deleteStatusOption: (id: string) => void;
   addUser: (user: Omit<User, 'id'>) => void;
+  importUsers: (users: Omit<User, 'id'>[]) => void;
   updateUser: (id: string, user: Partial<User>) => void;
   deleteUser: (id: string) => void;
   addPosition: (name: string) => void;
@@ -125,6 +126,11 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
     sync({ users: [...data.users, newUser] });
   };
 
+  const importUsers = (newUsersData: Omit<User, 'id'>[]) => {
+    const newUsers = newUsersData.map(u => ({ ...u, id: Math.random().toString(36).substr(2, 9) }));
+    sync({ users: [...data.users, ...newUsers] });
+  };
+
   const updateUser = (id: string, userData: Partial<User>) => {
     sync({ users: data.users.map(u => u.id === id ? { ...u, ...userData } : u) });
   };
@@ -153,7 +159,7 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
       addSection, updateSection, deleteSection,
       addLocation, updateLocation, deleteLocation,
       addStatusOption, updateStatusOption, deleteStatusOption,
-      addUser, updateUser, deleteUser,
+      addUser, importUsers, updateUser, deleteUser,
       addPosition, updatePosition, deletePosition
     }}>
       {children}

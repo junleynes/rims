@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useSystemData } from '@/components/system-data-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,15 +58,17 @@ import {
   Check,
   Eye,
   Mail,
-  Phone
+  Phone,
+  Upload
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { resetUserPassword } from '@/app/actions/db-actions';
 
 export default function UserManagementPage() {
-  const { users = [], divisions = [], sections = [], positions = [], addUser, deleteUser, updateUser } = useSystemData();
+  const { users = [], divisions = [], sections = [], positions = [], addUser, importUsers, deleteUser, updateUser } = useSystemData();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -165,6 +167,75 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+
+      try {
+        const lines = text.split(/\r?\n/);
+        if (lines.length < 2) throw new Error("File is empty or missing data.");
+
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        const importedData: Omit<User, 'id'>[] = lines.slice(1)
+          .filter(line => line.trim())
+          .map(line => {
+            const values = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)?.map(v => v.trim().replace(/^"|"$/g, '')) || [];
+            
+            const row: any = {};
+            headers.forEach((header, index) => {
+              row[header] = values[index];
+            });
+
+            const isStaffOnly = !row['Username'] || row['Is Staff Only']?.toLowerCase() === 'true';
+
+            return {
+              name: row['Name'] || 'Imported Personnel',
+              username: isStaffOnly ? undefined : row['Username'],
+              email: row['Email'] || '',
+              contactNumber: row['Contact Number'] || '',
+              role: (row['Role'] as Role) || 'Manager',
+              division: row['Division'] || '',
+              section: row['Section'] || '',
+              position: row['Position'] || '',
+              reportingTo: row['Reporting To'] || '',
+              twoFactorEnabled: row['2FA Enabled']?.toLowerCase() !== 'false',
+              isStaffOnly: isStaffOnly
+            };
+          });
+
+        importUsers(importedData);
+        toast({
+          title: "Import Successful",
+          description: `${importedData.length} personnel records have been added to the registry.`,
+        });
+        
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } catch (err) {
+        console.error(err);
+        toast({
+          title: "Import Failed",
+          description: "Check if the CSV format is correct. Headers: Name, Email, Contact Number, Username, Role, Position, Division, Section, Reporting To",
+          variant: "destructive",
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const triggerImport = () => {
+    toast({
+      title: "CSV Header Requirement",
+      description: "Required: Name, Email, Contact Number, Username, Role, Position, Division, Section, Reporting To. Username is optional for staff-only entries.",
+      duration: 8000,
+    });
+    fileInputRef.current?.click();
+  };
+
   const filteredSections = sections.filter(s => {
     const divId = divisions.find(d => d.name === formData.division)?.id;
     return s.divisionId === divId;
@@ -183,9 +254,23 @@ export default function UserManagementPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-primary">System Registry</h1>
-        <p className="text-muted-foreground">Manage system users and organizational personnel records.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">System Registry</h1>
+          <p className="text-muted-foreground">Manage system users and organizational personnel records.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept=".csv" 
+            onChange={handleImportCSV} 
+          />
+          <Button variant="outline" onClick={triggerImport} className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+            <Upload className="h-4 w-4" /> Import CSV
+          </Button>
+        </div>
       </div>
 
       <Card className="border-none shadow-sm">
