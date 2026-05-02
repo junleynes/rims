@@ -39,7 +39,8 @@ export default function MyTeamPage() {
   });
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Filter users to only show those in the same section/division
+  const isReadOnly = currentUser?.role === 'Viewer';
+
   const myTeam = useMemo(() => {
     if (!currentUser) return [];
     return users.filter(u => 
@@ -49,6 +50,7 @@ export default function MyTeamPage() {
   }, [users, currentUser]);
 
   const handleSaveStaff = () => {
+    if (isReadOnly) return;
     if (!formData.name || !formData.position) {
       toast({ title: "Validation Error", description: "All fields are required.", variant: "destructive" });
       return;
@@ -76,6 +78,7 @@ export default function MyTeamPage() {
   };
 
   const handleEdit = (staff: User) => {
+    if (isReadOnly) return;
     setEditingId(staff.id);
     setFormData({
       name: staff.name,
@@ -96,56 +99,58 @@ export default function MyTeamPage() {
         </div>
       </div>
 
-      <Card className="border-none shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Plus className="h-5 w-5 text-primary" />
-            {editingId ? 'Edit Personnel' : 'Add Personnel'}
-          </CardTitle>
-          <CardDescription>
-            Register new team members. Personnel added here do not have system login access.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
-            <div className="space-y-2">
-              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Full Name</Label>
-              <Input 
-                placeholder="Staff Member Name" 
-                value={formData.name} 
-                onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Position</Label>
-              <Select 
-                value={formData.position} 
-                onValueChange={(v) => setFormData(p => ({ ...p, position: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Position" />
-                </SelectTrigger>
-                <SelectContent>
-                  {positions.map(pos => (
-                    <SelectItem key={pos.id} value={pos.name}>{pos.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={handleSaveStaff} className="flex-1 gap-2 font-bold h-10">
-                {editingId ? <Edit2 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                {editingId ? 'Update Personnel' : 'Add to Team'}
-              </Button>
-              {editingId && (
-                <Button variant="outline" onClick={() => { setEditingId(null); setFormData({ name: '', position: '' }); }} className="h-10">
-                  <X className="h-4 w-4" />
+      {!isReadOnly && (
+        <Card className="border-none shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" />
+              {editingId ? 'Edit Personnel' : 'Add Personnel'}
+            </CardTitle>
+            <CardDescription>
+              Register new team members. Personnel added here do not have system login access.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Full Name</Label>
+                <Input 
+                  placeholder="Staff Member Name" 
+                  value={formData.name} 
+                  onChange={(e) => setFormData(p => ({ ...p, name: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground">Position</Label>
+                <Select 
+                  value={formData.position} 
+                  onValueChange={(v) => setFormData(p => ({ ...p, position: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {positions.map(pos => (
+                      <SelectItem key={pos.id} value={pos.name}>{pos.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveStaff} className="flex-1 gap-2 font-bold h-10">
+                  {editingId ? <Edit2 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  {editingId ? 'Update Personnel' : 'Add to Team'}
                 </Button>
-              )}
+                {editingId && (
+                  <Button variant="outline" onClick={() => { setEditingId(null); setFormData({ name: '', position: '' }); }} className="h-10">
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-none shadow-sm overflow-hidden">
         <CardHeader className="bg-muted/30">
@@ -158,7 +163,7 @@ export default function MyTeamPage() {
                 <TableHead className="font-bold">Personnel Name</TableHead>
                 <TableHead className="font-bold">Position</TableHead>
                 <TableHead className="font-bold">Managed By</TableHead>
-                <TableHead className="text-right font-bold">Actions</TableHead>
+                {!isReadOnly && <TableHead className="text-right font-bold">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -185,31 +190,33 @@ export default function MyTeamPage() {
                         {staff.reportingTo || 'N/A'}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          onClick={() => handleEdit(staff)}
-                          className="h-8 w-8 hover:bg-primary/10"
-                        >
-                          <Edit2 className="h-4 w-4 text-primary" />
-                        </Button>
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          onClick={() => deleteUser(staff.id)}
-                          className="h-8 w-8 hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {!isReadOnly && (
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => handleEdit(staff)}
+                            className="h-8 w-8 hover:bg-primary/10"
+                          >
+                            <Edit2 className="h-4 w-4 text-primary" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            onClick={() => deleteUser(staff.id)}
+                            className="h-8 w-8 hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic">
+                  <TableCell colSpan={isReadOnly ? 3 : 4} className="h-32 text-center text-muted-foreground italic">
                     No team members found for this section.
                   </TableCell>
                 </TableRow>

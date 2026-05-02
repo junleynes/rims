@@ -1,5 +1,5 @@
 
-export type Role = 'Admin' | 'Manager' | 'AVP' | 'VP';
+export type Role = 'Admin' | 'Manager' | 'AVP' | 'VP' | 'Viewer';
 
 export type Classification = 'Hardware' | 'Software' | 'Others';
 

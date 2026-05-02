@@ -15,8 +15,7 @@ import {
   FileBarChart,
   Network,
   UsersRound,
-  ShieldCheck,
-  Building
+  Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -43,13 +42,17 @@ export function SidebarNav() {
 
   if (!user) return null;
 
+  const isReadOnly = user.role === 'Viewer';
+
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', color: 'bg-blue-500' },
     { name: 'Resource Log', icon: Table2, href: '/budgets', color: 'bg-emerald-500' },
-    { name: 'Add Resource', icon: PlusCircle, href: '/budgets/new', color: 'bg-orange-500' },
   ];
 
-  // Managers get a specific team management link
+  if (!isReadOnly) {
+    navItems.push({ name: 'Add Resource', icon: PlusCircle, href: '/budgets/new', color: 'bg-orange-500' });
+  }
+
   if (user.role === 'Manager') {
     navItems.push({ name: 'My Team', icon: UsersRound, href: '/team', color: 'bg-cyan-500' });
   }
@@ -65,7 +68,7 @@ export function SidebarNav() {
     { name: 'System Settings', icon: Settings, href: '/admin/settings', color: 'bg-amber-500' },
   ];
 
-  const isManagement = user.role === 'Admin' || user.role === 'VP' || user.role === 'AVP';
+  const isManagement = user.role === 'Admin' || user.role === 'VP' || user.role === 'AVP' || user.role === 'Viewer';
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r-0">

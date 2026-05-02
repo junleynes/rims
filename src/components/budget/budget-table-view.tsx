@@ -20,8 +20,7 @@ import {
   Paperclip,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown,
-  Network
+  ArrowDown
 } from 'lucide-react';
 import { 
   Table, 
@@ -99,6 +98,8 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
   const [search, setSearch] = useState('');
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
 
+  const isReadOnly = user?.role === 'Viewer';
+
   useEffect(() => {
     if (user?.role === 'Manager') {
       if (user.division) setCurrentDivisionName(user.division);
@@ -137,15 +138,12 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
 
   const filteredAndSortedBudgets = useMemo(() => {
     let result = (budgets || []).filter(b => {
-      // Hard Visibility Rules
       if (user?.role === 'Manager') {
         if (b.section !== user.section) return false;
       } else if (user?.role === 'AVP') {
         if (b.division !== user.division) return false;
       }
-      // VP and Admin see everything
 
-      // UI Scope Filters
       if (scope === 'drilldown') {
         if (currentDivisionName && b.division !== currentDivisionName) return false;
         if (currentSectionName && b.section !== currentSectionName) return false;
@@ -258,8 +256,13 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     );
   };
 
+  const handleRowClick = (budget: BudgetEntry) => {
+    if (isReadOnly) return;
+    router.push(`/budgets/${budget.id}/edit`);
+  };
+
   if (scope === 'drilldown') {
-    if (!currentDivisionName && (user?.role === 'Admin' || user?.role === 'VP')) {
+    if (!currentDivisionName && (user?.role === 'Admin' || user?.role === 'VP' || user?.role === 'Viewer')) {
       return (
         <div className="space-y-6">
           {renderHeaderControls()}
@@ -297,7 +300,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
           <div className="flex items-center gap-4">
-            {(user?.role === 'Admin' || user?.role === 'VP') && (
+            {(user?.role === 'Admin' || user?.role === 'VP' || user?.role === 'Viewer') && (
               <Button variant="ghost" size="sm" onClick={() => setCurrentDivisionName(null)} className="gap-2 font-bold text-primary">
                 <ArrowLeft className="h-4 w-4" /> Back to Divisions
               </Button>
@@ -307,7 +310,6 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSections.map((section, idx) => {
-              // Manager restricted to their section
               if (user?.role === 'Manager' && section.name !== user.section) return null;
               
               return (
@@ -433,7 +435,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               >
                 <div className="flex items-center">Allocated Cost {getSortIcon('totalCostBudget')}</div>
               </TableHead>
-              <TableHead className="text-right font-bold">Actions</TableHead>
+              {!isReadOnly && <TableHead className="text-right font-bold">Actions</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -441,8 +443,11 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
               filteredAndSortedBudgets.map((budget) => (
                 <TableRow 
                   key={budget.id} 
-                  className="hover:bg-muted/10 cursor-pointer group transition-colors"
-                  onClick={() => router.push(`/budgets/${budget.id}/edit`)}
+                  className={cn(
+                    "hover:bg-muted/10 transition-colors",
+                    !isReadOnly && "cursor-pointer group"
+                  )}
+                  onClick={() => handleRowClick(budget)}
                 >
                   <TableCell>
                     <Badge 
@@ -487,28 +492,30 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                   <TableCell className="font-black whitespace-nowrap text-sm text-primary">
                     ₱ {(budget.totalCostBudget || 0).toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="rounded-xl shadow-xl">
-                        <DropdownMenuItem className="gap-2 font-semibold" onClick={() => router.push(`/budgets/${budget.id}/edit`)}>
-                          <Edit2 className="h-4 w-4 text-blue-500" /> Edit Record
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive font-semibold" onClick={() => onDelete?.(budget.id)}>
-                          <Trash2 className="h-4 w-4" /> Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                  {!isReadOnly && (
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl shadow-xl">
+                          <DropdownMenuItem className="gap-2 font-semibold" onClick={() => router.push(`/budgets/${budget.id}/edit`)}>
+                            <Edit2 className="h-4 w-4 text-blue-500" /> Edit Record
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2 text-destructive focus:text-destructive font-semibold" onClick={() => onDelete?.(budget.id)}>
+                            <Trash2 className="h-4 w-4" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={scope !== 'drilldown' ? 8 : 7} className="h-48 text-center text-muted-foreground">
+                <TableCell colSpan={isReadOnly ? (scope !== 'drilldown' ? 6 : 5) : (scope !== 'drilldown' ? 8 : 7)} className="h-48 text-center text-muted-foreground">
                   <div className="flex flex-col items-center gap-4">
                     <div className="p-4 bg-muted/30 rounded-full">
                       <Globe className="h-10 w-10 text-muted-foreground/50" />
@@ -517,9 +524,11 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                       <p className="font-bold">No log entries found</p>
                       <p className="text-xs">Try adjusting your filters or adding a new resource.</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => router.push('/budgets/new')} className="font-bold">
-                      Add Your First Resource
-                    </Button>
+                    {!isReadOnly && (
+                      <Button variant="outline" size="sm" onClick={() => router.push('/budgets/new')} className="font-bold">
+                        Add Your First Resource
+                      </Button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

@@ -15,7 +15,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { TrendingUp, FileText, ArrowRight, Activity, Calendar, Zap, BarChart3 } from 'lucide-react';
+import { Activity, Calendar, Zap, BarChart3, FileText, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -27,14 +27,12 @@ export default function DashboardPage() {
   const filteredBudgets = budgets.filter(b => {
     const matchesYear = b.year.toString() === yearFilter;
     
-    // Visibility logic
     let matchesVisibility = true;
     if (user?.role === 'Manager') {
       matchesVisibility = b.section === user.section;
     } else if (user?.role === 'AVP') {
       matchesVisibility = b.division === user.division;
     }
-    // VP and Admin see everything across the whole department
     
     return matchesYear && matchesVisibility;
   });
@@ -42,6 +40,8 @@ export default function DashboardPage() {
   const recentBudgets = [...filteredBudgets]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 10);
+
+  const isManagement = user?.role === 'Admin' || user?.role === 'VP' || user?.role === 'AVP' || user?.role === 'Viewer';
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -54,7 +54,7 @@ export default function DashboardPage() {
             <h1 className="text-3xl font-bold tracking-tight text-primary">Dashboard</h1>
             <p className="text-muted-foreground flex items-center gap-2">
               <Calendar className="h-3.5 w-3.5" />
-              {user?.role === 'Admin' || user?.role === 'VP'
+              {user?.role === 'Admin' || user?.role === 'VP' || user?.role === 'Viewer'
                 ? `Department-wide resource overview for fiscal year ${yearFilter}`
                 : user?.role === 'AVP'
                   ? `Division overview for ${user?.division} - FY ${yearFilter}`
@@ -64,7 +64,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {(user?.role === 'Admin' || user?.role === 'VP' || user?.role === 'AVP') && (
+          {isManagement && (
             <Button asChild variant="outline" className="gap-2 font-bold h-10 border-primary/20 hover:bg-primary/5 text-primary">
               <Link href="/admin/reports">
                 <BarChart3 className="h-4 w-4" /> Reports

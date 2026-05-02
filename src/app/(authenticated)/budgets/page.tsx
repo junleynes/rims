@@ -17,6 +17,8 @@ export default function BudgetsPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isReadOnly = user?.role === 'Viewer';
+
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -30,12 +32,10 @@ export default function BudgetsPage() {
         const lines = text.split(/\r?\n/);
         if (lines.length < 2) throw new Error("File is empty or missing data.");
 
-        // Simple CSV parser
         const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
         const importedData: Omit<BudgetEntry, 'id' | 'createdAt'>[] = lines.slice(1)
           .filter(line => line.trim())
           .map(line => {
-            // Split by comma but respect quotes
             const values = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g)?.map(v => v.trim().replace(/^"|"$/g, '')) || [];
             
             const row: any = {};
@@ -43,13 +43,9 @@ export default function BudgetsPage() {
               row[header] = values[index];
             });
 
-            // Mapping CSV fields to BudgetEntry structure
             const quantity = parseInt(row['Quantity']) || 1;
             const unitCostBudget = parseFloat(row['Unit Cost Budget']) || 0;
 
-            // Role-based logic for CSV Import: 
-            // Managers can only import to their own division/section.
-            // Admins can import for any division/section provided in the CSV.
             const division = user?.role === 'Manager' ? (user.division || '') : (row['Division'] || '');
             const section = user?.role === 'Manager' ? (user.section || '') : (row['Section'] || '');
 
@@ -122,23 +118,25 @@ export default function BudgetsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-primary">Resource Log</h1>
           <p className="text-muted-foreground">Manage and track your section's hardware and software resources.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            className="hidden" 
-            accept=".csv" 
-            onChange={handleImportCSV} 
-          />
-          <Button variant="outline" onClick={triggerImport} className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
-            <Upload className="h-4 w-4" /> Import CSV
-          </Button>
-          <Button asChild className="gap-2 bg-primary hover:bg-primary/90 shadow-lg">
-            <Link href="/budgets/new">
-              <Plus className="h-4 w-4" /> Add Resource
-            </Link>
-          </Button>
-        </div>
+        {!isReadOnly && (
+          <div className="flex items-center gap-3">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept=".csv" 
+              onChange={handleImportCSV} 
+            />
+            <Button variant="outline" onClick={triggerImport} className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+              <Upload className="h-4 w-4" /> Import CSV
+            </Button>
+            <Button asChild className="gap-2 bg-primary hover:bg-primary/90 shadow-lg">
+              <Link href="/budgets/new">
+                <Plus className="h-4 w-4" /> Add Resource
+              </Link>
+            </Button>
+          </div>
+        )}
       </div>
 
       <BudgetTableView budgets={budgets} onDelete={deleteBudget} />

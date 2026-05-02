@@ -47,10 +47,7 @@ import {
   Trash2, 
   Shield, 
   User as UserIcon, 
-  Lock, 
-  Unlock, 
   KeyRound, 
-  UserCheck, 
   Briefcase, 
   Edit2, 
   X, 
@@ -58,11 +55,11 @@ import {
   Network, 
   Building2,
   Copy,
-  Check
+  Check,
+  Eye
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 import { resetUserPassword } from '@/app/actions/db-actions';
 
 export default function UserManagementPage() {
@@ -174,6 +171,7 @@ export default function UserManagementPage() {
       case 'VP': return <Badge variant="secondary" className="gap-1 bg-purple-100 text-purple-700"><Building2 className="h-3 w-3" /> VP</Badge>;
       case 'AVP': return <Badge variant="secondary" className="gap-1 bg-indigo-100 text-indigo-700"><Network className="h-3 w-3" /> AVP</Badge>;
       case 'Manager': return <Badge variant="secondary" className="gap-1 bg-blue-100 text-blue-700"><UserIcon className="h-3 w-3" /> Manager</Badge>;
+      case 'Viewer': return <Badge variant="secondary" className="gap-1 bg-slate-100 text-slate-700"><Eye className="h-3 w-3" /> Viewer</Badge>;
     }
   };
 
@@ -235,6 +233,7 @@ export default function UserManagementPage() {
                       <SelectItem value="VP">VP (Department-wide)</SelectItem>
                       <SelectItem value="AVP">AVP (Division-wide)</SelectItem>
                       <SelectItem value="Manager">Manager (Section-wide)</SelectItem>
+                      <SelectItem value="Viewer">Viewer (Read-only for all)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -390,7 +389,6 @@ export default function UserManagementPage() {
         </CardContent>
       </Card>
 
-      {/* Reset Confirmation Dialog */}
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -409,7 +407,6 @@ export default function UserManagementPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Temp Password Display Dialog */}
       <Dialog open={!!tempPassword} onOpenChange={() => { setTempPassword(null); setUserToReset(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

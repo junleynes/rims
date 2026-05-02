@@ -43,7 +43,7 @@ const UserSchema = z.object({
   id: z.string(),
   username: z.string().optional(),
   name: z.string().min(1),
-  role: z.enum(['Admin', 'Manager', 'AVP', 'VP']).optional(),
+  role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).optional(),
   section: z.string().optional(),
   division: z.string().optional(),
   twoFactorEnabled: z.boolean().optional(),
@@ -157,7 +157,7 @@ export async function resetUserPassword(userId: string) {
       const transporter = nodemailer.createTransport({
         host: smtp.host,
         port: smtp.port,
-        secure: smtp.secure, // Uses explicit secure setting (true for port 465, false for others)
+        secure: smtp.secure, 
         auth: {
           user: smtp.user,
           pass: smtp.pass,
@@ -166,7 +166,7 @@ export async function resetUserPassword(userId: string) {
 
       await transporter.sendMail({
         from: `"${await db.getBranding().then(b => b.appName)}" <${smtp.fromEmail}>`,
-        to: targetUser.username ? `${targetUser.username}@example.com` : smtp.fromEmail, // Simulated email
+        to: targetUser.username ? `${targetUser.username}@example.com` : smtp.fromEmail, 
         subject: "Temporary System Password",
         text: `Hello ${targetUser.name},\n\nYour password has been reset. Your temporary password is: ${tempPassword}\n\nPlease change it after logging in.\n\nBest regards,\nSystem Admin`,
       });
