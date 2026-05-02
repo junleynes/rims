@@ -18,7 +18,7 @@ import {
   Briefcase,
   UserCheck,
   Network,
-  Hierarchy
+  Waypoints
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { User } from '@/lib/types';
@@ -123,7 +123,7 @@ export default function OrgStructurePage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-xl rotate-3">
-            <Hierarchy className="h-7 w-7" />
+            <Waypoints className="h-7 w-7" />
           </div>
           <div>
             <h1 className="text-3xl font-black tracking-tighter text-primary uppercase">Table of Organization</h1>
