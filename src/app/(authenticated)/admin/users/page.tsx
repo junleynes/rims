@@ -59,7 +59,8 @@ import {
   Eye,
   Mail,
   Phone,
-  Upload
+  Upload,
+  Download
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -227,6 +228,54 @@ export default function UserManagementPage() {
     reader.readAsText(file);
   };
 
+  const handleExportCSV = () => {
+    if (users.length === 0) return;
+
+    const headers = [
+      "Name",
+      "Email",
+      "Contact Number",
+      "Username",
+      "Role",
+      "Position",
+      "Division",
+      "Section",
+      "Reporting To",
+      "2FA Enabled",
+      "Is Staff Only"
+    ];
+
+    const rows = users.map(u => [
+      `"${u.name || ''}"`,
+      `"${u.email || ''}"`,
+      `"${u.contactNumber || ''}"`,
+      `"${u.username || ''}"`,
+      `"${u.role || ''}"`,
+      `"${u.position || ''}"`,
+      `"${u.division || ''}"`,
+      `"${u.section || ''}"`,
+      `"${u.reportingTo || ''}"`,
+      u.twoFactorEnabled ? "true" : "false",
+      u.isStaffOnly ? "true" : "false"
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `rims-personnel-export-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Export Successful",
+      description: "Personnel registry has been downloaded as CSV.",
+    });
+  };
+
   const triggerImport = () => {
     toast({
       title: "CSV Header Requirement",
@@ -267,6 +316,9 @@ export default function UserManagementPage() {
             accept=".csv" 
             onChange={handleImportCSV} 
           />
+          <Button variant="outline" onClick={handleExportCSV} className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
           <Button variant="outline" onClick={triggerImport} className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
             <Upload className="h-4 w-4" /> Import CSV
           </Button>
