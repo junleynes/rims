@@ -3,6 +3,7 @@
 
 import * as db from '@/lib/server-db';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position } from '@/lib/types';
 
 // Strict validation schemas
@@ -106,4 +107,33 @@ export async function saveSystemData(update: {
   if (update.positions) await db.savePositions(update.positions);
   
   return true;
+}
+
+/**
+ * Verifies user credentials against the hashed password in the database.
+ */
+export async function verifyUserCredentials(username: string, password?: string) {
+  if (!username || !password) return null;
+
+  const userRecord = await db.getUserByUsername(username);
+  if (!userRecord || userRecord.isStaffOnly) return null;
+
+  const isPasswordValid = bcrypt.compareSync(password, userRecord.password_hash);
+  
+  if (isPasswordValid) {
+    // Return user without sensitive data
+    return {
+      id: userRecord.id,
+      username: userRecord.username,
+      name: userRecord.name,
+      role: userRecord.role as any,
+      section: userRecord.section,
+      division: userRecord.division,
+      twoFactorEnabled: !!userRecord.twoFactorEnabled,
+      position: userRecord.position,
+      reportingTo: userRecord.reportingTo,
+    } as User;
+  }
+
+  return null;
 }

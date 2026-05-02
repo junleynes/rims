@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
-import { getSystemData } from '@/app/actions/db-actions';
+import { verifyUserCredentials } from '@/app/actions/db-actions';
 
 interface AuthContextType {
   user: User | null;
@@ -36,20 +36,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (username: string, password?: string) => {
-    const { users } = await getSystemData();
-    const foundUser = users.find(u => u.username === username);
+    // Call server action to verify credentials securely
+    const authenticatedUser = await verifyUserCredentials(username, password);
     
-    // Simple simulation: Check if user exists. 
-    // In this local setup, any password will be accepted if the user exists.
-    if (foundUser) {
-      if (foundUser.twoFactorEnabled) {
-        setPendingUser(foundUser);
+    if (authenticatedUser) {
+      if (authenticatedUser.twoFactorEnabled) {
+        setPendingUser(authenticatedUser);
       } else {
-        setUser(foundUser);
-        localStorage.setItem('rims_user', JSON.stringify(foundUser));
+        setUser(authenticatedUser);
+        localStorage.setItem('rims_user', JSON.stringify(authenticatedUser));
       }
     } else {
-      throw new Error('User not found');
+      throw new Error('Authentication failed. Invalid username or password.');
     }
   };
 

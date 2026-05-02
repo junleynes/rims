@@ -1,6 +1,7 @@
 
 import Database from 'better-sqlite3';
 import path from 'path';
+import bcrypt from 'bcryptjs';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position } from './types';
 
 const DB_PATH = path.join(process.cwd(), 'data.db');
@@ -44,7 +45,8 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    username TEXT,
+    username TEXT UNIQUE,
+    password_hash TEXT,
     name TEXT NOT NULL,
     role TEXT,
     section TEXT,
@@ -139,11 +141,12 @@ seedIfEmpty('sections', `
   ('code-compliance-unit', 'CODE Compliance Unit', 'project-management-division')
 `);
 
-// 4. Users
+// 4. Users (Seeding with hashed password)
+const adminPasswordHash = bcrypt.hashSync('password', 10);
 seedIfEmpty('users', `
-  INSERT INTO users (id, username, name, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
-  VALUES ('1', 'admin', 'System Administrator', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
-`);
+  INSERT INTO users (id, username, password_hash, name, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
+  VALUES ('1', 'admin', ?, 'System Administrator', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
+`, [adminPasswordHash]);
 
 // 5. Locations
 seedIfEmpty('locations', `
@@ -218,25 +221,52 @@ export async function getAllUsers(): Promise<User[]> {
   }));
 }
 
+export async function getUserByUsername(username: string): Promise<any | null> {
+  return db.prepare('SELECT * FROM users WHERE username = ?').get(username) || null;
+}
+
 export async function saveUsers(users: User[]) {
+  // Note: This function as currently designed overwrites the whole table.
+  // In a real system with passwords, we'd only update non-sensitive fields or handle password updates specifically.
   const deleteStmt = db.prepare('DELETE FROM users');
   const insertStmt = db.prepare(`
-    INSERT INTO users (id, username, name, role, section, division, twoFactorEnabled, position, reportingTo, isStaffOnly)
-    VALUES (@id, @username, @name, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly)
+    INSERT INTO users (id, username, password_hash, name, role, section, division, twoFactorEnabled, position, reportingTo, isStaffOnly)
+    VALUES (@id, @username, @password_hash, @name, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly)
   `);
 
   const transaction = db.transaction((data: User[]) => {
     deleteStmt.run();
     for (const user of data) {
+      // Preserve existing password hash if it's an existing user, otherwise use a default
+      const existing = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as any;
+      const hash = existing?.password_hash || bcrypt.hashSync('password', 10);
+      
       insertStmt.run({
         ...user,
+        password_hash: hash,
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
         isStaffOnly: user.isStaffOnly ? 1 : 0,
       });
     }
   });
 
-  transaction(users);
+  // We need to fetch existing hashes first if we are doing a bulk save to not lose them
+  const existingHashes = db.prepare('SELECT id, password_hash FROM users').all() as any[];
+  const hashMap = new Map(existingHashes.map(h => [h.id, h.password_hash]));
+
+  const transactionSafe = db.transaction((data: User[]) => {
+    deleteStmt.run();
+    for (const user of data) {
+      insertStmt.run({
+        ...user,
+        password_hash: hashMap.get(user.id) || bcrypt.hashSync('password', 10),
+        twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
+        isStaffOnly: user.isStaffOnly ? 1 : 0,
+      });
+    }
+  });
+
+  transactionSafe(users);
 }
 
 export async function getAllDivisions(): Promise<Division[]> {
