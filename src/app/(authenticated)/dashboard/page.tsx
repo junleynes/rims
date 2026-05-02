@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth-context';
 import { useBudgets } from '@/components/budget-context';
 import { StatsCards } from '@/components/dashboard/stats-cards';
@@ -15,14 +15,39 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Activity, Calendar, Zap, BarChart3, FileText, ArrowRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Activity, 
+  Calendar, 
+  Zap, 
+  BarChart3, 
+  FileText, 
+  ArrowRight, 
+  Megaphone, 
+  Info, 
+  AlertTriangle, 
+  Sparkles,
+  ChevronRight
+} from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { fetchSystemUpdates } from '@/app/actions/db-actions';
+import { SystemUpdate, UpdateType } from '@/lib/types';
+import { formatDistanceToNow } from 'date-fns';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { budgets } = useBudgets();
   const [yearFilter, setYearFilter] = useState('2026');
+  const [updates, setUpdates] = useState<SystemUpdate[]>([]);
+
+  useEffect(() => {
+    async function load() {
+      const data = await fetchSystemUpdates();
+      setUpdates(data.slice(0, 5)); // Only show latest 5
+    }
+    load();
+  }, []);
 
   const filteredBudgets = budgets.filter(b => {
     const matchesYear = b.year.toString() === yearFilter;
@@ -43,8 +68,24 @@ export default function DashboardPage() {
 
   const isManagement = user?.role === 'Admin' || user?.role === 'VP' || user?.role === 'AVP' || user?.role === 'Viewer';
 
+  const getUpdateIcon = (type: UpdateType) => {
+    switch (type) {
+      case 'Alert': return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case 'Feature': return <Sparkles className="h-4 w-4 text-emerald-500" />;
+      default: return <Info className="h-4 w-4 text-blue-500" />;
+    }
+  };
+
+  const getUpdateColor = (type: UpdateType) => {
+    switch (type) {
+      case 'Alert': return 'border-l-red-500 bg-red-50/30';
+      case 'Feature': return 'border-l-emerald-500 bg-emerald-50/30';
+      default: return 'border-l-blue-500 bg-blue-50/30';
+    }
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="p-3 bg-primary/10 rounded-2xl">
@@ -86,6 +127,47 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Announcements Section */}
+      {updates.length > 0 && (
+        <Card className="border-none shadow-xl bg-white overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-r from-primary via-accent to-primary" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">System Updates</CardTitle>
+            </div>
+            {user?.role === 'Admin' && (
+              <Button variant="ghost" size="sm" asChild className="text-[10px] uppercase font-black text-primary">
+                <Link href="/admin/updates">Manage Updates</Link>
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {updates.map((update) => (
+                <div 
+                  key={update.id} 
+                  className={`p-4 rounded-xl border-l-4 shadow-sm transition-all hover:translate-x-1 ${getUpdateColor(update.type)}`}
+                >
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        {getUpdateIcon(update.type)}
+                        <h4 className="font-bold text-sm text-foreground uppercase tracking-tight">{update.title}</h4>
+                      </div>
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{update.content}</p>
+                    </div>
+                    <span className="text-[9px] font-black text-muted-foreground uppercase whitespace-nowrap bg-white/50 px-2 py-1 rounded">
+                      {formatDistanceToNow(new Date(update.createdAt))} ago
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <StatsCards budgets={filteredBudgets} />
 

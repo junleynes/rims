@@ -6,7 +6,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig } from '@/lib/types';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig, SystemUpdate } from '@/lib/types';
 
 // Strict validation schemas
 const BudgetEntrySchema = z.object({
@@ -54,6 +54,15 @@ const UserSchema = z.object({
   isStaffOnly: z.boolean().optional(),
 });
 
+const SystemUpdateSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1),
+  content: z.string().min(1),
+  type: z.enum(['Info', 'Alert', 'Feature']),
+  createdBy: z.string(),
+  createdAt: z.string(),
+});
+
 export async function getBudgets() {
   return db.getAllResources();
 }
@@ -61,6 +70,15 @@ export async function getBudgets() {
 export async function saveBudgets(budgets: BudgetEntry[]) {
   const validated = budgets.map(b => BudgetEntrySchema.parse(b));
   await db.saveResources(validated);
+}
+
+export async function fetchSystemUpdates() {
+  return db.getAllSystemUpdates();
+}
+
+export async function saveSystemUpdates(updates: SystemUpdate[]) {
+  const validated = updates.map(u => SystemUpdateSchema.parse(u));
+  await db.saveSystemUpdates(validated);
 }
 
 export async function getSystemData() {

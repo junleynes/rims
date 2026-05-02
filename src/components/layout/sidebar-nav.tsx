@@ -15,7 +15,8 @@ import {
   FileBarChart,
   Network,
   UsersRound,
-  Eye
+  Eye,
+  Megaphone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -64,6 +65,7 @@ export function SidebarNav() {
 
   const adminItems = [
     { name: 'User Management', icon: Users, href: '/admin/users', color: 'bg-cyan-500' },
+    { name: 'System Updates', icon: Megaphone, href: '/admin/updates', color: 'bg-rose-500' },
     { name: 'Organization', icon: Building2, href: '/admin/organization', color: 'bg-purple-500' },
     { name: 'System Settings', icon: Settings, href: '/admin/settings', color: 'bg-amber-500' },
   ];

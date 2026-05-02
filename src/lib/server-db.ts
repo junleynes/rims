@@ -2,7 +2,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig } from './types';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig, SystemUpdate } from './types';
 
 const DB_PATH = path.join(process.cwd(), 'data.db');
 
@@ -57,6 +57,15 @@ db.exec(`
     position TEXT,
     reportingTo TEXT,
     isStaffOnly INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS system_updates (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    type TEXT NOT NULL,
+    createdBy TEXT NOT NULL,
+    createdAt TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS divisions (
@@ -264,6 +273,28 @@ export async function saveUsers(users: User[]) {
 
 export async function updateUserPassword(userId: string, hash: string) {
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, userId);
+}
+
+// System Updates
+export async function getAllSystemUpdates(): Promise<SystemUpdate[]> {
+  return db.prepare('SELECT * FROM system_updates ORDER BY createdAt DESC').all() as SystemUpdate[];
+}
+
+export async function saveSystemUpdates(updates: SystemUpdate[]) {
+  const deleteStmt = db.prepare('DELETE FROM system_updates');
+  const insertStmt = db.prepare(`
+    INSERT INTO system_updates (id, title, content, type, createdBy, createdAt)
+    VALUES (@id, @title, @content, @type, @createdBy, @createdAt)
+  `);
+
+  const transaction = db.transaction((data: SystemUpdate[]) => {
+    deleteStmt.run();
+    for (const update of data) {
+      insertStmt.run(update);
+    }
+  });
+
+  transaction(updates);
 }
 
 export async function getAllDivisions(): Promise<Division[]> {

@@ -5,6 +5,8 @@ export type Classification = 'Hardware' | 'Software' | 'Others';
 
 export type BudgetCategory = 'CAPEX' | 'OPEX';
 
+export type UpdateType = 'Info' | 'Alert' | 'Feature';
+
 export type Account = 
   | 'Capex'
   | 'Seminars and Trainings - online or face to face'
@@ -55,6 +57,15 @@ export interface User {
   position?: string;
   reportingTo?: string;
   isStaffOnly?: boolean;
+}
+
+export interface SystemUpdate {
+  id: string;
+  title: string;
+  content: string;
+  type: UpdateType;
+  createdBy: string;
+  createdAt: string;
 }
 
 export interface BrandingConfig {
