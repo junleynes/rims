@@ -60,16 +60,19 @@ import {
   Mail,
   Phone,
   Upload,
-  Download
+  Download,
+  Camera
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { resetUserPassword } from '@/app/actions/db-actions';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function UserManagementPage() {
   const { users = [], divisions = [], sections = [], positions = [], addUser, importUsers, deleteUser, updateUser } = useSystemData();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -82,7 +85,8 @@ export default function UserManagementPage() {
     position: '',
     reportingTo: '',
     twoFactorEnabled: true,
-    isStaffOnly: false
+    isStaffOnly: false,
+    profilePicture: ''
   });
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -117,7 +121,7 @@ export default function UserManagementPage() {
       toast({ title: "Added Successfully" });
     }
     
-    setFormData({ name: '', username: '', email: '', contactNumber: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false });
+    setFormData({ name: '', username: '', email: '', contactNumber: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false, profilePicture: '' });
   };
 
   const handleEditUser = (user: User) => {
@@ -133,14 +137,26 @@ export default function UserManagementPage() {
       position: user.position || '',
       reportingTo: user.reportingTo || '',
       twoFactorEnabled: !!user.twoFactorEnabled,
-      isStaffOnly: !!user.isStaffOnly
+      isStaffOnly: !!user.isStaffOnly,
+      profilePicture: user.profilePicture || ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEdit = () => {
     setEditingUserId(null);
-    setFormData({ name: '', username: '', email: '', contactNumber: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false });
+    setFormData({ name: '', username: '', email: '', contactNumber: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false, profilePicture: '' });
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, profilePicture: reader.result as string }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const initiateReset = (user: User) => {
@@ -205,7 +221,8 @@ export default function UserManagementPage() {
               position: row['Position'] || '',
               reportingTo: row['Reporting To'] || '',
               twoFactorEnabled: row['2FA Enabled']?.toLowerCase() !== 'false',
-              isStaffOnly: isStaffOnly
+              isStaffOnly: isStaffOnly,
+              profilePicture: ''
             };
           });
 
@@ -344,131 +361,159 @@ export default function UserManagementPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <div className="space-y-1">
-              <Label className="text-xs">Full Name</Label>
-              <Input 
-                placeholder="Name" 
-                value={formData.name} 
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} 
-              />
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Profile Photo Section */}
+            <div className="flex flex-col items-center gap-4 shrink-0">
+               <div className="relative group">
+                 <Avatar className="h-32 w-32 border-4 border-slate-100 shadow-md">
+                   <AvatarImage src={formData.profilePicture} className="object-cover" />
+                   <AvatarFallback className="bg-primary text-primary-foreground text-3xl font-black">
+                     {formData.name?.charAt(0) || <UserIcon className="h-10 w-10" />}
+                   </AvatarFallback>
+                 </Avatar>
+                 <button 
+                  className="absolute bottom-0 right-0 p-2 bg-primary text-white rounded-full shadow-lg hover:scale-110 transition-transform"
+                  onClick={() => photoInputRef.current?.click()}
+                 >
+                   <Camera className="h-4 w-4" />
+                 </button>
+                 <input 
+                  type="file" 
+                  ref={photoInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={handlePhotoChange} 
+                 />
+               </div>
+               <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Profile Photo</p>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs">Email Address</Label>
-              <div className="relative">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 flex-1">
+              <div className="space-y-1">
+                <Label className="text-xs">Full Name</Label>
                 <Input 
-                  placeholder="email@example.com" 
-                  type="email"
-                  value={formData.email} 
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))} 
+                  placeholder="Name" 
+                  value={formData.name} 
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} 
                 />
-                <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               </div>
-            </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs">Contact Number</Label>
-              <div className="relative">
-                <Input 
-                  placeholder="+63 XXX XXX XXXX" 
-                  value={formData.contactNumber} 
-                  onChange={(e) => setFormData(prev => ({ ...prev, contactNumber: e.target.value }))} 
-                />
-                <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              </div>
-            </div>
-
-            {!formData.isStaffOnly && (
-              <>
-                <div className="space-y-1 animate-in slide-in-from-left-2">
-                  <Label className="text-xs">Username</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">Email Address</Label>
+                <div className="relative">
                   <Input 
-                    placeholder="jdoe" 
-                    value={formData.username} 
-                    onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))} 
+                    placeholder="email@example.com" 
+                    type="email"
+                    value={formData.email} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))} 
                   />
+                  <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 </div>
-                <div className="space-y-1 animate-in slide-in-from-left-2">
-                  <Label className="text-xs">System Role</Label>
-                  <Select 
-                    value={formData.role} 
-                    onValueChange={(v) => setFormData(prev => ({ ...prev, role: v as Role }))}
-                  >
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Admin">Admin (Global)</SelectItem>
-                      <SelectItem value="VP">VP (Department-wide)</SelectItem>
-                      <SelectItem value="AVP">AVP (Division-wide)</SelectItem>
-                      <SelectItem value="Manager">Manager (Section-wide)</SelectItem>
-                      <SelectItem value="Viewer">Viewer (Read-only for all)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
-            )}
+              </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs">Position</Label>
-              <Select 
-                value={formData.position} 
-                onValueChange={(v) => setFormData(prev => ({ ...prev, position: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Position" />
-                </SelectTrigger>
-                <SelectContent>
-                  {positions.map(pos => (
-                    <SelectItem key={pos.id} value={pos.name}>{pos.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Division</Label>
-              <Select 
-                value={formData.division} 
-                onValueChange={(v) => setFormData(prev => ({ ...prev, division: v, section: '' }))}
-              >
-                <SelectTrigger><SelectValue placeholder="Division" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="None">None</SelectItem>
-                  {divisions.map(d => (
-                    <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Section/Unit</Label>
-              <Select 
-                value={formData.section} 
-                onValueChange={(v) => setFormData(prev => ({ ...prev, section: v }))}
-                disabled={!formData.division || formData.division === 'None'}
-              >
-                <SelectTrigger><SelectValue placeholder="Section" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="None">None</SelectItem>
-                  {filteredSections.map(s => (
-                    <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Reporting To</Label>
-              <Select 
-                value={formData.reportingTo} 
-                onValueChange={(v) => setFormData(prev => ({ ...prev, reportingTo: v }))}
-              >
-                <SelectTrigger><SelectValue placeholder="Manager" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="None">None</SelectItem>
-                  {users.filter(u => u.id !== editingUserId).map(u => (
-                    <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                <Label className="text-xs">Contact Number</Label>
+                <div className="relative">
+                  <Input 
+                    placeholder="+63 XXX XXX XXXX" 
+                    value={formData.contactNumber} 
+                    onChange={(e) => setFormData(prev => ({ ...prev, contactNumber: e.target.value }))} 
+                  />
+                  <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                </div>
+              </div>
+
+              {!formData.isStaffOnly && (
+                <>
+                  <div className="space-y-1 animate-in slide-in-from-left-2">
+                    <Label className="text-xs">Username</Label>
+                    <Input 
+                      placeholder="jdoe" 
+                      value={formData.username} 
+                      onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))} 
+                    />
+                  </div>
+                  <div className="space-y-1 animate-in slide-in-from-left-2">
+                    <Label className="text-xs">System Role</Label>
+                    <Select 
+                      value={formData.role} 
+                      onValueChange={(v) => setFormData(prev => ({ ...prev, role: v as Role }))}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Admin">Admin (Global)</SelectItem>
+                        <SelectItem value="VP">VP (Department-wide)</SelectItem>
+                        <SelectItem value="AVP">AVP (Division-wide)</SelectItem>
+                        <SelectItem value="Manager">Manager (Section-wide)</SelectItem>
+                        <SelectItem value="Viewer">Viewer (Read-only for all)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+
+              <div className="space-y-1">
+                <Label className="text-xs">Position</Label>
+                <Select 
+                  value={formData.position} 
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, position: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {positions.map(pos => (
+                      <SelectItem key={pos.id} value={pos.name}>{pos.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Division</Label>
+                <Select 
+                  value={formData.division} 
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, division: v, section: '' }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Division" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="None">None</SelectItem>
+                    {divisions.map(d => (
+                      <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Section/Unit</Label>
+                <Select 
+                  value={formData.section} 
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, section: v }))}
+                  disabled={!formData.division || formData.division === 'None'}
+                >
+                  <SelectTrigger><SelectValue placeholder="Section" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="None">None</SelectItem>
+                    {filteredSections.map(s => (
+                      <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Reporting To</Label>
+                <Select 
+                  value={formData.reportingTo} 
+                  onValueChange={(v) => setFormData(prev => ({ ...prev, reportingTo: v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Manager" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="None">None</SelectItem>
+                    {users.filter(u => u.id !== editingUserId).map(u => (
+                      <SelectItem key={u.id} value={u.name}>{u.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <div className="mt-6 flex justify-end gap-3">
@@ -477,7 +522,7 @@ export default function UserManagementPage() {
                 <X className="h-4 w-4" /> Cancel
               </Button>
             )}
-            <Button onClick={handleAddOrUpdateUser} className="gap-2 px-8">
+            <Button onClick={handleAddOrUpdateUser} className="gap-2 px-8 font-bold">
               {editingUserId ? <Edit2 className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
               {editingUserId ? 'Update Entry' : 'Create Entry'}
             </Button>
@@ -505,9 +550,17 @@ export default function UserManagementPage() {
               {users.map((u) => (
                 <TableRow key={u.id} className={editingUserId === u.id ? "bg-primary/5" : ""}>
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-primary">{u.name}</span>
-                      {u.username && <span className="text-[10px] text-muted-foreground uppercase font-black">@{u.username}</span>}
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-9 w-9 border shadow-sm">
+                        <AvatarImage src={u.profilePicture} className="object-cover" />
+                        <AvatarFallback className="text-[10px] font-black uppercase bg-primary/5 text-primary">
+                          {u.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-primary">{u.name}</span>
+                        {u.username && <span className="text-[10px] text-muted-foreground uppercase font-black">@{u.username}</span>}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -522,7 +575,7 @@ export default function UserManagementPage() {
                   </TableCell>
                   <TableCell>
                     {u.isStaffOnly ? (
-                      <Badge variant="outline" className="gap-1 text-[10px] border-amber-200 text-amber-700 bg-amber-50">
+                      <Badge variant="outline" className="gap-1 text-[10px] border-amber-200 text-amber-700 bg-amber-50 uppercase font-black">
                         <UserX className="h-3 w-3" /> Staff Only
                       </Badge>
                     ) : (

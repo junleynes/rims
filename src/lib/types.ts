@@ -57,6 +57,7 @@ export interface User {
   position?: string;
   reportingTo?: string;
   isStaffOnly?: boolean;
+  profilePicture?: string;
 }
 
 export interface SystemUpdate {

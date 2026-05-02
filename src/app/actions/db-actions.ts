@@ -52,6 +52,7 @@ const UserSchema = z.object({
   position: z.string().optional(),
   reportingTo: z.string().optional(),
   isStaffOnly: z.boolean().optional(),
+  profilePicture: z.string().optional().nullable(),
 });
 
 const SystemUpdateSchema = z.object({
@@ -149,6 +150,7 @@ export async function verifyUserCredentials(username: string, password?: string)
       twoFactorEnabled: !!userRecord.twoFactorEnabled,
       position: userRecord.position,
       reportingTo: userRecord.reportingTo,
+      profilePicture: userRecord.profilePicture,
     } as User;
   }
 

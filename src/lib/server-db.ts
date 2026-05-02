@@ -56,7 +56,8 @@ db.exec(`
     twoFactorEnabled INTEGER DEFAULT 1,
     position TEXT,
     reportingTo TEXT,
-    isStaffOnly INTEGER DEFAULT 0
+    isStaffOnly INTEGER DEFAULT 0,
+    profilePicture TEXT
   );
 
   CREATE TABLE IF NOT EXISTS system_updates (
@@ -115,6 +116,13 @@ db.exec(`
     secure INTEGER DEFAULT 0
   );
 `);
+
+// Handle migration for existing databases without profilePicture column
+try {
+  db.prepare('ALTER TABLE users ADD COLUMN profilePicture TEXT').run();
+} catch (e) {
+  // Column already exists or other error
+}
 
 // --- Granular Seeding Logic ---
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
@@ -249,8 +257,8 @@ export async function getUserByUsername(username: string): Promise<any | null> {
 export async function saveUsers(users: User[]) {
   const deleteStmt = db.prepare('DELETE FROM users');
   const insertStmt = db.prepare(`
-    INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, section, division, twoFactorEnabled, position, reportingTo, isStaffOnly)
-    VALUES (@id, @username, @password_hash, @name, @email, @contactNumber, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly)
+    INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, section, division, twoFactorEnabled, position, reportingTo, isStaffOnly, profilePicture)
+    VALUES (@id, @username, @password_hash, @name, @email, @contactNumber, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly, @profilePicture)
   `);
 
   const existingHashes = db.prepare('SELECT id, password_hash FROM users').all() as any[];
@@ -264,6 +272,7 @@ export async function saveUsers(users: User[]) {
         password_hash: hashMap.get(user.id) || bcrypt.hashSync('password', 10),
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
         isStaffOnly: user.isStaffOnly ? 1 : 0,
+        profilePicture: user.profilePicture || null
       });
     }
   });

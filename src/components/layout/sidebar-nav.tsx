@@ -15,8 +15,8 @@ import {
   FileBarChart,
   Network,
   UsersRound,
-  Eye,
-  Megaphone
+  Megaphone,
+  Camera
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -33,7 +33,7 @@ import {
   SidebarGroupLabel
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 
 export function SidebarNav() {
@@ -227,6 +227,7 @@ export function SidebarNav() {
             )}
           >
             <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm">
+              <AvatarImage src={user.profilePicture} className="object-cover" />
               <AvatarFallback className="bg-secondary text-primary font-bold">
                 {user.name.charAt(0)}
               </AvatarFallback>

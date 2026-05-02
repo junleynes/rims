@@ -6,7 +6,7 @@ import { useSystemData } from '@/components/system-data-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   Building2, 
   LayoutGrid, 
@@ -75,6 +75,7 @@ export default function OrgStructurePage() {
             "h-12 w-12 border-2",
             user.role === 'Admin' ? "border-primary/40" : "border-slate-100"
           )}>
+            <AvatarImage src={user.profilePicture} className="object-cover" />
             <AvatarFallback className={cn(
               "font-bold",
               user.role === 'Admin' ? "bg-primary text-white" : "bg-primary/10 text-primary"
@@ -174,6 +175,7 @@ export default function OrgStructurePage() {
                         <Card key={user.id} className="border-none shadow-sm bg-primary/[0.03] hover:bg-primary/[0.06] transition-colors">
                           <CardContent className="p-4 flex items-center gap-3">
                             <Avatar className="h-10 w-10">
+                              <AvatarImage src={user.profilePicture} className="object-cover" />
                               <AvatarFallback className="bg-white text-primary text-xs font-black shadow-sm">
                                 {user.name.charAt(0)}
                               </AvatarFallback>
@@ -209,9 +211,12 @@ export default function OrgStructurePage() {
                         {getUsersForSection(div.name, sec.name).length > 0 ? (
                           getUsersForSection(div.name, sec.name).map(user => (
                             <div key={user.id} className="flex items-center gap-2 py-1.5 border-t border-slate-100 first:border-0">
-                              <div className="h-6 w-6 rounded-full bg-white border flex items-center justify-center text-[9px] font-black text-primary">
-                                {user.name.charAt(0)}
-                              </div>
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage src={user.profilePicture} className="object-cover" />
+                                <AvatarFallback className="bg-white border text-[9px] font-black text-primary">
+                                  {user.name.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
                               <div className="min-w-0">
                                 <p className="text-[11px] font-bold truncate leading-none">{user.name}</p>
                                 <p className="text-[9px] text-muted-foreground truncate">{user.position}</p>
