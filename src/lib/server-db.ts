@@ -241,6 +241,10 @@ export async function saveResources(resources: BudgetEntry[]) {
   transaction(resources);
 }
 
+export async function deleteResourcesByYear(year: number) {
+  db.prepare('DELETE FROM resources WHERE year = ?').run(year);
+}
+
 export async function getAllUsers(): Promise<User[]> {
   const rows = db.prepare('SELECT * FROM users').all() as any[];
   return rows.map(row => ({

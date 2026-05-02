@@ -73,6 +73,11 @@ export async function saveBudgets(budgets: BudgetEntry[]) {
   await db.saveResources(validated);
 }
 
+export async function clearYearData(year: number) {
+  await db.deleteResourcesByYear(year);
+  return true;
+}
+
 export async function fetchSystemUpdates() {
   return db.getAllSystemUpdates();
 }

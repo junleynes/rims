@@ -1,23 +1,54 @@
 
 "use client";
 
-import React, { useRef } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { BudgetTableView } from '@/components/budget/budget-table-view';
 import { useBudgets } from '@/components/budget-context';
 import { useAuth } from '@/components/auth-context';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload } from 'lucide-react';
+import { Plus, Upload, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetEntry, Classification, BudgetCategory, Account } from '@/lib/types';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function BudgetsPage() {
-  const { budgets, deleteBudget, importBudgets } = useBudgets();
+  const { budgets, deleteBudget, importBudgets, clearYearResources } = useBudgets();
   const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [purgeYear, setPurgeYear] = useState<string>('');
+  const [purgeConfirmText, setPurgeConfirmText] = useState<string>('');
+  const [isPurging, setIsPurging] = useState(false);
+  const [isPurgeDialogOpen, setIsPurgeDialogOpen] = useState(false);
+
+  const isAdmin = user?.role === 'Admin';
   const isReadOnly = user?.role === 'Viewer';
+
+  const availableYears = useMemo(() => {
+    const years = budgets.map(b => b.year.toString());
+    return Array.from(new Set(years)).sort().reverse();
+  }, [budgets]);
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,15 +142,100 @@ export default function BudgetsPage() {
     fileInputRef.current?.click();
   };
 
+  const handlePurgeYear = async () => {
+    if (!purgeYear || purgeConfirmText !== purgeYear) return;
+
+    setIsPurging(true);
+    try {
+      await clearYearResources(parseInt(purgeYear));
+      toast({
+        title: "Year Data Purged",
+        description: `All log entries for FY ${purgeYear} have been permanently removed.`,
+      });
+      setIsPurgeDialogOpen(false);
+      setPurgeYear('');
+      setPurgeConfirmText('');
+    } catch (error) {
+      toast({
+        title: "Purge Failed",
+        description: "An error occurred while clearing data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-primary">Resource Log</h1>
           <p className="text-muted-foreground">Manage and track your section's hardware and software resources.</p>
         </div>
         {!isReadOnly && (
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {isAdmin && (
+              <AlertDialog open={isPurgeDialogOpen} onOpenChange={setIsPurgeDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="gap-2 border-destructive/20 hover:bg-destructive/5 text-destructive">
+                    <Trash2 className="h-4 w-4" /> Purge Year Data
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                      <AlertTriangle className="h-5 w-5" />
+                      Critical Data Deletion
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action will permanently delete <strong>ALL</strong> resource entries for the selected fiscal year. 
+                      This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="py-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Select Fiscal Year to Purge</Label>
+                      <Select value={purgeYear} onValueChange={setPurgeYear}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableYears.map(year => (
+                            <SelectItem key={year} value={year}>FY {year}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {purgeYear && (
+                      <div className="space-y-2 animate-in fade-in duration-300">
+                        <Label>Type <span className="font-mono font-bold text-primary">{purgeYear}</span> to confirm</Label>
+                        <Input 
+                          placeholder="Type the year here"
+                          value={purgeConfirmText}
+                          onChange={(e) => setPurgeConfirmText(e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => { setPurgeYear(''); setPurgeConfirmText(''); }}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handlePurgeYear();
+                      }}
+                      disabled={!purgeYear || purgeConfirmText !== purgeYear || isPurging}
+                      className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold"
+                    >
+                      {isPurging ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                      Purge Everything for {purgeYear || '...'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+
             <input 
               type="file" 
               ref={fileInputRef} 

@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BudgetEntry } from '@/lib/types';
-import { getBudgets, saveBudgets } from '@/app/actions/db-actions';
+import { getBudgets, saveBudgets, clearYearData } from '@/app/actions/db-actions';
 
 interface BudgetContextType {
   budgets: BudgetEntry[];
@@ -11,6 +11,7 @@ interface BudgetContextType {
   importBudgets: (entries: Omit<BudgetEntry, 'id' | 'createdAt'>[]) => void;
   updateBudget: (id: string, entry: Partial<BudgetEntry>) => void;
   deleteBudget: (id: string) => void;
+  clearYearResources: (year: number) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -63,8 +64,14 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
     await saveBudgets(updated);
   };
 
+  const clearYearResources = async (year: number) => {
+    const updated = budgets.filter(b => b.year !== year);
+    setBudgets(updated);
+    await clearYearData(year);
+  };
+
   return (
-    <BudgetContext.Provider value={{ budgets, addBudget, importBudgets, updateBudget, deleteBudget, isLoading }}>
+    <BudgetContext.Provider value={{ budgets, addBudget, importBudgets, updateBudget, deleteBudget, clearYearResources, isLoading }}>
       {children}
     </BudgetContext.Provider>
   );
