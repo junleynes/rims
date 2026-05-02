@@ -157,7 +157,7 @@ export async function resetUserPassword(userId: string) {
       const transporter = nodemailer.createTransport({
         host: smtp.host,
         port: smtp.port,
-        secure: smtp.port === 465,
+        secure: smtp.secure, // Uses explicit secure setting (true for port 465, false for others)
         auth: {
           user: smtp.user,
           pass: smtp.pass,

@@ -71,6 +71,7 @@ export interface SmtpConfig {
   user: string;
   pass: string;
   fromEmail: string;
+  secure: boolean;
 }
 
 export interface Location {

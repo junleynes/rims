@@ -1,3 +1,4 @@
+
 import Database from 'better-sqlite3';
 import path from 'path';
 import bcrypt from 'bcryptjs';
@@ -99,7 +100,8 @@ db.exec(`
     port INTEGER,
     user TEXT,
     pass TEXT,
-    fromEmail TEXT
+    fromEmail TEXT,
+    secure INTEGER DEFAULT 0
   );
 `);
 
@@ -373,11 +375,20 @@ export async function saveBranding(branding: BrandingConfig) {
 }
 
 export async function getSmtpConfig(): Promise<SmtpConfig | null> {
-  return db.prepare('SELECT * FROM smtp_settings WHERE id = 1').get() as SmtpConfig || null;
+  const row = db.prepare('SELECT * FROM smtp_settings WHERE id = 1').get() as any;
+  if (!row) return null;
+  return {
+    ...row,
+    secure: !!row.secure,
+  };
 }
 
 export async function saveSmtpConfig(config: SmtpConfig) {
   const existing = await getSmtpConfig();
+  const params = {
+    ...config,
+    secure: config.secure ? 1 : 0,
+  };
   if (existing) {
     db.prepare(`
       UPDATE smtp_settings SET
@@ -385,13 +396,14 @@ export async function saveSmtpConfig(config: SmtpConfig) {
         port = @port,
         user = @user,
         pass = @pass,
-        fromEmail = @fromEmail
+        fromEmail = @fromEmail,
+        secure = @secure
       WHERE id = 1
-    `).run(config);
+    `).run(params);
   } else {
     db.prepare(`
-      INSERT INTO smtp_settings (id, host, port, user, pass, fromEmail)
-      VALUES (1, @host, @port, @user, @pass, @fromEmail)
-    `).run(config);
+      INSERT INTO smtp_settings (id, host, port, user, pass, fromEmail, secure)
+      VALUES (1, @host, @port, @user, @pass, @fromEmail, @secure)
+    `).run(params);
   }
 }

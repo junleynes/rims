@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -26,7 +27,8 @@ import {
   Mail, 
   Server, 
   Key, 
-  AtSign 
+  AtSign,
+  ShieldCheck
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -62,6 +64,7 @@ export default function SettingsPage() {
     user: '',
     pass: '',
     fromEmail: '',
+    secure: false,
   });
 
   const [isSaving, setIsSaving] = useState(false);
@@ -246,7 +249,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Port</Label>
-                  <Input type="number" placeholder="587" value={smtp.port} onChange={(e) => setSmtp({...smtp, port: parseInt(e.target.value)})} />
+                  <Input type="number" placeholder="587" value={smtp.port} onChange={(e) => setSmtp({...smtp, port: parseInt(e.target.value) || 0})} />
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2"><AtSign className="h-3.5 w-3.5" /> Username</Label>
@@ -259,6 +262,16 @@ export default function SettingsPage() {
                 <div className="space-y-2 md:col-span-2">
                   <Label>Sender Address ("From")</Label>
                   <Input placeholder="noreply@rims.com" value={smtp.fromEmail} onChange={(e) => setSmtp({...smtp, fromEmail: e.target.value})} />
+                </div>
+                <div className="md:col-span-2 flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed">
+                  <div className="space-y-1">
+                    <Label className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4" />
+                      Secure Connection (SSL)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Enable for port 465. Leave disabled for port 587 (STARTTLS).</p>
+                  </div>
+                  <Switch checked={smtp.secure} onCheckedChange={(v) => setSmtp({...smtp, secure: v})} />
                 </div>
               </div>
               <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-sm flex gap-3">
