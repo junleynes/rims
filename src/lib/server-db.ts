@@ -8,27 +8,29 @@ const DB_PATH = path.join(process.cwd(), 'data.db');
 // Initialize database
 const db = new Database(DB_PATH);
 
-// Enable WAL mode for performance
+// Enable WAL mode for performance and concurrent access
 db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
+db.pragma('foreign_keys = ON');
 
 // Create tables if they don't exist
 db.exec(`
   CREATE TABLE IF NOT EXISTS resources (
     id TEXT PRIMARY KEY,
-    year INTEGER,
-    division TEXT,
-    section TEXT,
+    year INTEGER NOT NULL,
+    division TEXT NOT NULL,
+    section TEXT NOT NULL,
     location TEXT,
     classification TEXT,
-    category TEXT,
+    category TEXT NOT NULL,
     account TEXT,
-    projectTitle TEXT,
+    projectTitle TEXT NOT NULL,
     itemDescription TEXT,
-    quantity INTEGER,
-    unitCostBudget REAL,
-    totalCostBudget REAL,
-    unitCostActual REAL,
-    totalCostActual REAL,
+    quantity INTEGER DEFAULT 1,
+    unitCostBudget REAL DEFAULT 0,
+    totalCostBudget REAL DEFAULT 0,
+    unitCostActual REAL DEFAULT 0,
+    totalCostActual REAL DEFAULT 0,
     prNumber TEXT,
     dateDelivered TEXT,
     grSisNumber TEXT,
@@ -37,46 +39,46 @@ db.exec(`
     statusOthers TEXT,
     remarks TEXT,
     attachmentUrl TEXT,
-    createdAt TEXT
+    createdAt TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     username TEXT,
-    name TEXT,
+    name TEXT NOT NULL,
     role TEXT,
     section TEXT,
     division TEXT,
-    twoFactorEnabled INTEGER,
+    twoFactorEnabled INTEGER DEFAULT 1,
     position TEXT,
     reportingTo TEXT,
-    isStaffOnly INTEGER
+    isStaffOnly INTEGER DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS divisions (
     id TEXT PRIMARY KEY,
-    name TEXT
+    name TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS sections (
     id TEXT PRIMARY KEY,
-    name TEXT,
-    divisionId TEXT
+    name TEXT NOT NULL,
+    divisionId TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS locations (
     id TEXT PRIMARY KEY,
-    name TEXT
+    name TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS status_options (
     id TEXT PRIMARY KEY,
-    name TEXT
+    name TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS positions (
     id TEXT PRIMARY KEY,
-    name TEXT
+    name TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS branding (
@@ -87,115 +89,90 @@ db.exec(`
     copyright TEXT,
     logoUrl TEXT,
     theme TEXT,
-    darkMode INTEGER
+    darkMode INTEGER DEFAULT 0
   );
 `);
 
 // --- Granular Seeding Logic ---
+const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
+  const count = (db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get() as any).count;
+  if (count === 0) {
+    db.prepare(query).run(...params);
+  }
+};
 
 // 1. Branding
-const brandingCount = db.prepare('SELECT COUNT(*) as count FROM branding').get() as { count: number };
-if (brandingCount.count === 0) {
-  db.prepare(`
-    INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
-    VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
-    'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
-    '© 2025 Resource Inventory Management System. All rights reserved.', 'default', 0)
-  `).run();
-}
+seedIfEmpty('branding', `
+  INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
+  VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
+  'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
+  '© 2025 Resource Inventory Management System. All rights reserved.', 'default', 0)
+`);
 
 // 2. Divisions
-const divisionCount = db.prepare('SELECT COUNT(*) as count FROM divisions').get() as { count: number };
-if (divisionCount.count === 0) {
-  const initialDivisions = [
-    { id: 'office-of-the-head', name: 'Office of the Head' },
-    { id: 'operations-division', name: 'Operations Division' },
-    { id: 'technical-and-media-server-support-division', name: 'Technical and Media Server Support Division' },
-    { id: 'project-management-division', name: 'Project Management Division' }
-  ];
-  const insertDiv = db.prepare('INSERT INTO divisions (id, name) VALUES (?, ?)');
-  initialDivisions.forEach(d => insertDiv.run(d.id, d.name));
-}
+seedIfEmpty('divisions', `
+  INSERT INTO divisions (id, name) VALUES 
+  ('office-of-the-head', 'Office of the Head'),
+  ('operations-division', 'Operations Division'),
+  ('technical-and-media-server-support-division', 'Technical and Media Server Support Division'),
+  ('project-management-division', 'Project Management Division')
+`);
 
-// 3. Sections (The full 16-section list)
-const sectionCount = db.prepare('SELECT COUNT(*) as count FROM sections').get() as { count: number };
-if (sectionCount.count === 0) {
-  const initialSections = [
-    { id: 'office-of-the-head', name: 'Office of the Head', divisionId: 'office-of-the-head' },
-    { id: 'post-administration-section', name: 'Post Administration Section', divisionId: 'office-of-the-head' },
-    { id: 'video-edit-section', name: 'Video Edit Section', divisionId: 'operations-division' },
-    { id: 'videographics-section', name: 'Videographics Section', divisionId: 'operations-division' },
-    { id: 'audio-post-section', name: 'Audio Post Section', divisionId: 'operations-division' },
-    { id: 'music-production-section', name: 'Music Production Section', divisionId: 'operations-division' },
-    { id: 'digital-cinematography-and-standards-section', name: 'Digital Cinematography and Standards Section', divisionId: 'operations-division' },
-    { id: 'content-management-section', name: 'Content Management Section', divisionId: 'operations-division' },
-    { id: 'technical-support-and-toc-section', name: 'Technical Support and TOC Section', divisionId: 'technical-and-media-server-support-division' },
-    { id: 'it-solutions-and-data-center-operations-section', name: 'IT Solutions and Data Center Operations Section', divisionId: 'technical-and-media-server-support-division' },
-    { id: 'media-server-support-section', name: 'Media Server Support Section', divisionId: 'technical-and-media-server-support-division' },
-    { id: 'facility-maintenance-section', name: 'Facility Maintenance Section', divisionId: 'technical-and-media-server-support-division' },
-    { id: 'agile-content-section', name: 'Agile Content Section', divisionId: 'project-management-division' },
-    { id: 'promotional-content-section', name: 'Promotional Content Section', divisionId: 'project-management-division' },
-    { id: 'original-content-section', name: 'Original Content Section', divisionId: 'project-management-division' },
-    { id: 'code-compliance-unit', name: 'CODE Compliance Unit', divisionId: 'project-management-division' }
-  ];
-  const insertSec = db.prepare('INSERT INTO sections (id, name, divisionId) VALUES (?, ?, ?)');
-  initialSections.forEach(s => insertSec.run(s.id, s.name, s.divisionId));
-}
+// 3. Sections
+seedIfEmpty('sections', `
+  INSERT INTO sections (id, name, divisionId) VALUES 
+  ('office-of-the-head', 'Office of the Head', 'office-of-the-head'),
+  ('post-administration-section', 'Post Administration Section', 'office-of-the-head'),
+  ('video-edit-section', 'Video Edit Section', 'operations-division'),
+  ('videographics-section', 'Videographics Section', 'operations-division'),
+  ('audio-post-section', 'Audio Post Section', 'operations-division'),
+  ('music-production-section', 'Music Production Section', 'operations-division'),
+  ('digital-cinematography-and-standards-section', 'Digital Cinematography and Standards Section', 'operations-division'),
+  ('content-management-section', 'Content Management Section', 'operations-division'),
+  ('technical-support-and-toc-section', 'Technical Support and TOC Section', 'technical-and-media-server-support-division'),
+  ('it-solutions-and-data-center-operations-section', 'IT Solutions and Data Center Operations Section', 'technical-and-media-server-support-division'),
+  ('media-server-support-section', 'Media Server Support Section', 'technical-and-media-server-support-division'),
+  ('facility-maintenance-section', 'Facility Maintenance Section', 'technical-and-media-server-support-division'),
+  ('agile-content-section', 'Agile Content Section', 'project-management-division'),
+  ('promotional-content-section', 'Promotional Content Section', 'project-management-division'),
+  ('original-content-section', 'Original Content Section', 'project-management-division'),
+  ('code-compliance-unit', 'CODE Compliance Unit', 'project-management-division')
+`);
 
 // 4. Users
-const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get() as { count: number };
-if (userCount.count === 0) {
-  db.prepare(`
-    INSERT INTO users (id, username, name, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
-    VALUES ('1', 'admin', 'System Administrator', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
-  `).run();
-
-  db.prepare(`
-    INSERT INTO users (id, username, name, role, section, division, position, reportingTo, twoFactorEnabled, isStaffOnly)
-    VALUES ('2', 'manager_media', 'Media Manager', 'Manager', 'Media Server Support Section', 'Technical and Media Server Support Division', 'Senior Media Engineer', 'System Administrator', 0, 0)
-  `).run();
-}
+seedIfEmpty('users', `
+  INSERT INTO users (id, username, name, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
+  VALUES ('1', 'admin', 'System Administrator', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
+`);
 
 // 5. Locations
-const locationCount = db.prepare('SELECT COUNT(*) as count FROM locations').get() as { count: number };
-if (locationCount.count === 0) {
-  const initialLocations = [
-    { id: '4th-floor', name: '4th floor' },
-    { id: '5th-floor', name: '5th floor' },
-    { id: '6th-floor', name: '6th floor' },
-    { id: 'deployed', name: 'Deployed' }
-  ];
-  const insertLoc = db.prepare('INSERT INTO locations (id, name) VALUES (?, ?)');
-  initialLocations.forEach(l => insertLoc.run(l.id, l.name));
-}
+seedIfEmpty('locations', `
+  INSERT INTO locations (id, name) VALUES 
+  ('4th-floor', '4th floor'),
+  ('5th-floor', '5th floor'),
+  ('6th-floor', '6th floor'),
+  ('deployed', 'Deployed')
+`);
 
 // 6. Status Options
-const statusCount = db.prepare('SELECT COUNT(*) as count FROM status_options').get() as { count: number };
-if (statusCount.count === 0) {
-  const initialStatus = [
-    { id: 'working', name: 'working' },
-    { id: 'defective', name: 'defective' },
-    { id: 'turned-over', name: 'turned over to SAMD' },
-    { id: 'others', name: 'others:' }
-  ];
-  const insertStatus = db.prepare('INSERT INTO status_options (id, name) VALUES (?, ?)');
-  initialStatus.forEach(s => insertStatus.run(s.id, s.name));
-}
+seedIfEmpty('status_options', `
+  INSERT INTO status_options (id, name) VALUES 
+  ('working', 'working'),
+  ('defective', 'defective'),
+  ('turned-over', 'turned over to SAMD'),
+  ('others', 'others:')
+`);
 
 // 7. Positions
-const positionCount = db.prepare('SELECT COUNT(*) as count FROM positions').get() as { count: number };
-if (positionCount.count === 0) {
-  const initialPositions = [
-    { id: 'vp', name: 'VP' },
-    { id: 'avp', name: 'AVP' },
-    { id: 'section-head', name: 'Section Head' },
-    { id: 'unit-head', name: 'Unit Head' },
-    { id: 'assistant-manager', name: 'Assistant Manager' },
-    { id: 'senior-engineer', name: 'Senior Media Engineer' }
-  ];
-  const insertPos = db.prepare('INSERT INTO positions (id, name) VALUES (?, ?)');
-  initialPositions.forEach(p => insertPos.run(p.id, p.name));
-}
+seedIfEmpty('positions', `
+  INSERT INTO positions (id, name) VALUES 
+  ('vp', 'VP'),
+  ('avp', 'AVP'),
+  ('section-head', 'Section Head'),
+  ('unit-head', 'Unit Head'),
+  ('assistant-manager', 'Assistant Manager'),
+  ('senior-engineer', 'Senior Media Engineer')
+`);
 
 export async function getAllResources(): Promise<BudgetEntry[]> {
   const rows = db.prepare('SELECT * FROM resources ORDER BY createdAt DESC').all() as any[];
