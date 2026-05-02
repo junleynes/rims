@@ -24,7 +24,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Edit2, X, Send, Megaphone, Info, AlertTriangle, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Send, Megaphone, Info, AlertTriangle, Sparkles, User as UserIcon } from 'lucide-react';
 import { SystemUpdate, UpdateType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { fetchSystemUpdates, saveSystemUpdates } from '@/app/actions/db-actions';
@@ -199,7 +199,12 @@ export default function AdminUpdatesPage() {
                     <TableCell className="text-xs text-muted-foreground">
                       {format(new Date(update.createdAt), 'MMM dd, yyyy HH:mm')}
                     </TableCell>
-                    <TableCell className="text-xs font-semibold">{update.createdBy}</TableCell>
+                    <TableCell>
+                       <div className="flex items-center gap-1.5 text-xs font-semibold">
+                         <UserIcon className="h-3 w-3 text-muted-foreground" />
+                         {update.createdBy}
+                       </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button size="icon" variant="ghost" onClick={() => handleEdit(update)}>

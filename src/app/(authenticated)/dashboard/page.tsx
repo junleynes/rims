@@ -27,7 +27,7 @@ import {
   Info, 
   AlertTriangle, 
   Sparkles,
-  ChevronRight
+  User as UserIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -151,12 +151,16 @@ export default function DashboardPage() {
                   className={`p-4 rounded-xl border-l-4 shadow-sm transition-all hover:translate-x-1 ${getUpdateColor(update.type)}`}
                 >
                   <div className="flex justify-between items-start gap-4">
-                    <div className="space-y-1">
+                    <div className="space-y-1 flex-1">
                       <div className="flex items-center gap-2">
                         {getUpdateIcon(update.type)}
                         <h4 className="font-bold text-sm text-foreground uppercase tracking-tight">{update.title}</h4>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{update.content}</p>
+                      <div className="flex items-center gap-1.5 pt-1">
+                         <UserIcon className="h-3 w-3 text-muted-foreground" />
+                         <span className="text-[10px] font-bold text-muted-foreground uppercase">Author: {update.createdBy}</span>
+                      </div>
                     </div>
                     <span className="text-[9px] font-black text-muted-foreground uppercase whitespace-nowrap bg-white/50 px-2 py-1 rounded">
                       {formatDistanceToNow(new Date(update.createdAt))} ago
