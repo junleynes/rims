@@ -2,7 +2,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position } from './types';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig } from './types';
 
 const DB_PATH = path.join(process.cwd(), 'data.db');
 
@@ -92,6 +92,15 @@ db.exec(`
     logoUrl TEXT,
     theme TEXT,
     darkMode INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS smtp_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    host TEXT,
+    port INTEGER,
+    user TEXT,
+    pass TEXT,
+    fromEmail TEXT
   );
 `);
 
@@ -226,31 +235,12 @@ export async function getUserByUsername(username: string): Promise<any | null> {
 }
 
 export async function saveUsers(users: User[]) {
-  // Note: This function as currently designed overwrites the whole table.
-  // In a real system with passwords, we'd only update non-sensitive fields or handle password updates specifically.
   const deleteStmt = db.prepare('DELETE FROM users');
   const insertStmt = db.prepare(`
     INSERT INTO users (id, username, password_hash, name, role, section, division, twoFactorEnabled, position, reportingTo, isStaffOnly)
     VALUES (@id, @username, @password_hash, @name, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly)
   `);
 
-  const transaction = db.transaction((data: User[]) => {
-    deleteStmt.run();
-    for (const user of data) {
-      // Preserve existing password hash if it's an existing user, otherwise use a default
-      const existing = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(user.id) as any;
-      const hash = existing?.password_hash || bcrypt.hashSync('password', 10);
-      
-      insertStmt.run({
-        ...user,
-        password_hash: hash,
-        twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
-        isStaffOnly: user.isStaffOnly ? 1 : 0,
-      });
-    }
-  });
-
-  // We need to fetch existing hashes first if we are doing a bulk save to not lose them
   const existingHashes = db.prepare('SELECT id, password_hash FROM users').all() as any[];
   const hashMap = new Map(existingHashes.map(h => [h.id, h.password_hash]));
 
@@ -267,6 +257,10 @@ export async function saveUsers(users: User[]) {
   });
 
   transactionSafe(users);
+}
+
+export async function updateUserPassword(userId: string, hash: string) {
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, userId);
 }
 
 export async function getAllDivisions(): Promise<Division[]> {
@@ -377,4 +371,28 @@ export async function saveBranding(branding: BrandingConfig) {
     ...branding,
     darkMode: branding.darkMode ? 1 : 0,
   });
+}
+
+export async function getSmtpConfig(): Promise<SmtpConfig | null> {
+  return db.prepare('SELECT * FROM smtp_settings WHERE id = 1').get() as SmtpConfig || null;
+}
+
+export async function saveSmtpConfig(config: SmtpConfig) {
+  const existing = await getSmtpConfig();
+  if (existing) {
+    db.prepare(`
+      UPDATE smtp_settings SET
+        host = @host,
+        port = @port,
+        user = @user,
+        pass = @pass,
+        fromEmail = @fromEmail
+      WHERE id = 1
+    `).run(config);
+  } else {
+    db.prepare(`
+      INSERT INTO smtp_settings (id, host, port, user, pass, fromEmail)
+      VALUES (1, @host, @port, @user, @pass, @fromEmail)
+    `).run(config);
+  }
 }

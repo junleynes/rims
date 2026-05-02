@@ -34,10 +34,36 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Shield, User as UserIcon, Lock, Unlock, KeyRound, UserCheck, Briefcase, Edit2, X, UserX, Network, Building2 } from 'lucide-react';
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { 
+  Plus, 
+  Trash2, 
+  Shield, 
+  User as UserIcon, 
+  Lock, 
+  Unlock, 
+  KeyRound, 
+  UserCheck, 
+  Briefcase, 
+  Edit2, 
+  X, 
+  UserX, 
+  Network, 
+  Building2,
+  Copy,
+  Check
+} from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { resetUserPassword } from '@/app/actions/db-actions';
 
 export default function UserManagementPage() {
   const { users = [], divisions = [], sections = [], positions = [], addUser, deleteUser, updateUser } = useSystemData();
@@ -58,6 +84,8 @@ export default function UserManagementPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [userToReset, setUserToReset] = useState<User | null>(null);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleAddOrUpdateUser = () => {
     if (!formData.name) {
@@ -114,15 +142,24 @@ export default function UserManagementPage() {
     setResetDialogOpen(true);
   };
 
-  const confirmReset = () => {
+  const confirmReset = async () => {
     if (userToReset) {
+      const result = await resetUserPassword(userToReset.id);
+      setTempPassword(result.tempPassword);
       toast({
-        title: "Password Reset Successful",
-        description: `Password for ${userToReset.name} reset to default.`,
+        title: "Password Generated",
+        description: `A temporary password has been created for ${userToReset.name}.`,
       });
     }
     setResetDialogOpen(false);
-    setUserToReset(null);
+  };
+
+  const copyToClipboard = () => {
+    if (tempPassword) {
+      navigator.clipboard.writeText(tempPassword);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const filteredSections = sections.filter(s => {
@@ -353,20 +390,49 @@ export default function UserManagementPage() {
         </CardContent>
       </Card>
 
+      {/* Reset Confirmation Dialog */}
       <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reset Password?</AlertDialogTitle>
+            <AlertDialogTitle>Reset System Password?</AlertDialogTitle>
             <AlertDialogDescription>
-              Password for <strong>{userToReset?.name}</strong> will revert to 'password'.
+              A new temporary password will be generated for <strong>{userToReset?.name}</strong>. 
+              The system will attempt to notify the user if SMTP is configured.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmReset}>Confirm</AlertDialogAction>
+            <AlertDialogAction onClick={confirmReset} className="bg-primary hover:bg-primary/90">
+              Confirm Reset
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Temp Password Display Dialog */}
+      <Dialog open={!!tempPassword} onOpenChange={() => { setTempPassword(null); setUserToReset(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Temporary Password Generated</DialogTitle>
+            <DialogDescription>
+              Please provide this password to <strong>{userToReset?.name}</strong>. They will be required to change it upon login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center space-x-2 bg-muted/50 p-6 rounded-2xl border border-dashed justify-center">
+            <span className="text-4xl font-black font-mono tracking-widest text-primary uppercase">
+              {tempPassword}
+            </span>
+            <Button size="icon" variant="ghost" onClick={copyToClipboard} className="h-12 w-12">
+              {copied ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+            </Button>
+          </div>
+          <DialogFooter className="sm:justify-start">
+            <Button type="button" variant="secondary" onClick={() => setTempPassword(null)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

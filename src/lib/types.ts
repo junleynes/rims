@@ -65,6 +65,14 @@ export interface BrandingConfig {
   darkMode?: boolean;
 }
 
+export interface SmtpConfig {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  fromEmail: string;
+}
+
 export interface Location {
   id: string;
   name: string;

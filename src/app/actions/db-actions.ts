@@ -4,7 +4,9 @@
 import * as db from '@/lib/server-db';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position } from '@/lib/types';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig } from '@/lib/types';
 
 // Strict validation schemas
 const BudgetEntrySchema = z.object({
@@ -32,7 +34,6 @@ const BudgetEntrySchema = z.object({
   remarks: z.string(),
   attachmentUrl: z.string().optional().refine((val) => {
     if (!val) return true;
-    // Basic sanitization: check for safe protocols
     return /^(data:image|http:\/\/|https:\/\/)/i.test(val);
   }, "Invalid attachment URL protocol"),
   createdAt: z.string(),
@@ -56,7 +57,6 @@ export async function getBudgets() {
 }
 
 export async function saveBudgets(budgets: BudgetEntry[]) {
-  // Validate every entry
   const validated = budgets.map(b => BudgetEntrySchema.parse(b));
   await db.saveResources(validated);
 }
@@ -92,7 +92,6 @@ export async function saveSystemData(update: {
   branding?: BrandingConfig,
   positions?: Position[]
 }) {
-  // Granular validation and synchronization
   if (update.divisions) await db.saveDivisions(update.divisions);
   if (update.sections) await db.saveSections(update.sections);
   if (update.locations) await db.saveLocations(update.locations);
@@ -109,9 +108,6 @@ export async function saveSystemData(update: {
   return true;
 }
 
-/**
- * Verifies user credentials against the hashed password in the database.
- */
 export async function verifyUserCredentials(username: string, password?: string) {
   if (!username || !password) return null;
 
@@ -121,7 +117,6 @@ export async function verifyUserCredentials(username: string, password?: string)
   const isPasswordValid = bcrypt.compareSync(password, userRecord.password_hash);
   
   if (isPasswordValid) {
-    // Return user without sensitive data
     return {
       id: userRecord.id,
       username: userRecord.username,
@@ -136,4 +131,50 @@ export async function verifyUserCredentials(username: string, password?: string)
   }
 
   return null;
+}
+
+export async function fetchSmtpConfig() {
+  return db.getSmtpConfig();
+}
+
+export async function updateSmtpConfig(config: SmtpConfig) {
+  await db.saveSmtpConfig(config);
+  return true;
+}
+
+export async function resetUserPassword(userId: string) {
+  const tempPassword = crypto.randomBytes(4).toString('hex'); // 8 characters
+  const hash = bcrypt.hashSync(tempPassword, 10);
+  
+  await db.updateUserPassword(userId, hash);
+
+  const smtp = await db.getSmtpConfig();
+  const users = await db.getAllUsers();
+  const targetUser = users.find(u => u.id === userId);
+
+  if (smtp && targetUser && smtp.host) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtp.host,
+        port: smtp.port,
+        secure: smtp.port === 465,
+        auth: {
+          user: smtp.user,
+          pass: smtp.pass,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"${await db.getBranding().then(b => b.appName)}" <${smtp.fromEmail}>`,
+        to: targetUser.username ? `${targetUser.username}@example.com` : smtp.fromEmail, // Simulated email
+        subject: "Temporary System Password",
+        text: `Hello ${targetUser.name},\n\nYour password has been reset. Your temporary password is: ${tempPassword}\n\nPlease change it after logging in.\n\nBest regards,\nSystem Admin`,
+      });
+      console.log(`Password reset email sent to ${targetUser.name}`);
+    } catch (err) {
+      console.error('Failed to send reset email:', err);
+    }
+  }
+
+  return { tempPassword };
 }
