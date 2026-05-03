@@ -137,26 +137,31 @@ export async function saveSystemData(update: {
 export async function verifyUserCredentials(username: string, password?: string) {
   if (!username || !password) return null;
 
-  const userRecord = await db.getUserByUsername(username);
-  if (!userRecord || userRecord.isStaffOnly) return null;
+  try {
+    const userRecord = await db.getUserByUsername(username);
+    // Block staff-only records and handle missing password hashes
+    if (!userRecord || userRecord.isStaffOnly || !userRecord.password_hash) return null;
 
-  const isPasswordValid = bcrypt.compareSync(password, userRecord.password_hash);
-  
-  if (isPasswordValid) {
-    return {
-      id: userRecord.id,
-      username: userRecord.username,
-      name: userRecord.name,
-      email: userRecord.email,
-      contactNumber: userRecord.contactNumber,
-      role: userRecord.role as any,
-      section: userRecord.section,
-      division: userRecord.division,
-      twoFactorEnabled: !!userRecord.twoFactorEnabled,
-      position: userRecord.position,
-      reportingTo: userRecord.reportingTo,
-      profilePicture: userRecord.profilePicture,
-    } as User;
+    const isPasswordValid = bcrypt.compareSync(password, userRecord.password_hash);
+    
+    if (isPasswordValid) {
+      return {
+        id: userRecord.id,
+        username: userRecord.username,
+        name: userRecord.name,
+        email: userRecord.email,
+        contactNumber: userRecord.contactNumber,
+        role: userRecord.role as any,
+        section: userRecord.section,
+        division: userRecord.division,
+        twoFactorEnabled: !!userRecord.twoFactorEnabled,
+        position: userRecord.position,
+        reportingTo: userRecord.reportingTo,
+        profilePicture: userRecord.profilePicture,
+      } as User;
+    }
+  } catch (err) {
+    console.error('Credential verification error:', err);
   }
 
   return null;

@@ -14,7 +14,7 @@ db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
 
-// Create tables if they don't exist
+// Create tables if they don't exist with full modern schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS resources (
     id TEXT PRIMARY KEY,
@@ -117,32 +117,34 @@ db.exec(`
   );
 `);
 
-// --- Migrations for existing databases ---
-const migrations = [
-  'ALTER TABLE users ADD COLUMN password_hash TEXT',
-  'ALTER TABLE users ADD COLUMN profilePicture TEXT',
-  'ALTER TABLE users ADD COLUMN isStaffOnly INTEGER DEFAULT 0',
-  'ALTER TABLE users ADD COLUMN contactNumber TEXT',
-  'ALTER TABLE users ADD COLUMN email TEXT',
-  'ALTER TABLE users ADD COLUMN position TEXT',
-  'ALTER TABLE users ADD COLUMN reportingTo TEXT',
-  'ALTER TABLE smtp_settings ADD COLUMN secure INTEGER DEFAULT 0',
-  'ALTER TABLE branding ADD COLUMN theme TEXT',
-  'ALTER TABLE branding ADD COLUMN darkMode INTEGER DEFAULT 0',
-];
-
-for (const m of migrations) {
-  try {
-    db.prepare(m).run();
-  } catch (e) {
-    // Column already exists or table doesn't exist yet - safe to ignore
+// --- Advanced Migrations (Safe Column Addition) ---
+function addColumnIfNotExists(table: string, column: string, type: string) {
+  const info = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
+  const exists = info.some(col => col.name === column);
+  if (!exists) {
+    db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
   }
+}
+
+try {
+  addColumnIfNotExists('users', 'password_hash', 'TEXT');
+  addColumnIfNotExists('users', 'profilePicture', 'TEXT');
+  addColumnIfNotExists('users', 'isStaffOnly', 'INTEGER DEFAULT 0');
+  addColumnIfNotExists('users', 'contactNumber', 'TEXT');
+  addColumnIfNotExists('users', 'email', 'TEXT');
+  addColumnIfNotExists('users', 'position', 'TEXT');
+  addColumnIfNotExists('users', 'reportingTo', 'TEXT');
+  addColumnIfNotExists('smtp_settings', 'secure', 'INTEGER DEFAULT 0');
+  addColumnIfNotExists('branding', 'theme', 'TEXT');
+  addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
+} catch (e) {
+  console.warn("Migration warning:", e);
 }
 
 // --- Granular Seeding Logic ---
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
-  const count = (db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get() as any).count;
-  if (count === 0) {
+  const countRes = db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get() as any;
+  if (countRes.count === 0) {
     db.prepare(query).run(...params);
   }
 };
@@ -185,7 +187,7 @@ seedIfEmpty('sections', `
   ('code-compliance-unit', 'CODE Compliance Unit', 'project-management-division')
 `);
 
-// 4. Users (Ensuring Admin account is always present and active)
+// 4. Administrator Identity Protection
 const adminPasswordHash = bcrypt.hashSync('password', 10);
 const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin') as any;
 
@@ -195,20 +197,10 @@ if (!existingAdmin) {
     VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@example.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
   `).run(adminPasswordHash);
 } else {
-  db.prepare("UPDATE users SET password_hash = ?, isStaffOnly = 0, role = 'Admin' WHERE username = 'admin'")
-    .run(adminPasswordHash);
+  // Always ensure the admin account has the correct baseline properties
+  db.prepare("UPDATE users SET isStaffOnly = 0, role = 'Admin', username = 'admin' WHERE username = 'admin'")
+    .run();
 }
-
-// Seed additional dummy users for organization chart visualization
-seedIfEmpty('users', `
-  INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, division, section, reportingTo, isStaffOnly)
-  VALUES 
-  ('user-002', 'm_santiago', '${adminPasswordHash}', 'Michael Santiago', 'msantiago@example.com', '0917-123-4567', 'Manager', 'Section Head', 'Operations Division', 'Video Edit Section', 'System Administrator', 0),
-  ('user-003', 'l_delacruz', '${adminPasswordHash}', 'Linda Dela Cruz', 'ldcruz@example.com', '0918-765-4321', 'AVP', 'Assistant Vice President', 'Operations Division', 'None', 'System Administrator', 0),
-  ('staff-001', NULL, NULL, 'James Wilson', 'jwilson@example.com', 'N/A', 'Viewer', 'Lead Editor', 'Operations Division', 'Video Edit Section', 'Michael Santiago', 1),
-  ('staff-002', NULL, NULL, 'Sarah Parker', 'sparker@example.com', 'N/A', 'Viewer', 'Senior Graphic Artist', 'Operations Division', 'Videographics Section', 'Linda Dela Cruz', 1),
-  ('staff-003', NULL, NULL, 'Robert Chen', 'rchen@example.com', 'N/A', 'Viewer', 'Storage Engineer', 'Technical and Media Server Support Division', 'Media Server Support Section', 'System Administrator', 1)
-`);
 
 // 5. Locations
 seedIfEmpty('locations', `
@@ -239,24 +231,7 @@ seedIfEmpty('positions', `
   ('senior-engineer', 'Senior Media Engineer')
 `);
 
-// 8. Dummy Resources
-seedIfEmpty('resources', `
-  INSERT INTO resources (id, year, division, section, location, classification, category, account, projectTitle, itemDescription, quantity, unitCostBudget, totalCostBudget, unitCostActual, totalCostActual, prNumber, status, remarks, createdAt)
-  VALUES 
-  ('res-001', 2026, 'Operations Division', 'Videographics Section', '5th floor', 'Hardware', 'CAPEX', 'Capex', 'High-End Graphics Workstation', 'MacBook Pro M3 Max, 64GB RAM, 2TB SSD for 4K rendering.', 2, 250000, 500000, 245000, 490000, 'PR-2026-001', 'working', 'Essential for the new broadcast season.', '2025-01-20T08:00:00Z'),
-  ('res-002', 2026, 'Operations Division', 'Audio Post Section', '6th floor', 'Software', 'OPEX', 'Repairs and Maintenance - Subscriptions/Annual Renewal', 'Pro Tools Ultimate Subscription', 'Annual renewal for 5 workstations.', 5, 45000, 225000, 0, 0, 'PR-2026-005', 'working', 'Renewal due in Q3.', '2025-01-22T10:30:00Z'),
-  ('res-003', 2026, 'Technical and Media Server Support Division', 'Media Server Support Section', '5th floor', 'Hardware', 'CAPEX', 'Capex', 'SAN Storage Extension', 'Additional 500TB for the main storage cluster.', 1, 1500000, 1500000, 0, 0, 'PR-2026-012', 'working', 'Pending procurement approval.', '2025-01-25T14:15:00Z'),
-  ('res-004', 2025, 'Project Management Division', 'Agile Content Section', '4th floor', 'Others', 'OPEX', 'Office Supplies', 'Ergonomic Desk Chairs', 'Replacement chairs for the PM unit.', 10, 12000, 120000, 11500, 115000, 'PR-2025-099', 'working', 'Completed and delivered.', '2024-12-15T09:00:00Z')
-`);
-
-// 9. Dummy System Updates
-seedIfEmpty('system_updates', `
-  INSERT INTO system_updates (id, title, content, type, createdBy, createdAt)
-  VALUES 
-  ('upd-001', 'FY 2027 Budget Encoding Now Open', 'All section heads are requested to begin encoding their resource requirements for the upcoming fiscal year.', 'Info', 'System Administrator', '2025-02-18T10:00:00Z'),
-  ('upd-002', 'Critical System Patch: Security Update', 'A security patch has been applied to the authentication module. Please report any login issues to the IT desk.', 'Alert', 'System Administrator', '2025-02-15T15:30:00Z'),
-  ('upd-003', 'New Feature: AI Budget Assistant', 'You can now use the AI assistant to help generate detailed action plans and item descriptions.', 'Feature', 'System Administrator', '2025-02-10T09:15:00Z')
-`);
+// --- Resource Logic ---
 
 export async function getAllResources(): Promise<BudgetEntry[]> {
   const rows = db.prepare('SELECT * FROM resources ORDER BY createdAt DESC').all() as any[];
@@ -297,6 +272,8 @@ export async function deleteResourcesByYear(year: number) {
   db.prepare('DELETE FROM resources WHERE year = ?').run(year);
 }
 
+// --- User & Auth Logic ---
+
 export async function getAllUsers(): Promise<User[]> {
   const rows = db.prepare('SELECT * FROM users').all() as any[];
   return rows.map(row => ({
@@ -317,19 +294,31 @@ export async function saveUsers(users: User[]) {
     VALUES (@id, @username, @password_hash, @name, @email, @contactNumber, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly, @profilePicture)
   `);
 
-  const existingHashes = db.prepare('SELECT id, password_hash FROM users').all() as any[];
-  const hashMap = new Map(existingHashes.map(h => [h.id, h.password_hash]));
+  // Fetch current hashes to preserve passwords for existing IDs or Usernames
+  const currentRecords = db.prepare('SELECT id, username, password_hash FROM users').all() as any[];
+  const hashMap = new Map(currentRecords.map(r => [r.id, r.password_hash]));
+  const usernameMap = new Map(currentRecords.filter(r => r.username).map(r => [r.username, r.password_hash]));
+  
+  // Pre-calculate default hash once to avoid slow re-hashing in transaction
+  const defaultHash = bcrypt.hashSync('password', 10);
 
   const transactionSafe = db.transaction((data: User[]) => {
     deleteStmt.run();
     for (const user of data) {
-      insertStmt.run({
+      // Robust Lookup: check ID first, then Username as fallback to prevent lockout
+      const existingHash = hashMap.get(user.id) || (user.username ? usernameMap.get(user.username) : null);
+      
+      const payload = {
         ...user,
-        password_hash: hashMap.get(user.id) || bcrypt.hashSync('password', 10),
+        // Sticky protection for Admin account
+        id: user.username === 'admin' ? 'admin-001' : user.id,
+        password_hash: existingHash || defaultHash,
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
         isStaffOnly: user.isStaffOnly ? 1 : 0,
         profilePicture: user.profilePicture || null
-      });
+      };
+      
+      insertStmt.run(payload);
     }
   });
 
@@ -340,7 +329,8 @@ export async function updateUserPassword(userId: string, hash: string) {
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, userId);
 }
 
-// System Updates
+// --- System Updates Logic ---
+
 export async function getAllSystemUpdates(): Promise<SystemUpdate[]> {
   return db.prepare('SELECT * FROM system_updates ORDER BY createdAt DESC').all() as SystemUpdate[];
 }
@@ -362,6 +352,8 @@ export async function saveSystemUpdates(updates: SystemUpdate[]) {
   transaction(updates);
 }
 
+// --- Global Data Getters/Setters ---
+
 export async function getAllDivisions(): Promise<Division[]> {
   return db.prepare('SELECT * FROM divisions').all() as Division[];
 }
@@ -369,12 +361,8 @@ export async function getAllDivisions(): Promise<Division[]> {
 export async function saveDivisions(divisions: Division[]) {
   const deleteStmt = db.prepare('DELETE FROM divisions');
   const insertStmt = db.prepare('INSERT INTO divisions (id, name) VALUES (@id, @name)');
-  
-  const transaction = db.transaction((data: Division[]) => {
-    deleteStmt.run();
-    for (const d of data) insertStmt.run(d);
-  });
-  transaction(divisions);
+  const trans = db.transaction((d: any[]) => { deleteStmt.run(); d.forEach(i => insertStmt.run(i)); });
+  trans(divisions);
 }
 
 export async function getAllSections(): Promise<Section[]> {
@@ -384,12 +372,8 @@ export async function getAllSections(): Promise<Section[]> {
 export async function saveSections(sections: Section[]) {
   const deleteStmt = db.prepare('DELETE FROM sections');
   const insertStmt = db.prepare('INSERT INTO sections (id, name, divisionId) VALUES (@id, @name, @divisionId)');
-  
-  const transaction = db.transaction((data: Section[]) => {
-    deleteStmt.run();
-    for (const s of data) insertStmt.run(s);
-  });
-  transaction(sections);
+  const trans = db.transaction((d: any[]) => { deleteStmt.run(); d.forEach(i => insertStmt.run(i)); });
+  trans(sections);
 }
 
 export async function getAllLocations(): Promise<Location[]> {
@@ -399,12 +383,8 @@ export async function getAllLocations(): Promise<Location[]> {
 export async function saveLocations(locations: Location[]) {
   const deleteStmt = db.prepare('DELETE FROM locations');
   const insertStmt = db.prepare('INSERT INTO locations (id, name) VALUES (@id, @name)');
-  
-  const transaction = db.transaction((data: Location[]) => {
-    deleteStmt.run();
-    for (const l of data) insertStmt.run(l);
-  });
-  transaction(locations);
+  const trans = db.transaction((d: any[]) => { deleteStmt.run(); d.forEach(i => insertStmt.run(i)); });
+  trans(locations);
 }
 
 export async function getAllStatusOptions(): Promise<StatusOption[]> {
@@ -414,12 +394,8 @@ export async function getAllStatusOptions(): Promise<StatusOption[]> {
 export async function saveStatusOptions(options: StatusOption[]) {
   const deleteStmt = db.prepare('DELETE FROM status_options');
   const insertStmt = db.prepare('INSERT INTO status_options (id, name) VALUES (@id, @name)');
-  
-  const transaction = db.transaction((data: StatusOption[]) => {
-    deleteStmt.run();
-    for (const o of data) insertStmt.run(o);
-  });
-  transaction(options);
+  const trans = db.transaction((d: any[]) => { deleteStmt.run(); d.forEach(i => insertStmt.run(i)); });
+  trans(options);
 }
 
 export async function getAllPositions(): Promise<Position[]> {
@@ -429,12 +405,8 @@ export async function getAllPositions(): Promise<Position[]> {
 export async function savePositions(positions: Position[]) {
   const deleteStmt = db.prepare('DELETE FROM positions');
   const insertStmt = db.prepare('INSERT INTO positions (id, name) VALUES (@id, @name)');
-  
-  const transaction = db.transaction((data: Position[]) => {
-    deleteStmt.run();
-    for (const p of data) insertStmt.run(p);
-  });
-  transaction(positions);
+  const trans = db.transaction((d: any[]) => { deleteStmt.run(); d.forEach(i => insertStmt.run(i)); });
+  trans(positions);
 }
 
 export async function getBranding(): Promise<BrandingConfig> {
