@@ -6,7 +6,7 @@ import { BudgetTableView } from '@/components/budget/budget-table-view';
 import { useBudgets } from '@/components/budget-context';
 import { useAuth } from '@/components/auth-context';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Plus, Upload, Trash2, AlertTriangle, Loader2, FileDown, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetEntry, Classification, BudgetCategory, Account } from '@/lib/types';
@@ -49,6 +49,68 @@ export default function BudgetsPage() {
     const years = budgets.map(b => b.year.toString());
     return Array.from(new Set(years)).sort().reverse();
   }, [budgets]);
+
+  const handleDownloadTemplate = () => {
+    const headers = [
+      "Year",
+      "Division",
+      "Section",
+      "Location",
+      "Classification",
+      "Category",
+      "Account",
+      "Project Title",
+      "Item Description",
+      "Quantity",
+      "Unit Cost Budget",
+      "Unit Cost Actual",
+      "PR Number",
+      "Date Delivered",
+      "GR SIS Number",
+      "Accountable Person",
+      "Status",
+      "Status Others",
+      "Remarks"
+    ];
+
+    const sampleRow = [
+      "2026",
+      "Operations Division",
+      "Video Edit Section",
+      "5th floor",
+      "Hardware",
+      "CAPEX",
+      "Capex",
+      "Sample Resource Title",
+      "Detailed description of the resource goes here",
+      "1",
+      "50000",
+      "0",
+      "PR-XXXXX",
+      "",
+      "",
+      "System Administrator",
+      "working",
+      "",
+      "Sample remarks"
+    ];
+
+    const csvContent = [headers.join(","), sampleRow.join(",")].join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "rims-resource-template.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({
+      title: "Template Downloaded",
+      description: "Follow the sample format for successful bulk importing.",
+    });
+  };
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -235,6 +297,10 @@ export default function BudgetsPage() {
                 </AlertDialogContent>
               </AlertDialog>
             )}
+
+            <Button variant="outline" onClick={handleDownloadTemplate} className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+              <FileDown className="h-4 w-4" /> Template
+            </Button>
 
             <input 
               type="file" 
