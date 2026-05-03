@@ -117,11 +117,23 @@ db.exec(`
   );
 `);
 
-// Handle migration for existing databases without profilePicture column
-try {
-  db.prepare('ALTER TABLE users ADD COLUMN profilePicture TEXT').run();
-} catch (e) {
-  // Column already exists or other error
+// --- Migrations for existing databases ---
+const migrations = [
+  'ALTER TABLE users ADD COLUMN password_hash TEXT',
+  'ALTER TABLE users ADD COLUMN profilePicture TEXT',
+  'ALTER TABLE users ADD COLUMN isStaffOnly INTEGER DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN contactNumber TEXT',
+  'ALTER TABLE users ADD COLUMN email TEXT',
+  'ALTER TABLE users ADD COLUMN position TEXT',
+  'ALTER TABLE users ADD COLUMN reportingTo TEXT',
+];
+
+for (const m of migrations) {
+  try {
+    db.prepare(m).run();
+  } catch (e) {
+    // Column already exists or table doesn't exist yet - safe to ignore
+  }
 }
 
 // --- Granular Seeding Logic ---
@@ -170,14 +182,19 @@ seedIfEmpty('sections', `
   ('code-compliance-unit', 'CODE Compliance Unit', 'project-management-division')
 `);
 
-// 4. Users (Ensuring Admin account is always present)
+// 4. Users (Ensuring Admin account is always present and active)
 const adminPasswordHash = bcrypt.hashSync('password', 10);
-const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin');
+const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin') as any;
+
 if (!existingAdmin) {
   db.prepare(`
     INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
     VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@example.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
   `).run(adminPasswordHash);
+} else {
+  // Fix: Used single quotes for string literals and parameterized 'role' for robustness
+  db.prepare('UPDATE users SET password_hash = ?, isStaffOnly = 0, role = ? WHERE username = ?')
+    .run(adminPasswordHash, 'Admin', 'admin');
 }
 
 // 5. Locations
