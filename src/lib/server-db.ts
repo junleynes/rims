@@ -126,6 +126,9 @@ const migrations = [
   'ALTER TABLE users ADD COLUMN email TEXT',
   'ALTER TABLE users ADD COLUMN position TEXT',
   'ALTER TABLE users ADD COLUMN reportingTo TEXT',
+  'ALTER TABLE smtp_settings ADD COLUMN secure INTEGER DEFAULT 0',
+  'ALTER TABLE branding ADD COLUMN theme TEXT',
+  'ALTER TABLE branding ADD COLUMN darkMode INTEGER DEFAULT 0',
 ];
 
 for (const m of migrations) {
@@ -192,8 +195,8 @@ if (!existingAdmin) {
     VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@example.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
   `).run(adminPasswordHash);
 } else {
-  db.prepare("UPDATE users SET password_hash = ?, isStaffOnly = 0, role = ? WHERE username = ?")
-    .run(adminPasswordHash, 'Admin', 'admin');
+  db.prepare("UPDATE users SET password_hash = ?, isStaffOnly = 0, role = 'Admin' WHERE username = 'admin'")
+    .run(adminPasswordHash);
 }
 
 // Seed additional dummy users for organization chart visualization
