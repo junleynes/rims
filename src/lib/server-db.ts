@@ -192,10 +192,20 @@ if (!existingAdmin) {
     VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@example.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
   `).run(adminPasswordHash);
 } else {
-  // Fix: Used single quotes for string literals and parameterized 'role' for robustness
-  db.prepare('UPDATE users SET password_hash = ?, isStaffOnly = 0, role = ? WHERE username = ?')
+  db.prepare("UPDATE users SET password_hash = ?, isStaffOnly = 0, role = ? WHERE username = ?")
     .run(adminPasswordHash, 'Admin', 'admin');
 }
+
+// Seed additional dummy users for organization chart visualization
+seedIfEmpty('users', `
+  INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, division, section, reportingTo, isStaffOnly)
+  VALUES 
+  ('user-002', 'm_santiago', '${adminPasswordHash}', 'Michael Santiago', 'msantiago@example.com', '0917-123-4567', 'Manager', 'Section Head', 'Operations Division', 'Video Edit Section', 'System Administrator', 0),
+  ('user-003', 'l_delacruz', '${adminPasswordHash}', 'Linda Dela Cruz', 'ldcruz@example.com', '0918-765-4321', 'AVP', 'Assistant Vice President', 'Operations Division', 'None', 'System Administrator', 0),
+  ('staff-001', NULL, NULL, 'James Wilson', 'jwilson@example.com', 'N/A', 'Viewer', 'Lead Editor', 'Operations Division', 'Video Edit Section', 'Michael Santiago', 1),
+  ('staff-002', NULL, NULL, 'Sarah Parker', 'sparker@example.com', 'N/A', 'Viewer', 'Senior Graphic Artist', 'Operations Division', 'Videographics Section', 'Linda Dela Cruz', 1),
+  ('staff-003', NULL, NULL, 'Robert Chen', 'rchen@example.com', 'N/A', 'Viewer', 'Storage Engineer', 'Technical and Media Server Support Division', 'Media Server Support Section', 'System Administrator', 1)
+`);
 
 // 5. Locations
 seedIfEmpty('locations', `
@@ -224,6 +234,25 @@ seedIfEmpty('positions', `
   ('unit-head', 'Unit Head'),
   ('assistant-manager', 'Assistant Manager'),
   ('senior-engineer', 'Senior Media Engineer')
+`);
+
+// 8. Dummy Resources
+seedIfEmpty('resources', `
+  INSERT INTO resources (id, year, division, section, location, classification, category, account, projectTitle, itemDescription, quantity, unitCostBudget, totalCostBudget, unitCostActual, totalCostActual, prNumber, status, remarks, createdAt)
+  VALUES 
+  ('res-001', 2026, 'Operations Division', 'Videographics Section', '5th floor', 'Hardware', 'CAPEX', 'Capex', 'High-End Graphics Workstation', 'MacBook Pro M3 Max, 64GB RAM, 2TB SSD for 4K rendering.', 2, 250000, 500000, 245000, 490000, 'PR-2026-001', 'working', 'Essential for the new broadcast season.', '2025-01-20T08:00:00Z'),
+  ('res-002', 2026, 'Operations Division', 'Audio Post Section', '6th floor', 'Software', 'OPEX', 'Repairs and Maintenance - Subscriptions/Annual Renewal', 'Pro Tools Ultimate Subscription', 'Annual renewal for 5 workstations.', 5, 45000, 225000, 0, 0, 'PR-2026-005', 'working', 'Renewal due in Q3.', '2025-01-22T10:30:00Z'),
+  ('res-003', 2026, 'Technical and Media Server Support Division', 'Media Server Support Section', '5th floor', 'Hardware', 'CAPEX', 'Capex', 'SAN Storage Extension', 'Additional 500TB for the main storage cluster.', 1, 1500000, 1500000, 0, 0, 'PR-2026-012', 'working', 'Pending procurement approval.', '2025-01-25T14:15:00Z'),
+  ('res-004', 2025, 'Project Management Division', 'Agile Content Section', '4th floor', 'Others', 'OPEX', 'Office Supplies', 'Ergonomic Desk Chairs', 'Replacement chairs for the PM unit.', 10, 12000, 120000, 11500, 115000, 'PR-2025-099', 'working', 'Completed and delivered.', '2024-12-15T09:00:00Z')
+`);
+
+// 9. Dummy System Updates
+seedIfEmpty('system_updates', `
+  INSERT INTO system_updates (id, title, content, type, createdBy, createdAt)
+  VALUES 
+  ('upd-001', 'FY 2027 Budget Encoding Now Open', 'All section heads are requested to begin encoding their resource requirements for the upcoming fiscal year.', 'Info', 'System Administrator', '2025-02-18T10:00:00Z'),
+  ('upd-002', 'Critical System Patch: Security Update', 'A security patch has been applied to the authentication module. Please report any login issues to the IT desk.', 'Alert', 'System Administrator', '2025-02-15T15:30:00Z'),
+  ('upd-003', 'New Feature: AI Budget Assistant', 'You can now use the AI assistant to help generate detailed action plans and item descriptions.', 'Feature', 'System Administrator', '2025-02-10T09:15:00Z')
 `);
 
 export async function getAllResources(): Promise<BudgetEntry[]> {
