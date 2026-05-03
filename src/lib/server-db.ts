@@ -149,12 +149,12 @@ const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
   }
 };
 
-// 1. Branding
+// 1. Branding - oceanic is now default
 seedIfEmpty('branding', `
   INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
   VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
   'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
-  '© 2025 Resource Inventory Management System. All rights reserved.', 'sunset', 0)
+  '© 2025 Resource Inventory Management System. All rights reserved.', 'oceanic', 0)
 `);
 
 // 2. Divisions
@@ -197,7 +197,6 @@ if (!existingAdmin) {
     VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@example.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
   `).run(adminPasswordHash);
 } else {
-  // Always ensure the admin account has the correct baseline properties
   db.prepare("UPDATE users SET isStaffOnly = 0, role = 'Admin', username = 'admin' WHERE username = 'admin'")
     .run();
 }
@@ -294,23 +293,19 @@ export async function saveUsers(users: User[]) {
     VALUES (@id, @username, @password_hash, @name, @email, @contactNumber, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly, @profilePicture)
   `);
 
-  // Fetch current hashes to preserve passwords for existing IDs or Usernames
   const currentRecords = db.prepare('SELECT id, username, password_hash FROM users').all() as any[];
   const hashMap = new Map(currentRecords.map(r => [r.id, r.password_hash]));
   const usernameMap = new Map(currentRecords.filter(r => r.username).map(r => [r.username, r.password_hash]));
   
-  // Pre-calculate default hash once to avoid slow re-hashing in transaction
   const defaultHash = bcrypt.hashSync('password', 10);
 
   const transactionSafe = db.transaction((data: User[]) => {
     deleteStmt.run();
     for (const user of data) {
-      // Robust Lookup: check ID first, then Username as fallback to prevent lockout
       const existingHash = hashMap.get(user.id) || (user.username ? usernameMap.get(user.username) : null);
       
       const payload = {
         ...user,
-        // Sticky protection for Admin account
         id: user.username === 'admin' ? 'admin-001' : user.id,
         password_hash: existingHash || defaultHash,
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
@@ -417,7 +412,7 @@ export async function getBranding(): Promise<BrandingConfig> {
       appAcronym: 'R.I.M.S',
       loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
       copyright: '© 2025 Resource Inventory Management System. All rights reserved.',
-      theme: 'sunset',
+      theme: 'oceanic',
       darkMode: false,
     };
   }

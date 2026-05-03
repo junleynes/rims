@@ -14,7 +14,7 @@ const defaultBranding: BrandingConfig = {
   loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
   copyright: `© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`,
   logoUrl: '',
-  theme: 'sunset',
+  theme: 'oceanic',
   darkMode: false,
 };
 
@@ -33,6 +33,9 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {
         console.error("Failed to parse branding config", e);
       }
+    } else {
+      // Apply default theme if nothing is saved
+      applyBranding(defaultBranding);
     }
   }, []);
 

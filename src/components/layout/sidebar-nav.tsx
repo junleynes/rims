@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -15,8 +14,7 @@ import {
   FileBarChart,
   Network,
   UsersRound,
-  Megaphone,
-  Camera
+  Megaphone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -72,6 +70,32 @@ export function SidebarNav() {
 
   const isManagement = user.role === 'Admin' || user.role === 'VP' || user.role === 'AVP' || user.role === 'Viewer';
 
+  const renderNavItems = (items: typeof navItems) => {
+    return items.map((item) => (
+      <SidebarMenuItem key={item.name}>
+        <SidebarMenuButton 
+          asChild 
+          isActive={pathname === item.href}
+          tooltip={item.name}
+          className={cn(
+            "h-11 rounded-xl transition-all duration-200 mb-1 group",
+            pathname === item.href ? "bg-primary/10 text-primary" : "hover:bg-muted/50"
+          )}
+        >
+          <Link href={item.href} className="flex items-center gap-3 w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-0">
+            <div className={cn(
+              "flex items-center justify-center h-8 w-8 rounded-lg shadow-sm text-white shrink-0 transition-transform group-hover:scale-105",
+              item.color
+            )}>
+              <item.icon className="h-4 w-4" />
+            </div>
+            <span className="font-semibold text-[14px] group-data-[collapsible=icon]:hidden">{item.name}</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    ));
+  };
+
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r-0">
       <SidebarHeader className="p-6 pb-2">
@@ -89,7 +113,7 @@ export function SidebarNav() {
               <TrendingUp className="text-primary-foreground h-5 w-5" />
             )}
           </div>
-          <span className="font-bold text-xl tracking-tight text-primary group-data-[collapsible=icon]:hidden">
+          <span className="font-bold text-xl tracking-tight text-primary group-data-[collapsible=icon]:hidden truncate">
             {config.appAcronym}
           </span>
         </div>
@@ -97,121 +121,33 @@ export function SidebarNav() {
 
       <SidebarContent className="px-2">
         <SidebarGroup>
-          <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1">Home</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 group-data-[collapsible=icon]:hidden">Home</SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.slice(0, 1).map((item) => (
-              <SidebarMenuItem key={item.name}>
-                <SidebarMenuButton 
-                  asChild 
-                  isActive={pathname === item.href}
-                  tooltip={item.name}
-                  className={cn(
-                    "h-11 px-3 rounded-xl transition-all duration-200 mb-1",
-                    pathname === item.href ? "bg-blue-50 text-blue-700 hover:bg-blue-100" : "hover:bg-muted/50"
-                  )}
-                >
-                  <Link href={item.href} className="flex items-center gap-3">
-                    <div className={cn(
-                      "flex items-center justify-center h-8 w-8 rounded-lg shadow-sm text-white shrink-0 transition-transform group-hover:scale-105",
-                      item.color
-                    )}>
-                      <item.icon className="h-4 w-4" />
-                    </div>
-                    <span className="font-semibold text-[14px]">{item.name}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {renderNavItems(navItems.slice(0, 1))}
           </SidebarMenu>
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 mt-2">Inventory</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 mt-2 group-data-[collapsible=icon]:hidden">Inventory</SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.slice(1).map((item) => (
-              <SidebarMenuItem key={item.name}>
-                <SidebarMenuButton 
-                  asChild 
-                  isActive={pathname === item.href}
-                  tooltip={item.name}
-                  className={cn(
-                    "h-11 px-3 rounded-xl transition-all duration-200 mb-1",
-                    pathname === item.href ? "bg-blue-50 text-blue-700 hover:bg-blue-100" : "hover:bg-muted/50"
-                  )}
-                >
-                  <Link href={item.href} className="flex items-center gap-3">
-                    <div className={cn(
-                      "flex items-center justify-center h-8 w-8 rounded-lg shadow-sm text-white shrink-0 transition-transform group-hover:scale-105",
-                      item.color
-                    )}>
-                      <item.icon className="h-4 w-4" />
-                    </div>
-                    <span className="font-semibold text-[14px]">{item.name}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {renderNavItems(navItems.slice(1))}
           </SidebarMenu>
         </SidebarGroup>
 
         {isManagement && (
           <SidebarGroup>
-            <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 mt-2">Management</SidebarGroupLabel>
+            <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 mt-2 group-data-[collapsible=icon]:hidden">Management</SidebarGroupLabel>
             <SidebarMenu>
-              {managementItems.map((item) => (
-                <SidebarMenuItem key={item.name}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={pathname === item.href}
-                    tooltip={item.name}
-                    className={cn(
-                      "h-11 px-3 rounded-xl transition-all duration-200 mb-1",
-                      pathname === item.href ? "bg-blue-50 text-blue-700 hover:bg-blue-100" : "hover:bg-muted/50"
-                    )}
-                  >
-                    <Link href={item.href} className="flex items-center gap-3">
-                      <div className={cn(
-                        "flex items-center justify-center h-8 w-8 rounded-lg shadow-sm text-white shrink-0 transition-transform group-hover:scale-105",
-                        item.color
-                      )}>
-                        <item.icon className="h-4 w-4" />
-                      </div>
-                      <span className="font-semibold text-[14px]">{item.name}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {renderNavItems(managementItems)}
             </SidebarMenu>
           </SidebarGroup>
         )}
 
         {user.role === 'Admin' && (
           <SidebarGroup>
-            <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 mt-2">Administration</SidebarGroupLabel>
+            <SidebarGroupLabel className="px-4 text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest mb-1 mt-2 group-data-[collapsible=icon]:hidden">Administration</SidebarGroupLabel>
             <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.name}>
-                  <SidebarMenuButton 
-                    asChild 
-                    isActive={pathname === item.href}
-                    tooltip={item.name}
-                    className={cn(
-                      "h-11 px-3 rounded-xl transition-all duration-200 mb-1",
-                      pathname === item.href ? "bg-blue-50 text-blue-700 hover:bg-blue-100" : "hover:bg-muted/50"
-                    )}
-                  >
-                    <Link href={item.href} className="flex items-center gap-3">
-                      <div className={cn(
-                        "flex items-center justify-center h-8 w-8 rounded-lg shadow-sm text-white shrink-0 transition-transform group-hover:scale-105",
-                        item.color
-                      )}>
-                        <item.icon className="h-4 w-4" />
-                      </div>
-                      <span className="font-semibold text-[14px]">{item.name}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {renderNavItems(adminItems)}
             </SidebarMenu>
           </SidebarGroup>
         )}
@@ -222,11 +158,11 @@ export function SidebarNav() {
           <Link 
             href="/profile" 
             className={cn(
-              "flex items-center gap-3 group-data-[collapsible=icon]:justify-center px-2 py-2 rounded-xl transition-colors",
+              "flex items-center gap-3 px-2 py-2 rounded-xl transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0",
               pathname === '/profile' ? "bg-primary/10" : "hover:bg-muted/50"
             )}
           >
-            <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm">
+            <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm shrink-0">
               <AvatarImage src={user.profilePicture} className="object-cover" />
               <AvatarFallback className="bg-secondary text-primary font-bold">
                 {user.name.charAt(0)}
@@ -234,15 +170,15 @@ export function SidebarNav() {
             </Avatar>
             <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
               <span className="text-[14px] font-bold truncate text-primary leading-tight">{user.name}</span>
-              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-tight">
-                {user.role} - Settings
+              <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-tight truncate">
+                {user.role}
               </span>
             </div>
           </Link>
           <Button 
             variant="ghost" 
             size="sm" 
-            className="justify-start gap-3 h-11 px-3 rounded-xl hover:bg-destructive/10 hover:text-destructive group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:justify-center transition-colors font-semibold"
+            className="justify-start gap-3 h-11 px-3 rounded-xl hover:bg-destructive/10 hover:text-destructive transition-colors font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
             onClick={logout}
           >
             <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-slate-800 text-white shrink-0 shadow-sm">
