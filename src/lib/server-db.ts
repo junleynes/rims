@@ -160,6 +160,24 @@ addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
 addColumnIfNotExists('resources', 'attachments', 'TEXT');
 
+// Ensure knowledge_base table exists (Migration)
+try {
+  db.prepare("SELECT 1 FROM knowledge_base LIMIT 1").get();
+} catch (e) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS knowledge_base (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      fileName TEXT NOT NULL,
+      fileType TEXT NOT NULL,
+      fileData TEXT NOT NULL,
+      uploadedBy TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    );
+  `);
+}
+
 // --- Granular Seeding Logic ---
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
   const countRes = db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get() as any;

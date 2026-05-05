@@ -10,6 +10,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { 
   FileText, 
   Search, 
   Upload, 
@@ -39,7 +49,9 @@ export default function KnowledgeBasePage() {
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -58,9 +70,14 @@ export default function KnowledgeBasePage() {
 
   async function loadEntries() {
     setIsLoading(true);
-    const data = await fetchKnowledgeBaseEntries();
-    setEntries(data);
-    setIsLoading(false);
+    try {
+      const data = await fetchKnowledgeBaseEntries();
+      setEntries(data);
+    } catch (e) {
+      toast({ title: "Load Error", description: "Failed to load knowledge base entries.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,7 +127,7 @@ export default function KnowledgeBasePage() {
       toast({ title: "Document Uploaded", description: "The procedural document is now available to all users." });
       setFormData({ title: '', description: '', fileName: '', fileType: '', fileData: '' });
       setShowUploadForm(false);
-      loadEntries();
+      await loadEntries();
     } catch (error) {
       toast({ title: "Upload Failed", description: "An error occurred while saving the file. Ensure the file size is within limits.", variant: "destructive" });
     } finally {
@@ -118,11 +135,20 @@ export default function KnowledgeBasePage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this document?')) return;
-    await removeKnowledgeBaseEntry(id);
-    toast({ title: "Document Removed" });
-    loadEntries();
+  const handleDelete = async () => {
+    if (!entryToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await removeKnowledgeBaseEntry(entryToDelete);
+      toast({ title: "Document Removed", description: "The manual has been permanently deleted from the repository." });
+      await loadEntries();
+    } catch (e) {
+      toast({ title: "Delete Failed", description: "Could not remove the document. Please try again.", variant: "destructive" });
+    } finally {
+      setIsDeleting(false);
+      setEntryToDelete(null);
+    }
   };
 
   const downloadFile = (entry: KnowledgeBaseEntry) => {
@@ -136,7 +162,7 @@ export default function KnowledgeBasePage() {
 
   const filteredEntries = entries.filter(e => 
     e.title.toLowerCase().includes(search.toLowerCase()) || 
-    e.description.toLowerCase().includes(search.toLowerCase())
+    (e.description || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const getFileIcon = (type: string) => {
@@ -255,7 +281,7 @@ export default function KnowledgeBasePage() {
                       size="icon" 
                       variant="ghost" 
                       className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDelete(entry.id)}
+                      onClick={() => setEntryToDelete(entry.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -297,6 +323,28 @@ export default function KnowledgeBasePage() {
           </p>
         </Card>
       )}
+
+      <AlertDialog open={!!entryToDelete} onOpenChange={(open) => !open && setEntryToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the manual from the departmental repository.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold"
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Delete Document
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
