@@ -14,7 +14,7 @@ db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
 
-// Create tables if they don't exist with full modern schema
+// Create tables if they don't exist
 db.exec(`
   CREATE TABLE IF NOT EXISTS resources (
     id TEXT PRIMARY KEY,

@@ -8,14 +8,14 @@ import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from '@/lib/types';
 
-// Strict validation schemas
+// Strict validation schemas with permissive empty-string handling
 const BudgetEntrySchema = z.object({
   id: z.string(),
   year: z.number().int(),
   division: z.string(),
   section: z.string(),
   location: z.string(),
-  locationDetails: z.string().optional(),
+  locationDetails: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
   classification: z.enum(['Hardware', 'Software', 'Others']),
   category: z.enum(['CAPEX', 'OPEX']),
   account: z.string(),
@@ -24,31 +24,31 @@ const BudgetEntrySchema = z.object({
   quantity: z.number().int().min(1),
   unitCostBudget: z.number().min(0),
   totalCostBudget: z.number(),
-  unitCostActual: z.number().optional(),
-  totalCostActual: z.number().optional(),
-  prNumber: z.string().optional(),
-  dateDelivered: z.string().optional(),
-  grSisNumber: z.string().optional(),
-  accountablePerson: z.string().optional(),
+  unitCostActual: z.number().optional().nullable().default(0),
+  totalCostActual: z.number().optional().nullable().default(0),
+  prNumber: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
+  dateDelivered: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
+  grSisNumber: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
+  accountablePerson: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
   status: z.string(),
-  statusOthers: z.string().optional(),
-  remarks: z.string(),
+  statusOthers: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
+  remarks: z.string().optional().nullable().default(''),
   attachments: z.array(z.string()).optional().default([]),
   createdAt: z.string(),
 });
 
 const UserSchema = z.object({
   id: z.string(),
-  username: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
+  username: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
   name: z.string().min(1),
-  email: z.string().email().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
-  contactNumber: z.string().optional().nullable(),
+  email: z.string().email().optional().or(z.literal('')).transform(v => (v === '' || v === null) ? undefined : v),
+  contactNumber: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
   role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).optional().nullable(),
-  section: z.string().optional().nullable(),
-  division: z.string().optional().nullable(),
+  section: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
+  division: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
   twoFactorEnabled: z.boolean().optional(),
-  position: z.string().optional().nullable(),
-  reportingTo: z.string().optional().nullable(),
+  position: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
+  reportingTo: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
   isStaffOnly: z.boolean().optional(),
   profilePicture: z.string().optional().nullable(),
 });
