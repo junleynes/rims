@@ -5,14 +5,15 @@ import bcrypt from 'bcryptjs';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from './types';
 
 const DB_PATH = path.join(process.cwd(), 'data.db');
-
-// Initialize database
 const db = new Database(DB_PATH);
 
 // Enable WAL mode for performance and concurrent access
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
+
+// Global pre-calculated hash to optimize user persistence
+const DEFAULT_PASSWORD_HASH = bcrypt.hashSync('password', 10);
 
 // Create tables if they don't exist
 db.exec(`
@@ -160,7 +161,7 @@ addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
 addColumnIfNotExists('resources', 'attachments', 'TEXT');
 
-// Ensure knowledge_base table exists
+// Ensure knowledge_base table exists check
 try {
   db.prepare("SELECT 1 FROM knowledge_base LIMIT 1").get();
 } catch (e) {
@@ -186,7 +187,6 @@ const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
   }
 };
 
-// 1. Branding
 seedIfEmpty('branding', `
   INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
   VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
@@ -194,13 +194,11 @@ seedIfEmpty('branding', `
   '© 2025 Resource Inventory Management System. All rights reserved.', 'oceanic', 0)
 `);
 
-// 2. System Config
 seedIfEmpty('system_config', `
   INSERT INTO system_config (id, maxUploadSize)
   VALUES (1, 20)
 `);
 
-// 3. Divisions
 seedIfEmpty('divisions', `
   INSERT INTO divisions (id, name) VALUES 
   ('office-of-the-head', 'Office of the Head'),
@@ -209,7 +207,6 @@ seedIfEmpty('divisions', `
   ('project-management-division', 'Project Management Division')
 `);
 
-// 4. Sections
 seedIfEmpty('sections', `
   INSERT INTO sections (id, name, divisionId) VALUES 
   ('office-of-the-head', 'Office of the Head', 'office-of-the-head'),
@@ -230,10 +227,8 @@ seedIfEmpty('sections', `
   ('code-compliance-unit', 'CODE Compliance Unit', 'project-management-division')
 `);
 
-// 5. Administrator Identity Protection
 const adminPasswordHash = bcrypt.hashSync('password', 10);
 const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin') as any;
-
 if (!existingAdmin) {
   db.prepare(`
     INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
@@ -241,7 +236,6 @@ if (!existingAdmin) {
   `).run(adminPasswordHash);
 }
 
-// 6. Locations
 seedIfEmpty('locations', `
   INSERT INTO locations (id, name) VALUES 
   ('4th-floor', '4th floor'),
@@ -250,7 +244,6 @@ seedIfEmpty('locations', `
   ('deployed', 'Deployed')
 `);
 
-// 7. Status Options
 seedIfEmpty('status_options', `
   INSERT INTO status_options (id, name) VALUES 
   ('working', 'working'),
@@ -259,7 +252,6 @@ seedIfEmpty('status_options', `
   ('others', 'others:')
 `);
 
-// 8. Positions
 seedIfEmpty('positions', `
   INSERT INTO positions (id, name) VALUES 
   ('vp', 'VP'),
@@ -271,7 +263,6 @@ seedIfEmpty('positions', `
 `);
 
 // --- Resource Logic ---
-
 export async function getAllResources(): Promise<BudgetEntry[]> {
   const rows = db.prepare('SELECT * FROM resources ORDER BY createdAt DESC').all() as any[];
   return rows.map(row => {
@@ -282,7 +273,6 @@ export async function getAllResources(): Promise<BudgetEntry[]> {
     } catch (e) {
       attachments = [];
     }
-
     return {
       ...row,
       unitCostActual: row.unitCostActual || 0,
@@ -317,7 +307,6 @@ export async function saveResources(resources: BudgetEntry[]) {
       });
     }
   });
-
   transaction(resources);
 }
 
@@ -326,7 +315,6 @@ export async function deleteResourcesByYear(year: number) {
 }
 
 // --- Knowledge Base Logic ---
-
 export async function getAllKnowledgeBaseEntries(): Promise<KnowledgeBaseEntry[]> {
   return db.prepare('SELECT * FROM knowledge_base ORDER BY createdAt DESC').all() as KnowledgeBaseEntry[];
 }
@@ -344,7 +332,6 @@ export async function deleteKnowledgeBaseEntry(id: string) {
 }
 
 // --- User & Auth Logic ---
-
 export async function getAllUsers(): Promise<User[]> {
   const rows = db.prepare('SELECT * FROM users').all() as any[];
   return rows.map(row => ({
@@ -359,16 +346,14 @@ export async function getUserByUsername(username: string): Promise<any | null> {
 }
 
 export async function saveUsers(users: User[]) {
-  // 1. Snapshot existing users to preserve credentials
+  // Snapshot current state to preserve existing password hashes
   const currentRecords = db.prepare('SELECT id, username, password_hash FROM users').all() as any[];
   const hashMap = new Map(currentRecords.map(r => [r.id, r.password_hash]));
   const usernameMap = new Map(currentRecords.filter(r => r.username).map(r => [r.username, r.password_hash]));
   
-  // Also explicitly find the admin to protect them
+  // Ensure we have a valid hash for the administrator
   const adminRecord = currentRecords.find(r => r.username === 'admin');
-  const adminHash = adminRecord?.password_hash || bcrypt.hashSync('password', 10);
-
-  const defaultHash = bcrypt.hashSync('password', 10);
+  const adminHash = adminRecord?.password_hash || DEFAULT_PASSWORD_HASH;
 
   const deleteStmt = db.prepare('DELETE FROM users');
   const insertStmt = db.prepare(`
@@ -378,8 +363,6 @@ export async function saveUsers(users: User[]) {
 
   const transactionSafe = db.transaction((data: User[]) => {
     deleteStmt.run();
-    
-    // Track if admin was included in the save payload
     let adminInPayload = false;
 
     for (const user of data) {
@@ -391,7 +374,7 @@ export async function saveUsers(users: User[]) {
         ...user,
         id: user.username === 'admin' ? 'admin-001' : user.id,
         username: user.username || null,
-        password_hash: existingHash || (user.username === 'admin' ? adminHash : defaultHash),
+        password_hash: existingHash || (user.username === 'admin' ? adminHash : DEFAULT_PASSWORD_HASH),
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
         isStaffOnly: user.isStaffOnly ? 1 : 0,
         profilePicture: user.profilePicture || null,
@@ -402,11 +385,10 @@ export async function saveUsers(users: User[]) {
         section: user.section || null,
         division: user.division || null
       };
-      
       insertStmt.run(payload);
     }
 
-    // Force re-insertion of admin if missing from the client update
+    // Force re-insertion of admin if missing from the client update to prevent lockouts
     if (!adminInPayload) {
       insertStmt.run({
         id: 'admin-001',
@@ -426,7 +408,6 @@ export async function saveUsers(users: User[]) {
       });
     }
   });
-
   transactionSafe(users);
 }
 
@@ -435,7 +416,6 @@ export async function updateUserPassword(userId: string, hash: string) {
 }
 
 // --- System Updates Logic ---
-
 export async function getAllSystemUpdates(): Promise<SystemUpdate[]> {
   return db.prepare('SELECT * FROM system_updates ORDER BY createdAt DESC').all() as SystemUpdate[];
 }
@@ -453,12 +433,10 @@ export async function saveSystemUpdates(updates: SystemUpdate[]) {
       insertStmt.run(update);
     }
   });
-
   transaction(updates);
 }
 
 // --- Global Data Getters/Setters ---
-
 export async function getAllDivisions(): Promise<Division[]> {
   return db.prepare('SELECT * FROM divisions').all() as Division[];
 }

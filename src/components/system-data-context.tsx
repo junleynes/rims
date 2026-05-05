@@ -74,129 +74,169 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
 
   const addDivision = async (name: string) => {
     const newDiv = { id: Math.random().toString(36).substr(2, 9), name };
-    const updated = [...data.divisions, newDiv];
-    setData(prev => ({ ...prev, divisions: updated }));
-    await saveSystemData({ divisions: updated });
+    setData(prev => {
+      const updated = [...prev.divisions, newDiv];
+      saveSystemData({ divisions: updated });
+      return { ...prev, divisions: updated };
+    });
   };
 
   const updateDivision = async (id: string, name: string) => {
-    const updated = data.divisions.map(d => d.id === id ? { ...d, name } : d);
-    setData(prev => ({ ...prev, divisions: updated }));
-    await saveSystemData({ divisions: updated });
+    setData(prev => {
+      const updated = prev.divisions.map(d => d.id === id ? { ...d, name } : d);
+      saveSystemData({ divisions: updated });
+      return { ...prev, divisions: updated };
+    });
   };
 
   const deleteDivision = async (id: string) => {
-    const updated = data.divisions.filter(d => d.id !== id);
-    setData(prev => ({ ...prev, divisions: updated }));
-    await saveSystemData({ divisions: updated });
+    setData(prev => {
+      const updated = prev.divisions.filter(d => d.id !== id);
+      saveSystemData({ divisions: updated });
+      return { ...prev, divisions: updated };
+    });
   };
 
   const addSection = async (name: string, divisionId: string) => {
     const newSec = { id: Math.random().toString(36).substr(2, 9), name, divisionId };
-    const updated = [...data.sections, newSec];
-    setData(prev => ({ ...prev, sections: updated }));
-    await saveSystemData({ sections: updated });
+    setData(prev => {
+      const updated = [...prev.sections, newSec];
+      saveSystemData({ sections: updated });
+      return { ...prev, sections: updated };
+    });
   };
 
   const updateSection = async (id: string, name: string, divisionId: string) => {
-    const updated = data.sections.map(s => s.id === id ? { ...s, name, divisionId } : s);
-    setData(prev => ({ ...prev, sections: updated }));
-    await saveSystemData({ sections: updated });
+    setData(prev => {
+      const updated = prev.sections.map(s => s.id === id ? { ...s, name, divisionId } : s);
+      saveSystemData({ sections: updated });
+      return { ...prev, sections: updated };
+    });
   };
 
   const deleteSection = async (id: string) => {
-    const updated = data.sections.filter(s => s.id !== id);
-    setData(prev => ({ ...prev, sections: updated }));
-    await saveSystemData({ sections: updated });
+    setData(prev => {
+      const updated = prev.sections.filter(s => s.id !== id);
+      saveSystemData({ sections: updated });
+      return { ...prev, sections: updated };
+    });
   };
 
   const addLocation = async (name: string) => {
     const newLoc = { id: Math.random().toString(36).substr(2, 9), name };
-    const updated = [...data.locations, newLoc];
-    setData(prev => ({ ...prev, locations: updated }));
-    await saveSystemData({ locations: updated });
+    setData(prev => {
+      const updated = [...prev.locations, newLoc];
+      saveSystemData({ locations: updated });
+      return { ...prev, locations: updated };
+    });
   };
 
   const updateLocation = async (id: string, name: string) => {
-    const updated = data.locations.map(l => l.id === id ? { ...l, name } : l);
-    setData(prev => ({ ...prev, locations: updated }));
-    await saveSystemData({ locations: updated });
+    setData(prev => {
+      const updated = prev.locations.map(l => l.id === id ? { ...l, name } : l);
+      saveSystemData({ locations: updated });
+      return { ...prev, locations: updated };
+    });
   };
 
   const deleteLocation = async (id: string) => {
-    const updated = data.locations.filter(l => l.id !== id);
-    setData(prev => ({ ...prev, locations: updated }));
-    await saveSystemData({ locations: updated });
+    setData(prev => {
+      const updated = prev.locations.filter(l => l.id !== id);
+      saveSystemData({ locations: updated });
+      return { ...prev, locations: updated };
+    });
   };
 
   const addStatusOption = async (name: string) => {
     const newOpt = { id: Math.random().toString(36).substr(2, 9), name };
-    const updated = [...data.statusOptions, newOpt];
-    setData(prev => ({ ...prev, statusOptions: updated }));
-    await saveSystemData({ statusOptions: updated });
+    setData(prev => {
+      const updated = [...prev.statusOptions, newOpt];
+      saveSystemData({ statusOptions: updated });
+      return { ...prev, statusOptions: updated };
+    });
   };
 
   const updateStatusOption = async (id: string, name: string) => {
-    const updated = data.statusOptions.map(o => o.id === id ? { ...o, name } : o);
-    setData(prev => ({ ...prev, statusOptions: updated }));
-    await saveSystemData({ statusOptions: updated });
+    setData(prev => {
+      const updated = prev.statusOptions.map(o => o.id === id ? { ...o, name } : o);
+      saveSystemData({ statusOptions: updated });
+      return { ...prev, statusOptions: updated };
+    });
   };
 
   const deleteStatusOption = async (id: string) => {
-    const updated = data.statusOptions.filter(o => o.id !== id);
-    setData(prev => ({ ...prev, statusOptions: updated }));
-    await saveSystemData({ statusOptions: updated });
+    setData(prev => {
+      const updated = prev.statusOptions.filter(o => o.id !== id);
+      saveSystemData({ statusOptions: updated });
+      return { ...prev, statusOptions: updated };
+    });
   };
 
   const addUser = async (userData: Omit<User, 'id'>) => {
     const newUser = { ...userData, id: Math.random().toString(36).substr(2, 9) };
-    const updated = [...data.users, newUser];
-    setData(prev => ({ ...prev, users: updated }));
-    await saveSystemData({ users: updated });
+    setData(prev => {
+      const updated = [...prev.users, newUser];
+      saveSystemData({ users: updated });
+      return { ...prev, users: updated };
+    });
   };
 
   const importUsers = async (newUsersData: Omit<User, 'id'>[]) => {
-    const newUsers = newUsersData.map(u => ({ ...u, id: Math.random().toString(36).substr(2, 9) }));
-    const updated = [...data.users, ...newUsers];
-    setData(prev => ({ ...prev, users: updated }));
-    await saveSystemData({ users: updated });
+    setData(prev => {
+      const newUsers = newUsersData.map(u => ({ ...u, id: Math.random().toString(36).substr(2, 9) }));
+      const updated = [...prev.users, ...newUsers];
+      saveSystemData({ users: updated });
+      return { ...prev, users: updated };
+    });
   };
 
   const updateUser = async (id: string, userData: Partial<User>) => {
-    const updated = data.users.map(u => u.id === id ? { ...u, ...userData } : u);
-    setData(prev => ({ ...prev, users: updated }));
-    await saveSystemData({ users: updated });
+    setData(prev => {
+      const updated = prev.users.map(u => u.id === id ? { ...u, ...userData } : u);
+      saveSystemData({ users: updated });
+      return { ...prev, users: updated };
+    });
   };
 
   const deleteUser = async (id: string) => {
-    const updated = data.users.filter(u => u.id !== id);
-    setData(prev => ({ ...prev, users: updated }));
-    await saveSystemData({ users: updated });
+    setData(prev => {
+      const updated = prev.users.filter(u => u.id !== id);
+      saveSystemData({ users: updated });
+      return { ...prev, users: updated };
+    });
   };
 
   const addPosition = async (name: string) => {
     const newPos = { id: Math.random().toString(36).substr(2, 9), name };
-    const updated = [...data.positions, newPos];
-    setData(prev => ({ ...prev, positions: updated }));
-    await saveSystemData({ positions: updated });
+    setData(prev => {
+      const updated = [...prev.positions, newPos];
+      saveSystemData({ positions: updated });
+      return { ...prev, positions: updated };
+    });
   };
 
   const updatePosition = async (id: string, name: string) => {
-    const updated = data.positions.map(p => p.id === id ? { ...p, name } : p);
-    setData(prev => ({ ...prev, positions: updated }));
-    await saveSystemData({ positions: updated });
+    setData(prev => {
+      const updated = prev.positions.map(p => p.id === id ? { ...p, name } : p);
+      saveSystemData({ positions: updated });
+      return { ...prev, positions: updated };
+    });
   };
 
   const deletePosition = async (id: string) => {
-    const updated = data.positions.filter(p => p.id !== id);
-    setData(prev => ({ ...prev, positions: updated }));
-    await saveSystemData({ positions: updated });
+    setData(prev => {
+      const updated = prev.positions.filter(p => p.id !== id);
+      saveSystemData({ positions: updated });
+      return { ...prev, positions: updated };
+    });
   };
 
   const updateSystemConfig = async (newConfig: Partial<SystemConfig>) => {
-    const updated = { ...data.systemConfig, ...newConfig };
-    setData(prev => ({ ...prev, systemConfig: updated }));
-    await saveSystemData({ systemConfig: updated });
+    setData(prev => {
+      const updated = { ...prev.systemConfig, ...newConfig };
+      saveSystemData({ systemConfig: updated });
+      return { ...prev, systemConfig: updated };
+    });
   };
 
   return (

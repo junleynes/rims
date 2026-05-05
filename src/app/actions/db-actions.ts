@@ -39,18 +39,18 @@ const BudgetEntrySchema = z.object({
 
 const UserSchema = z.object({
   id: z.string(),
-  username: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
+  username: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
   name: z.string().min(1),
-  email: z.string().email().optional().or(z.literal('')).transform(v => (v === '' || v === null) ? undefined : v),
-  contactNumber: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
-  role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).optional().nullable(),
-  section: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
-  division: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
-  twoFactorEnabled: z.boolean().optional(),
-  position: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
-  reportingTo: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
-  isStaffOnly: z.boolean().optional(),
-  profilePicture: z.string().optional().nullable(),
+  email: z.string().email().nullable().optional().or(z.literal('')).transform(v => (v === '' || v === null) ? undefined : v),
+  contactNumber: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
+  role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).nullable().optional(),
+  section: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
+  division: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
+  twoFactorEnabled: z.boolean().nullable().optional().transform(v => v === null ? true : v),
+  position: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
+  reportingTo: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
+  isStaffOnly: z.boolean().nullable().optional().transform(v => v === null ? false : v),
+  profilePicture: z.string().nullable().optional().transform(v => v === '' ? undefined : v),
 });
 
 const SystemUpdateSchema = z.object({
