@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -31,7 +30,8 @@ import {
   AtSign,
   ShieldCheck,
   FileUp,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Info
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
