@@ -1,9 +1,9 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, Lock, ShieldCheck, Loader2, ArrowLeft, ShieldAlert } from 'lucide-react';
+import { TrendingUp, Lock, ShieldCheck, Loader2, ArrowLeft, ShieldAlert, QrCode, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,10 +12,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useToast } from '@/hooks/use-toast';
 import { useBranding } from '@/components/branding-context';
 import Image from 'next/image';
+import { setupTwoFactor } from '@/app/actions/db-actions';
 
 function LoginPage() {
   const router = useRouter();
-  const { login, verify2FA, cancel2FA, user, pendingUser } = useAuth();
+  const { login, verify2FA, setupForced2FA, cancel2FA, user, pendingUser } = useAuth();
   const { config } = useBranding();
   const { toast } = useToast();
   
@@ -24,10 +25,20 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
 
+  // Forced 2FA Setup State
+  const [setupData, setSetupData] = useState<{ secret: string; qrCodeUrl: string } | null>(null);
+
   // Auto-redirect if already logged in
-  React.useEffect(() => {
+  useEffect(() => {
     if (user) router.push('/dashboard');
   }, [user, router]);
+
+  // Load setup data if forced 2FA setup is required
+  useEffect(() => {
+    if (pendingUser?.needs2FASetup && !setupData) {
+      setupTwoFactor(pendingUser.id).then(setSetupData);
+    }
+  }, [pendingUser, setupData]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,22 +67,27 @@ function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    verify2FA(otp).then((success) => {
-      if (success) {
-        toast({
-          title: `Welcome to ${config.appAcronym}`,
-          description: "2FA Verified successfully.",
-        });
-        router.push('/dashboard');
-      } else {
-        toast({
-          title: "Invalid Code",
-          description: "The authentication code you entered is incorrect.",
-          variant: "destructive",
-        });
-      }
-      setIsLoading(false);
-    });
+    if (pendingUser?.needs2FASetup && setupData) {
+      setupForced2FA(otp, setupData.secret).then((success) => {
+        if (success) {
+          toast({ title: "2FA Activated", description: "Your account is now secured with Google Authenticator." });
+          router.push('/dashboard');
+        } else {
+          toast({ title: "Invalid Code", description: "The setup code you entered is incorrect.", variant: "destructive" });
+          setIsLoading(false);
+        }
+      });
+    } else {
+      verify2FA(otp).then((success) => {
+        if (success) {
+          toast({ title: `Welcome back`, description: "2FA Verified successfully." });
+          router.push('/dashboard');
+        } else {
+          toast({ title: "Invalid Code", description: "The authentication code you entered is incorrect.", variant: "destructive" });
+          setIsLoading(false);
+        }
+      });
+    }
   };
 
   return (
@@ -110,7 +126,7 @@ function LoginPage() {
         </div>
       </div>
 
-      {/* Login Form / 2FA Form */}
+      {/* Login Form / 2FA Form / Setup Form */}
       <div className="flex-1 flex items-center justify-center p-6">
         <Card className="w-full max-w-md shadow-2xl border-none overflow-hidden">
           {!pendingUser ? (
@@ -156,6 +172,58 @@ function LoginPage() {
                   </div>
                   <Button type="submit" className="w-full bg-primary hover:bg-primary/90 py-6 text-lg" disabled={isLoading}>
                     {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Sign In'}
+                  </Button>
+                </form>
+              </CardContent>
+            </div>
+          ) : pendingUser.needs2FASetup ? (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <CardHeader className="text-center bg-primary/5">
+                <div className="flex justify-center mb-4">
+                  <div className="p-3 bg-primary/10 rounded-full">
+                    <QrCode className="h-10 w-10 text-primary" />
+                  </div>
+                </div>
+                <CardTitle className="text-2xl font-bold">Mandatory 2FA Setup</CardTitle>
+                <CardDescription>
+                  Your administrator has required 2FA for your account. Please set up Google Authenticator to continue.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 pt-6">
+                {setupData ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="p-4 bg-white rounded-2xl shadow-inner border">
+                      <Image src={setupData.qrCodeUrl} alt="QR Code" width={180} height={180} className="rounded-lg" />
+                    </div>
+                    <div className="w-full space-y-2">
+                      <Label className="text-[10px] font-black uppercase">Manual Key</Label>
+                      <div className="p-2 bg-muted rounded-lg font-mono text-xs break-all border select-all text-center">
+                        {setupData.secret}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-[240px] flex flex-col items-center justify-center gap-4">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-xs text-muted-foreground">Generating security key...</p>
+                  </div>
+                )}
+
+                <form onSubmit={handleVerifyOTP} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="otp">Enter 6-Digit Verification Code</Label>
+                    <Input 
+                      id="otp" 
+                      placeholder="000000" 
+                      className="text-center text-2xl tracking-[0.5em] h-14 font-mono"
+                      maxLength={6}
+                      required
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90 py-6 text-lg" disabled={isLoading || !setupData}>
+                    {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CheckCircle2 className="h-5 w-5 mr-2" /> Verify & Complete Setup</>}
                   </Button>
                 </form>
               </CardContent>

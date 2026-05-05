@@ -46,11 +46,11 @@ const UserSchema = z.object({
   role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).nullable().optional(),
   section: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   division: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
-  twoFactorEnabled: z.boolean().nullable().optional().transform(v => v === null ? false : v),
+  twoFactorEnabled: z.preprocess(v => !!v, z.boolean()),
   twoFactorSecret: z.string().optional().nullable(),
   position: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   reportingTo: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
-  isStaffOnly: z.boolean().nullable().optional().transform(v => v === null ? false : v),
+  isStaffOnly: z.preprocess(v => !!v, z.boolean()),
   profilePicture: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
 });
 
@@ -173,6 +173,8 @@ export async function verifyUserCredentials(username: string, password?: string)
     const isPasswordValid = bcrypt.compareSync(password, userRecord.password_hash);
     
     if (isPasswordValid) {
+      const needs2FASetup = !!userRecord.twoFactorEnabled && !userRecord.twoFactorSecret;
+      
       return {
         id: userRecord.id,
         username: userRecord.username,
@@ -183,9 +185,11 @@ export async function verifyUserCredentials(username: string, password?: string)
         section: userRecord.section,
         division: userRecord.division,
         twoFactorEnabled: !!userRecord.twoFactorEnabled,
+        twoFactorSecret: userRecord.twoFactorSecret || undefined,
         position: userRecord.position,
         reportingTo: userRecord.reportingTo,
         profilePicture: userRecord.profilePicture,
+        needs2FASetup: needs2FASetup
       } as User;
     }
   } catch (err) {

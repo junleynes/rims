@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@/lib/types';
-import { verifyUserCredentials, verifyLogin2FA } from '@/app/actions/db-actions';
+import { verifyUserCredentials, verifyLogin2FA, confirmTwoFactor } from '@/app/actions/db-actions';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
@@ -11,6 +11,7 @@ interface AuthContextType {
   pendingUser: User | null;
   login: (username: string, password?: string) => Promise<void>;
   verify2FA: (code: string) => Promise<boolean>;
+  setupForced2FA: (code: string, secret: string) => Promise<boolean>;
   cancel2FA: () => void;
   logout: () => void;
   updateCurrentUser: (updatedUser: User) => void;
@@ -38,11 +39,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (username: string, password?: string) => {
-    // Call server action to verify credentials securely
     const authenticatedUser = await verifyUserCredentials(username, password);
     
     if (authenticatedUser) {
       if (authenticatedUser.twoFactorEnabled) {
+        // Handle forced 2FA or standard 2FA
         setPendingUser(authenticatedUser);
       } else {
         setUser(authenticatedUser);
@@ -56,12 +57,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const verify2FA = async (code: string) => {
     if (!pendingUser) return false;
 
-    // Call server action to verify standard TOTP code
     const isValid = await verifyLogin2FA(pendingUser.id, code);
     
     if (isValid) {
       setUser(pendingUser);
       localStorage.setItem('rims_user', JSON.stringify(pendingUser));
+      setPendingUser(null);
+      return true;
+    }
+    return false;
+  };
+
+  const setupForced2FA = async (code: string, secret: string) => {
+    if (!pendingUser) return false;
+    
+    const result = await confirmTwoFactor(pendingUser.id, code, secret);
+    if (result.success) {
+      const updatedUser = { ...pendingUser, twoFactorEnabled: true, needs2FASetup: false };
+      setUser(updatedUser);
+      localStorage.setItem('rims_user', JSON.stringify(updatedUser));
       setPendingUser(null);
       return true;
     }
@@ -84,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, pendingUser, login, verify2FA, cancel2FA, logout, updateCurrentUser, isLoading }}>
+    <AuthContext.Provider value={{ user, pendingUser, login, verify2FA, setupForced2FA, cancel2FA, logout, updateCurrentUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

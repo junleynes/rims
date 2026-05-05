@@ -51,12 +51,15 @@ import {
   Upload,
   Download,
   Camera,
-  Loader2
+  Loader2,
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { resetUserPassword } from '@/app/actions/db-actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 export default function UserManagementPage() {
   const { users = [], divisions = [], sections = [], positions = [], addUser, importUsers, deleteUser, updateUser } = useSystemData();
@@ -360,12 +363,23 @@ export default function UserManagementPage() {
                 Define if this person has system access or is strictly for organizational tracking.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-3 bg-muted/50 p-2 rounded-lg border">
-              <Label className="text-xs font-bold uppercase tracking-tight">Staff Only (No Login)</Label>
-              <Switch 
-                checked={formData.isStaffOnly} 
-                onCheckedChange={(v) => setFormData(prev => ({ ...prev, isStaffOnly: v }))} 
-              />
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="flex items-center gap-3 bg-muted/50 p-2 px-3 rounded-lg border">
+                <Label className="text-[10px] font-black uppercase tracking-tight">Staff Only</Label>
+                <Switch 
+                  checked={formData.isStaffOnly} 
+                  onCheckedChange={(v) => setFormData(prev => ({ ...prev, isStaffOnly: v }))} 
+                />
+              </div>
+              {!formData.isStaffOnly && (
+                <div className="flex items-center gap-3 bg-amber-50 p-2 px-3 rounded-lg border border-amber-200 animate-in fade-in zoom-in-95">
+                  <Label className="text-[10px] font-black uppercase tracking-tight text-amber-900">Force 2FA</Label>
+                  <Switch 
+                    checked={formData.twoFactorEnabled} 
+                    onCheckedChange={(v) => setFormData(prev => ({ ...prev, twoFactorEnabled: v }))} 
+                  />
+                </div>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -548,7 +562,7 @@ export default function UserManagementPage() {
               <TableRow>
                 <TableHead>Identity</TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Security</TableHead>
                 <TableHead>Position</TableHead>
                 <TableHead>Org Scope</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -582,13 +596,32 @@ export default function UserManagementPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {u.isStaffOnly ? (
-                      <Badge variant="outline" className="gap-1 text-[10px] border-amber-200 text-amber-700 bg-amber-50 uppercase font-black">
-                        <UserX className="h-3 w-3" /> Staff Only
-                      </Badge>
-                    ) : (
-                      getRoleBadge(u.role)
-                    )}
+                    <div className="flex flex-col gap-1.5">
+                      {u.isStaffOnly ? (
+                        <Badge variant="outline" className="gap-1 text-[10px] border-amber-200 text-amber-700 bg-amber-50 uppercase font-black">
+                          <UserX className="h-3 w-3" /> Staff Only
+                        </Badge>
+                      ) : (
+                        <>
+                          {getRoleBadge(u.role)}
+                          <div className="flex items-center gap-1">
+                            {u.twoFactorEnabled ? (
+                              u.twoFactorSecret ? (
+                                <Badge variant="outline" className="text-[8px] bg-emerald-50 text-emerald-700 border-emerald-200 uppercase font-black gap-1">
+                                  <ShieldCheck className="h-2.5 w-2.5" /> 2FA Active
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[8px] bg-amber-50 text-amber-700 border-amber-200 uppercase font-black gap-1 animate-pulse">
+                                  <ShieldAlert className="h-2.5 w-2.5" /> Setup Pending
+                                </Badge>
+                              )
+                            ) : (
+                              <Badge variant="outline" className="text-[8px] opacity-40 uppercase font-black">2FA Off</Badge>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs font-medium text-slate-600">
                     {u.position || 'N/A'}

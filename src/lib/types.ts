@@ -60,6 +60,7 @@ export interface User {
   reportingTo?: string;
   isStaffOnly?: boolean;
   profilePicture?: string;
+  needs2FASetup?: boolean;
 }
 
 export interface SystemUpdate {
