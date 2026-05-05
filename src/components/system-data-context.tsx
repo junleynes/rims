@@ -60,109 +60,183 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     async function load() {
-      const result = await getSystemData();
-      setData(result);
-      setIsLoading(false);
+      try {
+        const result = await getSystemData();
+        setData(result);
+      } catch (err) {
+        console.error("Failed to load system data:", err);
+      } finally {
+        setIsLoading(false);
+      }
     }
     load();
   }, []);
 
-  const sync = async (update: any) => {
+  const addDivision = (name: string) => {
+    const newDiv = { id: Math.random().toString(36).substr(2, 9), name };
     setData(prev => {
-      const newData = { ...prev, ...update };
-      // Call server action asynchronously
-      saveSystemData(update).catch(err => {
-        console.error("Failed to sync system data:", err);
-      });
-      return newData;
+      const updated = { ...prev, divisions: [...prev.divisions, newDiv] };
+      saveSystemData({ divisions: updated.divisions });
+      return updated;
     });
   };
 
-  const addDivision = (name: string) => {
-    const newDiv = { id: Math.random().toString(36).substr(2, 9), name };
-    sync({ divisions: [...data.divisions, newDiv] });
-  };
-
   const updateDivision = (id: string, name: string) => {
-    sync({ divisions: data.divisions.map(d => d.id === id ? { ...d, name } : d) });
+    setData(prev => {
+      const updated = { ...prev, divisions: prev.divisions.map(d => d.id === id ? { ...d, name } : d) };
+      saveSystemData({ divisions: updated.divisions });
+      return updated;
+    });
   };
 
   const deleteDivision = (id: string) => {
-    sync({ divisions: data.divisions.filter(d => d.id !== id) });
+    setData(prev => {
+      const updated = { ...prev, divisions: prev.divisions.filter(d => d.id !== id) };
+      saveSystemData({ divisions: updated.divisions });
+      return updated;
+    });
   };
 
   const addSection = (name: string, divisionId: string) => {
     const newSec = { id: Math.random().toString(36).substr(2, 9), name, divisionId };
-    sync({ sections: [...data.sections, newSec] });
+    setData(prev => {
+      const updated = { ...prev, sections: [...prev.sections, newSec] };
+      saveSystemData({ sections: updated.sections });
+      return updated;
+    });
   };
 
   const updateSection = (id: string, name: string, divisionId: string) => {
-    sync({ sections: data.sections.map(s => s.id === id ? { ...s, name, divisionId } : s) });
+    setData(prev => {
+      const updated = { ...prev, sections: prev.sections.map(s => s.id === id ? { ...s, name, divisionId } : s) };
+      saveSystemData({ sections: updated.sections });
+      return updated;
+    });
   };
 
   const deleteSection = (id: string) => {
-    sync({ sections: data.sections.filter(s => s.id !== id) });
+    setData(prev => {
+      const updated = { ...prev, sections: prev.sections.filter(s => s.id !== id) };
+      saveSystemData({ sections: updated.sections });
+      return updated;
+    });
   };
 
   const addLocation = (name: string) => {
     const newLoc = { id: Math.random().toString(36).substr(2, 9), name };
-    sync({ locations: [...data.locations, newLoc] });
+    setData(prev => {
+      const updated = { ...prev, locations: [...prev.locations, newLoc] };
+      saveSystemData({ locations: updated.locations });
+      return updated;
+    });
   };
 
   const updateLocation = (id: string, name: string) => {
-    sync({ locations: data.locations.map(l => l.id === id ? { ...l, name } : l) });
+    setData(prev => {
+      const updated = { ...prev, locations: prev.locations.map(l => l.id === id ? { ...l, name } : l) };
+      saveSystemData({ locations: updated.locations });
+      return updated;
+    });
   };
 
   const deleteLocation = (id: string) => {
-    sync({ locations: data.locations.filter(l => l.id !== id) });
+    setData(prev => {
+      const updated = { ...prev, locations: prev.locations.filter(l => l.id !== id) };
+      saveSystemData({ locations: updated.locations });
+      return updated;
+    });
   };
 
   const addStatusOption = (name: string) => {
     const newOpt = { id: Math.random().toString(36).substr(2, 9), name };
-    sync({ statusOptions: [...data.statusOptions, newOpt] });
+    setData(prev => {
+      const updated = { ...prev, statusOptions: [...prev.statusOptions, newOpt] };
+      saveSystemData({ statusOptions: updated.statusOptions });
+      return updated;
+    });
   };
 
   const updateStatusOption = (id: string, name: string) => {
-    sync({ statusOptions: data.statusOptions.map(o => o.id === id ? { ...o, name } : o) });
+    setData(prev => {
+      const updated = { ...prev, statusOptions: prev.statusOptions.map(o => o.id === id ? { ...o, name } : o) };
+      saveSystemData({ statusOptions: updated.statusOptions });
+      return updated;
+    });
   };
 
   const deleteStatusOption = (id: string) => {
-    sync({ statusOptions: data.statusOptions.filter(o => o.id !== id) });
+    setData(prev => {
+      const updated = { ...prev, statusOptions: prev.statusOptions.filter(o => o.id !== id) };
+      saveSystemData({ statusOptions: updated.statusOptions });
+      return updated;
+    });
   };
 
   const addUser = (userData: Omit<User, 'id'>) => {
     const newUser = { ...userData, id: Math.random().toString(36).substr(2, 9) };
-    sync({ users: [...data.users, newUser] });
+    setData(prev => {
+      const updated = { ...prev, users: [...prev.users, newUser] };
+      saveSystemData({ users: updated.users });
+      return updated;
+    });
   };
 
   const importUsers = (newUsersData: Omit<User, 'id'>[]) => {
-    const newUsers = newUsersData.map(u => ({ ...u, id: Math.random().toString(36).substr(2, 9) }));
-    sync({ users: [...data.users, ...newUsers] });
+    setData(prev => {
+      const newUsers = newUsersData.map(u => ({ ...u, id: Math.random().toString(36).substr(2, 9) }));
+      const updated = { ...prev, users: [...prev.users, ...newUsers] };
+      saveSystemData({ users: updated.users });
+      return updated;
+    });
   };
 
   const updateUser = (id: string, userData: Partial<User>) => {
-    sync({ users: data.users.map(u => u.id === id ? { ...u, ...userData } : u) });
+    setData(prev => {
+      const updated = { ...prev, users: prev.users.map(u => u.id === id ? { ...u, ...userData } : u) };
+      saveSystemData({ users: updated.users });
+      return updated;
+    });
   };
 
   const deleteUser = (id: string) => {
-    sync({ users: data.users.filter(u => u.id !== id) });
+    setData(prev => {
+      const updated = { ...prev, users: prev.users.filter(u => u.id !== id) };
+      saveSystemData({ users: updated.users });
+      return updated;
+    });
   };
 
   const addPosition = (name: string) => {
     const newPos = { id: Math.random().toString(36).substr(2, 9), name };
-    sync({ positions: [...data.positions, newPos] });
+    setData(prev => {
+      const updated = { ...prev, positions: [...prev.positions, newPos] };
+      saveSystemData({ positions: updated.positions });
+      return updated;
+    });
   };
 
   const updatePosition = (id: string, name: string) => {
-    sync({ positions: data.positions.map(p => p.id === id ? { ...p, name } : p) });
+    setData(prev => {
+      const updated = { ...prev, positions: prev.positions.map(p => p.id === id ? { ...p, name } : p) };
+      saveSystemData({ positions: updated.positions });
+      return updated;
+    });
   };
 
   const deletePosition = (id: string) => {
-    sync({ positions: data.positions.filter(p => p.id !== id) });
+    setData(prev => {
+      const updated = { ...prev, positions: prev.positions.filter(p => p.id !== id) };
+      saveSystemData({ positions: updated.positions });
+      return updated;
+    });
   };
 
   const updateSystemConfig = (newConfig: Partial<SystemConfig>) => {
-    sync({ systemConfig: { ...data.systemConfig, ...newConfig } });
+    setData(prev => {
+      const updated = { ...prev, systemConfig: { ...prev.systemConfig, ...newConfig } };
+      saveSystemData({ systemConfig: updated.systemConfig });
+      return updated;
+    });
   };
 
   return (

@@ -160,7 +160,7 @@ addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
 addColumnIfNotExists('resources', 'attachments', 'TEXT');
 
-// Ensure knowledge_base table exists (Migration)
+// Ensure knowledge_base table exists
 try {
   db.prepare("SELECT 1 FROM knowledge_base LIMIT 1").get();
 } catch (e) {
@@ -359,28 +359,39 @@ export async function getUserByUsername(username: string): Promise<any | null> {
 }
 
 export async function saveUsers(users: User[]) {
+  // 1. Snapshot existing users to preserve credentials
+  const currentRecords = db.prepare('SELECT id, username, password_hash FROM users').all() as any[];
+  const hashMap = new Map(currentRecords.map(r => [r.id, r.password_hash]));
+  const usernameMap = new Map(currentRecords.filter(r => r.username).map(r => [r.username, r.password_hash]));
+  
+  // Also explicitly find the admin to protect them
+  const adminRecord = currentRecords.find(r => r.username === 'admin');
+  const adminHash = adminRecord?.password_hash || bcrypt.hashSync('password', 10);
+
+  const defaultHash = bcrypt.hashSync('password', 10);
+
   const deleteStmt = db.prepare('DELETE FROM users');
   const insertStmt = db.prepare(`
     INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, section, division, twoFactorEnabled, position, reportingTo, isStaffOnly, profilePicture)
     VALUES (@id, @username, @password_hash, @name, @email, @contactNumber, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly, @profilePicture)
   `);
 
-  const currentRecords = db.prepare('SELECT id, username, password_hash FROM users').all() as any[];
-  const hashMap = new Map(currentRecords.map(r => [r.id, r.password_hash]));
-  const usernameMap = new Map(currentRecords.filter(r => r.username).map(r => [r.username, r.password_hash]));
-  
-  const defaultHash = bcrypt.hashSync('password', 10);
-
   const transactionSafe = db.transaction((data: User[]) => {
     deleteStmt.run();
+    
+    // Track if admin was included in the save payload
+    let adminInPayload = false;
+
     for (const user of data) {
+      if (user.username === 'admin') adminInPayload = true;
+
       const existingHash = hashMap.get(user.id) || (user.username ? usernameMap.get(user.username) : null);
       
       const payload = {
         ...user,
         id: user.username === 'admin' ? 'admin-001' : user.id,
         username: user.username || null,
-        password_hash: existingHash || defaultHash,
+        password_hash: existingHash || (user.username === 'admin' ? adminHash : defaultHash),
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
         isStaffOnly: user.isStaffOnly ? 1 : 0,
         profilePicture: user.profilePicture || null,
@@ -393,6 +404,26 @@ export async function saveUsers(users: User[]) {
       };
       
       insertStmt.run(payload);
+    }
+
+    // Force re-insertion of admin if missing from the client update
+    if (!adminInPayload) {
+      insertStmt.run({
+        id: 'admin-001',
+        username: 'admin',
+        password_hash: adminHash,
+        name: 'System Administrator',
+        email: 'admin@rims.com',
+        contactNumber: 'N/A',
+        role: 'Admin',
+        section: null,
+        division: null,
+        twoFactorEnabled: 1,
+        position: 'Chief Technology Officer',
+        reportingTo: 'Board of Directors',
+        isStaffOnly: 0,
+        profilePicture: null
+      });
     }
   });
 
