@@ -27,17 +27,20 @@ import {
   Info, 
   AlertTriangle, 
   Sparkles,
-  User as UserIcon
+  User as UserIcon,
+  Bell
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { fetchSystemUpdates } from '@/app/actions/db-actions';
 import { SystemUpdate, UpdateType } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { budgets } = useBudgets();
+  const { toast } = useToast();
   const [yearFilter, setYearFilter] = useState('2026');
   const [updates, setUpdates] = useState<SystemUpdate[]>([]);
 
@@ -45,9 +48,29 @@ export default function DashboardPage() {
     async function load() {
       const data = await fetchSystemUpdates();
       setUpdates(data.slice(0, 5)); // Only show latest 5
+
+      if (data.length > 0 && user) {
+        const lastSeen = localStorage.getItem(`rims_last_seen_update_${user.id}`);
+        const newest = data[0];
+        
+        // If this is the first time seeing this specific update
+        if (!lastSeen || new Date(newest.createdAt) > new Date(lastSeen)) {
+          // Trigger a notification if it's an Alert or Feature
+          if (newest.type === 'Alert' || newest.type === 'Feature') {
+            toast({
+              title: newest.type === 'Alert' ? "System Alert" : "New Feature Released",
+              description: newest.title,
+              variant: newest.type === 'Alert' ? "destructive" : "default",
+            });
+          }
+          
+          // Mark as read
+          localStorage.setItem(`rims_last_seen_update_${user.id}`, newest.createdAt);
+        }
+      }
     }
     load();
-  }, []);
+  }, [user, toast]);
 
   const filteredBudgets = budgets.filter(b => {
     const matchesYear = b.year.toString() === yearFilter;

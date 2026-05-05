@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -14,7 +15,8 @@ import {
   FileBarChart,
   Network,
   UsersRound,
-  Megaphone
+  Megaphone,
+  Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -28,23 +30,54 @@ import {
   SidebarMenuButton, 
   SidebarMenuItem,
   SidebarGroup,
-  SidebarGroupLabel
+  SidebarGroupLabel,
+  SidebarMenuBadge
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import { fetchSystemUpdates } from '@/app/actions/db-actions';
+import { SystemUpdate } from '@/lib/types';
 
 export function SidebarNav() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { config } = useBranding();
+  const [hasUnreadUpdates, setHasUnreadUpdates] = useState(false);
+
+  useEffect(() => {
+    async function checkUpdates() {
+      if (!user) return;
+      try {
+        const updates = await fetchSystemUpdates();
+        if (updates.length > 0) {
+          const lastSeen = localStorage.getItem(`rims_last_seen_update_${user.id}`);
+          const newest = updates[0].createdAt;
+          
+          if (!lastSeen || new Date(newest) > new Date(lastSeen)) {
+            setHasUnreadUpdates(true);
+          } else {
+            setHasUnreadUpdates(false);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to check for updates in sidebar", e);
+      }
+    }
+    
+    checkUpdates();
+    // Refresh check every 5 minutes
+    const interval = setInterval(checkUpdates, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user, pathname]);
 
   if (!user) return null;
 
   const isReadOnly = user.role === 'Viewer';
 
   const navItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', color: 'bg-blue-500' },
+    { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', color: 'bg-blue-500', badge: hasUnreadUpdates },
     { name: 'Resource Log', icon: Table2, href: '/budgets', color: 'bg-emerald-500' },
   ];
 
@@ -70,7 +103,7 @@ export function SidebarNav() {
 
   const isManagement = user.role === 'Admin' || user.role === 'VP' || user.role === 'AVP' || user.role === 'Viewer';
 
-  const renderNavItems = (items: typeof navItems) => {
+  const renderNavItems = (items: any[]) => {
     return items.map((item) => (
       <SidebarMenuItem key={item.name}>
         <SidebarMenuButton 
@@ -78,18 +111,25 @@ export function SidebarNav() {
           isActive={pathname === item.href}
           tooltip={item.name}
           className={cn(
-            "h-11 rounded-xl transition-all duration-200 mb-1 group",
+            "h-11 rounded-xl transition-all duration-200 mb-1 group relative",
             pathname === item.href ? "bg-primary/10 text-primary" : "hover:bg-muted/50"
           )}
         >
-          <Link href={item.href} className="flex items-center gap-3 w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:p-0">
+          <Link href={item.href} className="flex items-center gap-3 w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0">
             <div className={cn(
               "flex items-center justify-center h-8 w-8 rounded-lg shadow-sm text-white shrink-0 transition-transform group-hover:scale-105",
-              item.color
+              item.color,
+              "group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9"
             )}>
-              <item.icon className="h-4 w-4" />
+              <item.icon className="h-4 w-4 group-data-[collapsible=icon]:h-5 group-data-[collapsible=icon]:w-5" />
             </div>
             <span className="font-semibold text-[14px] group-data-[collapsible=icon]:hidden">{item.name}</span>
+            {item.badge && (
+              <span className="absolute top-2 right-2 flex h-2 w-2 group-data-[collapsible=icon]:top-1 group-data-[collapsible=icon]:right-1">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+            )}
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -99,7 +139,7 @@ export function SidebarNav() {
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r-0">
       <SidebarHeader className="p-6 pb-2">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
           <div className="bg-primary h-10 w-10 rounded-xl shadow-sm flex items-center justify-center overflow-hidden shrink-0">
             {config.logoUrl ? (
               <Image 
@@ -163,7 +203,7 @@ export function SidebarNav() {
             )}
           >
             <Avatar className="h-10 w-10 border-2 border-primary/20 shadow-sm shrink-0">
-              <AvatarImage src={user.profilePicture} className="object-cover" />
+              <AvatarImage src={user.profilePicture || undefined} className="object-cover" />
               <AvatarFallback className="bg-secondary text-primary font-bold">
                 {user.name.charAt(0)}
               </AvatarFallback>
