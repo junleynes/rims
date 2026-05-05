@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -127,7 +126,7 @@ export default function OrgStructurePage() {
             <Waypoints className="h-7 w-7" />
           </div>
           <div>
-            <h1 className="text-3xl font-black tracking-tighter text-primary uppercase">Table of Organization</h1>
+            <h1 className="text-3xl font-black tracking-tighter text-primary">Table of Organization</h1>
             <p className="text-muted-foreground font-medium">Visualizing functional dependencies and management reporting lines.</p>
           </div>
         </div>

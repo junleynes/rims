@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -116,7 +115,7 @@ export default function AdminUpdatesPage() {
           <Megaphone className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-primary uppercase">System Announcements</h1>
+          <h1 className="text-3xl font-black tracking-tight text-primary">System Announcements</h1>
           <p className="text-muted-foreground">Post updates, maintenance alerts, or new feature releases to all users.</p>
         </div>
       </div>

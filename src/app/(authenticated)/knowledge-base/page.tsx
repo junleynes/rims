@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -184,7 +183,7 @@ export default function KnowledgeBasePage() {
             <BookOpen className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-3xl font-black tracking-tight text-primary uppercase">Knowledge Base</h1>
+            <h1 className="text-3xl font-black tracking-tight text-primary">Knowledge Base</h1>
             <p className="text-muted-foreground">Standard Operating Procedures, Manuals, and Reference Documents.</p>
           </div>
         </div>
