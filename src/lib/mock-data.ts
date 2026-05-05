@@ -83,7 +83,7 @@ export const MOCK_USERS: User[] = [
     role: 'Admin',
     position: 'Chief Technology Officer',
     reportingTo: 'Board of Directors',
-    twoFactorEnabled: true,
+    twoFactorEnabled: false,
   },
   {
     id: '2',

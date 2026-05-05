@@ -50,7 +50,7 @@
       "role": "Admin",
       "position": "Chief Technology Officer",
       "reportingTo": "Board of Directors",
-      "twoFactorEnabled": true,
+      "twoFactorEnabled": false,
       "email": "admin@rims.com"
     },
     {
@@ -62,7 +62,7 @@
       "division": "Operations Division",
       "position": "Section Head",
       "reportingTo": "System Administrator",
-      "twoFactorEnabled": true,
+      "twoFactorEnabled": false,
       "email": "msantiago@example.com"
     },
     {

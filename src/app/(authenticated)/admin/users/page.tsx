@@ -74,7 +74,7 @@ export default function UserManagementPage() {
     section: '',
     position: '',
     reportingTo: '',
-    twoFactorEnabled: true,
+    twoFactorEnabled: false,
     isStaffOnly: false,
     profilePicture: ''
   });
@@ -124,7 +124,7 @@ export default function UserManagementPage() {
       toast({ title: "Added Successfully" });
     }
     
-    setFormData({ name: '', username: '', email: '', contactNumber: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false, profilePicture: '' });
+    setFormData({ name: '', username: '', email: '', contactNumber: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: false, isStaffOnly: false, profilePicture: '' });
   };
 
   const handleEditUser = (user: User) => {
@@ -148,7 +148,7 @@ export default function UserManagementPage() {
 
   const cancelEdit = () => {
     setEditingUserId(null);
-    setFormData({ name: '', username: '', email: '', contactNumber: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: true, isStaffOnly: false, profilePicture: '' });
+    setFormData({ name: '', username: '', email: '', contactNumber: '', role: 'Manager', division: '', section: '', position: '', reportingTo: '', twoFactorEnabled: false, isStaffOnly: false, profilePicture: '' });
   };
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -229,7 +229,7 @@ export default function UserManagementPage() {
               section: row['Section'] || '',
               position: row['Position'] || '',
               reportingTo: row['Reporting To'] || '',
-              twoFactorEnabled: row['2FA Enabled']?.toLowerCase() !== 'false',
+              twoFactorEnabled: row['2FA Enabled']?.toLowerCase() === 'true',
               isStaffOnly: isStaffOnly,
               profilePicture: ''
             };
