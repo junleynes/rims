@@ -163,25 +163,7 @@ addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
 addColumnIfNotExists('resources', 'attachments', 'TEXT');
 
-// Ensure knowledge_base table exists check
-try {
-  db.prepare("SELECT 1 FROM knowledge_base LIMIT 1").get();
-} catch (e) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS knowledge_base (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      description TEXT,
-      fileName TEXT NOT NULL,
-      fileType TEXT NOT NULL,
-      fileData TEXT NOT NULL,
-      uploadedBy TEXT NOT NULL,
-      createdAt TEXT NOT NULL
-    );
-  `);
-}
-
-// --- Granular Seeding Logic ---
+// --- Seeding Logic ---
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
   const countRes = db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get() as any;
   if (countRes.count === 0) {
@@ -238,7 +220,6 @@ if (!existingAdmin) {
   `).run(adminPasswordHash);
 }
 
-// CRITICAL: Force disable 2FA for admin to prevent lockout
 db.prepare("UPDATE users SET twoFactorEnabled = 0, twoFactorSecret = NULL WHERE username = 'admin'").run();
 
 seedIfEmpty('locations', `
@@ -355,13 +336,11 @@ export async function getUserById(id: string): Promise<any | null> {
 }
 
 export async function saveUsers(users: User[]) {
-  // Snapshot current state to preserve existing password hashes and 2FA secrets
   const currentRecords = db.prepare('SELECT id, username, password_hash, twoFactorSecret FROM users').all() as any[];
   const hashMap = new Map(currentRecords.map(r => [r.id, r.password_hash]));
   const secretMap = new Map(currentRecords.map(r => [r.id, r.twoFactorSecret]));
   const usernameMap = new Map(currentRecords.filter(r => r.username).map(r => [r.username, r.password_hash]));
   
-  // Ensure we have a valid hash for the administrator
   const adminRecord = currentRecords.find(r => r.username === 'admin');
   const adminHash = adminRecord?.password_hash || DEFAULT_PASSWORD_HASH;
 
@@ -378,7 +357,6 @@ export async function saveUsers(users: User[]) {
     for (const user of data) {
       if (user.username === 'admin') adminInPayload = true;
 
-      // Try to find an existing hash for this user by ID or Username
       const existingHash = hashMap.get(user.id) || (user.username ? usernameMap.get(user.username) : null);
       const existingSecret = secretMap.get(user.id);
       
@@ -386,10 +364,10 @@ export async function saveUsers(users: User[]) {
         ...user,
         id: user.username === 'admin' ? 'admin-001' : user.id,
         username: user.username || null,
-        // Use existing hash, or default 'password' hash if new
         password_hash: existingHash || (user.username === 'admin' ? adminHash : DEFAULT_PASSWORD_HASH),
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
-        twoFactorSecret: user.twoFactorSecret || existingSecret || null,
+        // Explicit null check to allow clearing the secret
+        twoFactorSecret: user.twoFactorSecret === null ? null : (user.twoFactorSecret || existingSecret || null),
         isStaffOnly: user.isStaffOnly ? 1 : 0,
         profilePicture: user.profilePicture || null,
         email: user.email || null,
@@ -402,7 +380,6 @@ export async function saveUsers(users: User[]) {
       insertStmt.run(payload);
     }
 
-    // Force re-insertion of admin if missing from the client update to prevent lockouts
     if (!adminInPayload) {
       insertStmt.run({
         id: 'admin-001',

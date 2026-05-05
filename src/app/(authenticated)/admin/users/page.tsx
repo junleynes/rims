@@ -33,6 +33,16 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { 
   Plus, 
   Trash2, 
   Shield, 
@@ -53,7 +63,8 @@ import {
   Camera,
   Loader2,
   ShieldCheck,
-  ShieldAlert
+  ShieldAlert,
+  ShieldOff
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -88,7 +99,12 @@ export default function UserManagementPage() {
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [isResetting, setIsResetting] = useState(false);
 
-  const handleAddOrUpdateUser = () => {
+  // 2FA Reset State
+  const [reset2FADialogOpen, setReset2FADialogOpen] = useState(false);
+  const [userFor2FAReset, setUserFor2FAReset] = useState<User | null>(null);
+  const [isResetting2FA, setIsResetting2FA] = useState(false);
+
+  const handleAddOrUpdateUser = async () => {
     if (!formData.name) {
       toast({ title: "Validation Error", description: "Name is required.", variant: "destructive" });
       return;
@@ -119,11 +135,11 @@ export default function UserManagementPage() {
     };
 
     if (editingUserId) {
-      updateUser(editingUserId, payload);
+      await updateUser(editingUserId, payload);
       setEditingUserId(null);
       toast({ title: "Updated Successfully" });
     } else {
-      addUser(payload);
+      await addUser(payload);
       toast({ title: "Added Successfully" });
     }
     
@@ -196,6 +212,33 @@ export default function UserManagementPage() {
     }
   };
 
+  const initiate2FAReset = (user: User) => {
+    setUserFor2FAReset(user);
+    setReset2FADialogOpen(true);
+  };
+
+  const confirm2FAReset = async () => {
+    if (!userFor2FAReset) return;
+    setIsResetting2FA(true);
+    try {
+      // We clear the secret and disable 2FA
+      await updateUser(userFor2FAReset.id, { 
+        twoFactorEnabled: false, 
+        twoFactorSecret: null 
+      });
+      toast({
+        title: "2FA Reset Successful",
+        description: `Authenticator security has been removed for ${userFor2FAReset.name}.`,
+      });
+      setReset2FADialogOpen(false);
+      setUserFor2FAReset(null);
+    } catch (e) {
+      toast({ title: "Error", description: "Failed to reset 2FA.", variant: "destructive" });
+    } finally {
+      setIsResetting2FA(false);
+    }
+  };
+
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -249,7 +292,7 @@ export default function UserManagementPage() {
         console.error(err);
         toast({
           title: "Import Failed",
-          description: "Check if the CSV format is correct. Headers: Name, Email, Contact Number, Username, Role, Position, Division, Section, Reporting To",
+          description: "Check if the CSV format is correct.",
           variant: "destructive",
         });
       }
@@ -308,7 +351,7 @@ export default function UserManagementPage() {
   const triggerImport = () => {
     toast({
       title: "CSV Header Requirement",
-      description: "Required: Name, Email, Contact Number, Username, Role, Position, Division, Section, Reporting To. Username is optional for staff-only entries.",
+      description: "Required: Name, Email, Contact Number, Username, Role, Position, Division, Section, Reporting To.",
       duration: 8000,
     });
     fileInputRef.current?.click();
@@ -636,17 +679,30 @@ export default function UserManagementPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => handleEditUser(u)} className="h-8 w-8 hover:bg-primary/10">
+                      <Button size="icon" variant="ghost" title="Edit Personnel" onClick={() => handleEditUser(u)} className="h-8 w-8 hover:bg-primary/10">
                         <Edit2 className="h-4 w-4 text-primary" />
                       </Button>
                       {!u.isStaffOnly && (
-                        <Button size="icon" variant="ghost" onClick={() => initiateReset(u)} className="h-8 w-8 hover:bg-primary/10">
-                          <KeyRound className="h-4 w-4 text-primary" />
-                        </Button>
+                        <>
+                          <Button size="icon" variant="ghost" title="Reset Password" onClick={() => initiateReset(u)} className="h-8 w-8 hover:bg-primary/10">
+                            <KeyRound className="h-4 w-4 text-primary" />
+                          </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            title="Reset 2FA"
+                            onClick={() => initiate2FAReset(u)} 
+                            disabled={!u.twoFactorEnabled && !u.twoFactorSecret}
+                            className="h-8 w-8 hover:bg-amber-100"
+                          >
+                            <ShieldOff className={cn("h-4 w-4", (u.twoFactorEnabled || u.twoFactorSecret) ? "text-amber-600" : "text-muted-foreground/30")} />
+                          </Button>
+                        </>
                       )}
                       <Button 
                         size="icon" 
                         variant="ghost" 
+                        title="Delete Entry"
                         onClick={() => deleteUser(u.id)} 
                         disabled={u.username === 'admin'}
                         className="h-8 w-8 hover:bg-destructive/10"
@@ -668,7 +724,6 @@ export default function UserManagementPage() {
             <DialogTitle>Update User Password</DialogTitle>
             <DialogDescription>
               Enter a new temporary password for <strong>{userToReset?.name}</strong>. 
-              The user will need to use this for their next login.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -700,6 +755,32 @@ export default function UserManagementPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={reset2FADialogOpen} onOpenChange={setReset2FADialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ShieldOff className="h-5 w-5 text-amber-600" />
+              Reset Authenticator (2FA)
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the current Google Authenticator link for <strong>{userFor2FAReset?.name}</strong>. 
+              The user will be able to log in with just their password. Use this if the user has lost their mobile device.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResetting2FA}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => { e.preventDefault(); confirm2FAReset(); }}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
+              disabled={isResetting2FA}
+            >
+              {isResetting2FA ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldOff className="h-4 w-4 mr-2" />}
+              Reset 2FA Now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
