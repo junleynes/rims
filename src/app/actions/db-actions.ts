@@ -4,8 +4,8 @@
 import * as db from '@/lib/server-db';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
-import nodemailer from 'nodemailer';
+import { authenticator } from 'otplib';
+import QRCode from 'qrcode';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from '@/lib/types';
 
 // Strict validation schemas with permissive empty-string handling
@@ -46,7 +46,8 @@ const UserSchema = z.object({
   role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).nullable().optional(),
   section: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   division: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
-  twoFactorEnabled: z.boolean().nullable().optional().transform(v => v === null ? true : v),
+  twoFactorEnabled: z.boolean().nullable().optional().transform(v => v === null ? false : v),
+  twoFactorSecret: z.string().optional().nullable(),
   position: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   reportingTo: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   isStaffOnly: z.boolean().nullable().optional().transform(v => v === null ? false : v),
@@ -209,3 +210,35 @@ export async function resetUserPassword(userId: string, newPassword: string) {
   return { success: true };
 }
 
+// --- TOTP 2FA Actions ---
+export async function setupTwoFactor(userId: string) {
+  const user = await db.getUserById(userId);
+  if (!user) throw new Error("User not found");
+  
+  const secret = authenticator.generateSecret();
+  const otpauth = authenticator.keyuri(user.username || user.name, 'R.I.M.S', secret);
+  const qrCodeUrl = await QRCode.toDataURL(otpauth);
+  
+  return { secret, qrCodeUrl };
+}
+
+export async function confirmTwoFactor(userId: string, code: string, secret: string) {
+  const isValid = authenticator.verify({ token: code, secret });
+  if (isValid) {
+    await db.updateTwoFactor(userId, true, secret);
+    return { success: true };
+  }
+  return { success: false, message: "Invalid verification code. Please try again." };
+}
+
+export async function disableTwoFactor(userId: string) {
+  await db.updateTwoFactor(userId, false, null);
+  return { success: true };
+}
+
+export async function verifyLogin2FA(userId: string, code: string) {
+  const user = await db.getUserById(userId);
+  if (!user || !user.twoFactorSecret) return false;
+  
+  return authenticator.verify({ token: code, secret: user.twoFactorSecret });
+}

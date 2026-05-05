@@ -55,7 +55,8 @@ db.exec(`
     role TEXT,
     section TEXT,
     division TEXT,
-    twoFactorEnabled INTEGER DEFAULT 1,
+    twoFactorEnabled INTEGER DEFAULT 0,
+    twoFactorSecret TEXT,
     position TEXT,
     reportingTo TEXT,
     isStaffOnly INTEGER DEFAULT 0,
@@ -155,6 +156,7 @@ addColumnIfNotExists('users', 'contactNumber', 'TEXT');
 addColumnIfNotExists('users', 'email', 'TEXT');
 addColumnIfNotExists('users', 'position', 'TEXT');
 addColumnIfNotExists('users', 'reportingTo', 'TEXT');
+addColumnIfNotExists('users', 'twoFactorSecret', 'TEXT');
 addColumnIfNotExists('smtp_settings', 'secure', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('branding', 'theme', 'TEXT');
 addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
@@ -232,7 +234,7 @@ const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('
 if (!existingAdmin) {
   db.prepare(`
     INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
-    VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@rims.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
+    VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@rims.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 0, 0)
   `).run(adminPasswordHash);
 }
 
@@ -345,10 +347,15 @@ export async function getUserByUsername(username: string): Promise<any | null> {
   return db.prepare('SELECT * FROM users WHERE username = ?').get(username) || null;
 }
 
+export async function getUserById(id: string): Promise<any | null> {
+  return db.prepare('SELECT * FROM users WHERE id = ?').get(id) || null;
+}
+
 export async function saveUsers(users: User[]) {
-  // Snapshot current state to preserve existing password hashes
-  const currentRecords = db.prepare('SELECT id, username, password_hash FROM users').all() as any[];
+  // Snapshot current state to preserve existing password hashes and 2FA secrets
+  const currentRecords = db.prepare('SELECT id, username, password_hash, twoFactorSecret FROM users').all() as any[];
   const hashMap = new Map(currentRecords.map(r => [r.id, r.password_hash]));
+  const secretMap = new Map(currentRecords.map(r => [r.id, r.twoFactorSecret]));
   const usernameMap = new Map(currentRecords.filter(r => r.username).map(r => [r.username, r.password_hash]));
   
   // Ensure we have a valid hash for the administrator
@@ -357,8 +364,8 @@ export async function saveUsers(users: User[]) {
 
   const deleteStmt = db.prepare('DELETE FROM users');
   const insertStmt = db.prepare(`
-    INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, section, division, twoFactorEnabled, position, reportingTo, isStaffOnly, profilePicture)
-    VALUES (@id, @username, @password_hash, @name, @email, @contactNumber, @role, @section, @division, @twoFactorEnabled, @position, @reportingTo, @isStaffOnly, @profilePicture)
+    INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, section, division, twoFactorEnabled, twoFactorSecret, position, reportingTo, isStaffOnly, profilePicture)
+    VALUES (@id, @username, @password_hash, @name, @email, @contactNumber, @role, @section, @division, @twoFactorEnabled, @twoFactorSecret, @position, @reportingTo, @isStaffOnly, @profilePicture)
   `);
 
   const transactionSafe = db.transaction((data: User[]) => {
@@ -370,6 +377,7 @@ export async function saveUsers(users: User[]) {
 
       // Try to find an existing hash for this user by ID or Username
       const existingHash = hashMap.get(user.id) || (user.username ? usernameMap.get(user.username) : null);
+      const existingSecret = secretMap.get(user.id);
       
       const payload = {
         ...user,
@@ -378,6 +386,7 @@ export async function saveUsers(users: User[]) {
         // Use existing hash, or default 'password' hash if new
         password_hash: existingHash || (user.username === 'admin' ? adminHash : DEFAULT_PASSWORD_HASH),
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
+        twoFactorSecret: user.twoFactorSecret || existingSecret || null,
         isStaffOnly: user.isStaffOnly ? 1 : 0,
         profilePicture: user.profilePicture || null,
         email: user.email || null,
@@ -402,7 +411,8 @@ export async function saveUsers(users: User[]) {
         role: 'Admin',
         section: null,
         division: null,
-        twoFactorEnabled: 1,
+        twoFactorEnabled: 0,
+        twoFactorSecret: null,
         position: 'Chief Technology Officer',
         reportingTo: 'Board of Directors',
         isStaffOnly: 0,
@@ -415,6 +425,10 @@ export async function saveUsers(users: User[]) {
 
 export async function updateUserPassword(userId: string, hash: string) {
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, userId);
+}
+
+export async function updateTwoFactor(userId: string, enabled: boolean, secret: string | null) {
+  db.prepare('UPDATE users SET twoFactorEnabled = ?, twoFactorSecret = ? WHERE id = ?').run(enabled ? 1 : 0, secret, userId);
 }
 
 // --- System Updates Logic ---

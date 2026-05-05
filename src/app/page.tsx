@@ -33,34 +33,30 @@ function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate network delay
-    setTimeout(() => {
-      login(username, password)
-        .then(() => {
-          toast({
-            title: "Access Verification",
-            description: "Checking system registry...",
-          });
-        })
-        .catch((err) => {
-          toast({
-            title: "Authentication Failed",
-            description: "Please check your credentials.",
-            variant: "destructive",
-          });
-        })
-        .finally(() => {
-          setIsLoading(false);
+    login(username, password)
+      .then(() => {
+        toast({
+          title: "Identity Verified",
+          description: "Proceeding with authentication...",
         });
-    }, 800);
+      })
+      .catch((err) => {
+        toast({
+          title: "Authentication Failed",
+          description: "Please check your credentials.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   const handleVerifyOTP = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      const success = verify2FA(otp);
+    verify2FA(otp).then((success) => {
       if (success) {
         toast({
           title: `Welcome to ${config.appAcronym}`,
@@ -70,12 +66,12 @@ function LoginPage() {
       } else {
         toast({
           title: "Invalid Code",
-          description: "The 2FA code you entered is incorrect.",
+          description: "The authentication code you entered is incorrect.",
           variant: "destructive",
         });
       }
       setIsLoading(false);
-    }, 1000);
+    });
   };
 
   return (
@@ -106,8 +102,8 @@ function LoginPage() {
             <div className="flex items-start gap-3">
               <ShieldCheck className="h-6 w-6 text-accent shrink-0 mt-1" />
               <div>
-                <p className="font-semibold">Role-Based Access</p>
-                <p className="text-sm text-white/60">Secure management boundaries for section leads and administrators.</p>
+                <p className="font-semibold">Standard TOTP Protection</p>
+                <p className="text-sm text-white/60">Compatible with Google Authenticator and professional security apps.</p>
               </div>
             </div>
           </div>
@@ -174,7 +170,7 @@ function LoginPage() {
                 </div>
                 <CardTitle className="text-2xl font-bold">Two-Factor Authentication</CardTitle>
                 <CardDescription>
-                  A verification code was sent to your registered device.
+                  Enter the 6-digit code from your Google Authenticator app.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -183,12 +179,12 @@ function LoginPage() {
                     <Label htmlFor="otp">Verification Code</Label>
                     <Input 
                       id="otp" 
-                      placeholder="Enter 6-digit code" 
+                      placeholder="000000" 
                       className="text-center text-2xl tracking-[0.5em] h-14 font-mono"
                       maxLength={6}
                       required
                       value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                     />
                   </div>
                   <Button type="submit" className="w-full bg-accent hover:bg-accent/90 py-6 text-lg" disabled={isLoading}>

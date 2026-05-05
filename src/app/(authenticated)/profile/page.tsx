@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/components/auth-context';
 import { useSystemData } from '@/components/system-data-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -24,9 +24,15 @@ import {
   Mail, 
   Phone,
   Camera,
-  Trash2
+  Trash2,
+  QrCode,
+  CheckCircle2,
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { setupTwoFactor, confirmTwoFactor, disableTwoFactor } from '@/app/actions/db-actions';
+import Image from 'next/image';
 
 export default function ProfilePage() {
   const { user, updateCurrentUser } = useAuth();
@@ -37,16 +43,21 @@ export default function ProfilePage() {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [contactNumber, setContactNumber] = useState(user?.contactNumber || '');
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(!!user?.twoFactorEnabled);
   const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '');
   const [isSaving, setIsSaving] = useState(false);
+
+  // 2FA Setup State
+  const [isSettingUp2FA, setIsSettingUp2FA] = useState(false);
+  const [setupData, setSetupData] = useState<{ secret: string; qrCodeUrl: string } | null>(null);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isVerifying2FA, setIsVerifying2FA] = useState(false);
 
   if (!user) return null;
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const updatedData = { name, email, contactNumber, twoFactorEnabled, profilePicture };
+      const updatedData = { name, email, contactNumber, profilePicture };
       await updateUser(user.id, updatedData);
       
       const updatedUser = { ...user, ...updatedData };
@@ -87,11 +98,46 @@ export default function ProfilePage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleResetPassword = () => {
-    toast({
-      title: "Password Reset Request",
-      description: "A password reset link would be sent to your email in a production system.",
-    });
+  const handleStart2FASetup = async () => {
+    setIsSettingUp2FA(true);
+    try {
+      const data = await setupTwoFactor(user.id);
+      setSetupData(data);
+    } catch (e) {
+      toast({ title: "Setup Error", description: "Could not initiate 2FA setup.", variant: "destructive" });
+      setIsSettingUp2FA(false);
+    }
+  };
+
+  const handleConfirm2FA = async () => {
+    if (!setupData || verificationCode.length !== 6) return;
+    setIsVerifying2FA(true);
+    try {
+      const result = await confirmTwoFactor(user.id, verificationCode, setupData.secret);
+      if (result.success) {
+        toast({ title: "2FA Activated", description: "Google Authenticator setup successful." });
+        updateCurrentUser({ ...user, twoFactorEnabled: true });
+        setIsSettingUp2FA(false);
+        setSetupData(null);
+        setVerificationCode('');
+      } else {
+        toast({ title: "Verification Failed", description: result.message, variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
+    } finally {
+      setIsVerifying2FA(false);
+    }
+  };
+
+  const handleDisable2FA = async () => {
+    try {
+      await disableTwoFactor(user.id);
+      updateCurrentUser({ ...user, twoFactorEnabled: false });
+      toast({ title: "2FA Disabled", description: "Authenticator security has been removed from your account." });
+    } catch (e) {
+      toast({ title: "Error", description: "Could not disable 2FA.", variant: "destructive" });
+    }
   };
 
   return (
@@ -199,79 +245,109 @@ export default function ProfilePage() {
                     />
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t">
-                  <div className="space-y-1 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                      <Briefcase className="h-3 w-3" /> Position
-                    </Label>
-                    <p className="font-black text-sm text-primary">{user.position || 'Unassigned'}</p>
-                  </div>
-                  <div className="space-y-1 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                      <UserCheck className="h-3 w-3" /> Reporting To
-                    </Label>
-                    <p className="font-black text-sm text-primary">{user.reportingTo || 'N/A'}</p>
-                  </div>
-                  <div className="space-y-1 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                      <Building className="h-3 w-3" /> Division
-                    </Label>
-                    <p className="font-black text-sm text-primary">{user.division || 'Unassigned'}</p>
-                  </div>
-                  <div className="space-y-1 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">
-                      <LayoutGrid className="h-3 w-3" /> Section/Unit
-                    </Label>
-                    <p className="font-black text-sm text-primary">{user.section || 'Unassigned'}</p>
-                  </div>
-                </div>
               </div>
             </CardContent>
             <CardFooter className="border-t p-6 bg-muted/20 flex justify-end">
               <Button onClick={handleSave} disabled={isSaving} className="gap-2 min-w-[140px] font-bold h-12">
-                {isSaving ? <Save className="h-4 w-4 animate-pulse" /> : <Save className="h-4 w-4" />}
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Update Settings
               </Button>
             </CardFooter>
           </Card>
 
-          <Card className="border-none shadow-lg">
-            <CardHeader>
+          <Card className="border-none shadow-lg overflow-hidden">
+            <CardHeader className="bg-primary/5">
               <CardTitle className="flex items-center gap-2">
-                <Lock className="h-5 w-5 text-primary" />
-                Security Settings
+                <QrCode className="h-5 w-5 text-primary" />
+                Two-Factor Authentication (TOTP)
               </CardTitle>
-              <CardDescription>Manage your account protection and authentication methods.</CardDescription>
+              <CardDescription>Secure your account with Google Authenticator or compatible apps.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 rounded-xl border border-dashed">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <p className="font-bold">Two-Factor Authentication (2FA)</p>
-                    {twoFactorEnabled ? (
-                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none font-black text-[10px] uppercase">Enabled</Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-muted-foreground font-black text-[10px] uppercase">Disabled</Badge>
-                    )}
+            <CardContent className="pt-6">
+              {!user.twoFactorEnabled && !isSettingUp2FA && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-muted/30 rounded-xl border border-dashed text-sm">
+                    <p className="font-semibold text-primary">Enhance your security</p>
+                    <p className="text-muted-foreground mt-1">Protect your account with a time-based 6-digit code. No SMS or email required.</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">Require a verification code in addition to your password.</p>
+                  <Button onClick={handleStart2FASetup} className="gap-2 font-bold">
+                    Set up Google Authenticator
+                  </Button>
                 </div>
-                <Switch 
-                  checked={twoFactorEnabled} 
-                  onCheckedChange={setTwoFactorEnabled}
-                />
-              </div>
+              )}
 
-              <div className="flex items-center justify-between p-4 rounded-xl border border-dashed">
-                <div className="space-y-0.5">
-                  <p className="font-bold">Password Management</p>
-                  <p className="text-xs text-muted-foreground">Update your password regularly to keep your account secure.</p>
+              {isSettingUp2FA && (
+                <div className="space-y-6 animate-in slide-in-from-top-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                    <div className="flex flex-col items-center gap-4">
+                      {setupData ? (
+                        <div className="p-4 bg-white rounded-2xl shadow-inner border">
+                          <Image src={setupData.qrCodeUrl} alt="QR Code" width={200} height={200} className="rounded-lg" />
+                        </div>
+                      ) : (
+                        <div className="h-[232px] w-[232px] flex items-center justify-center bg-muted animate-pulse rounded-2xl">
+                          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                      <p className="text-[10px] text-center text-muted-foreground font-bold uppercase tracking-widest px-4">
+                        Scan this QR code with your Authenticator app.
+                      </p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-black uppercase">Manual Key</Label>
+                        <div className="p-3 bg-muted rounded-lg font-mono text-sm break-all border select-all">
+                          {setupData?.secret || 'Generating...'}
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2 pt-2">
+                        <Label htmlFor="vcode" className="text-xs font-black uppercase">Enter 6-Digit Verification Code</Label>
+                        <Input 
+                          id="vcode"
+                          placeholder="000000"
+                          maxLength={6}
+                          className="h-12 text-center text-2xl tracking-[0.5em] font-mono"
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t">
+                    <Button variant="ghost" onClick={() => { setIsSettingUp2FA(false); setSetupData(null); setVerificationCode(''); }}>
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleConfirm2FA} 
+                      disabled={verificationCode.length !== 6 || isVerifying2FA}
+                      className="gap-2 font-bold min-w-[120px]"
+                    >
+                      {isVerifying2FA ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                      Verify & Enable
+                    </Button>
+                  </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleResetPassword} className="gap-2 font-bold">
-                  <KeyRound className="h-4 w-4" /> Reset Password
-                </Button>
-              </div>
+              )}
+
+              {user.twoFactorEnabled && (
+                <div className="flex items-center justify-between p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-emerald-900">Authenticator Active</p>
+                      <p className="text-xs text-emerald-700">Your account is protected by standard TOTP 2FA.</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={handleDisable2FA} className="text-red-600 border-red-200 hover:bg-red-50 font-bold">
+                    Disable 2FA
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -317,8 +393,10 @@ export default function ProfilePage() {
                   <span className="text-emerald-600">Online</span>
                 </div>
                 <div className="flex justify-between text-[11px] font-bold">
-                  <span className="text-muted-foreground uppercase">Last Active:</span>
-                  <span className="text-slate-600">Just now</span>
+                  <span className="text-muted-foreground uppercase">Security:</span>
+                  <span className={user.twoFactorEnabled ? "text-emerald-600" : "text-amber-600"}>
+                    {user.twoFactorEnabled ? "2FA Enabled" : "2FA Off"}
+                  </span>
                 </div>
               </div>
             </CardContent>

@@ -55,6 +55,7 @@ export interface User {
   section?: string;
   division?: string;
   twoFactorEnabled?: boolean;
+  twoFactorSecret?: string;
   position?: string;
   reportingTo?: string;
   isStaffOnly?: boolean;
