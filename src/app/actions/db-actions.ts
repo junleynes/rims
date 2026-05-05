@@ -203,38 +203,9 @@ export async function updateSmtpConfig(config: SmtpConfig) {
   return true;
 }
 
-export async function resetUserPassword(userId: string) {
-  const tempPassword = crypto.randomBytes(4).toString('hex');
-  const hash = bcrypt.hashSync(tempPassword, 10);
-  
+export async function resetUserPassword(userId: string, newPassword: string) {
+  const hash = bcrypt.hashSync(newPassword, 10);
   await db.updateUserPassword(userId, hash);
-
-  const smtp = await db.getSmtpConfig();
-  const users = await db.getAllUsers();
-  const targetUser = users.find(u => u.id === userId);
-
-  if (smtp && targetUser && smtp.host) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: smtp.host,
-        port: smtp.port,
-        secure: smtp.secure, 
-        auth: {
-          user: smtp.user,
-          pass: smtp.pass,
-        },
-      });
-
-      await transporter.sendMail({
-        from: `"${await db.getBranding().then(b => b.appName)}" <${smtp.fromEmail}>`,
-        to: targetUser.email || (targetUser.username ? `${targetUser.username}@example.com` : smtp.fromEmail), 
-        subject: "Temporary System Password",
-        text: `Hello ${targetUser.name},\n\nYour password has been reset. Your temporary password is: ${tempPassword}\n\nPlease change it after logging in.\n\nBest regards,\nSystem Admin`,
-      });
-    } catch (err) {
-      console.error('Failed to send reset email:', err);
-    }
-  }
-
-  return { tempPassword };
+  return { success: true };
 }
+

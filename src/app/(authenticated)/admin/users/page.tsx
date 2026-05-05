@@ -25,16 +25,6 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { 
   Dialog,
   DialogContent,
   DialogHeader,
@@ -54,14 +44,14 @@ import {
   UserX, 
   Network, 
   Building2,
-  Copy,
   Check,
   Eye,
   Mail,
   Phone,
   Upload,
   Download,
-  Camera
+  Camera,
+  Loader2
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -92,8 +82,8 @@ export default function UserManagementPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [userToReset, setUserToReset] = useState<User | null>(null);
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   const handleAddOrUpdateUser = () => {
     if (!formData.name) {
@@ -174,26 +164,32 @@ export default function UserManagementPage() {
 
   const initiateReset = (user: User) => {
     setUserToReset(user);
+    setNewPasswordInput('');
     setResetDialogOpen(true);
   };
 
   const confirmReset = async () => {
-    if (userToReset) {
-      const result = await resetUserPassword(userToReset.id);
-      setTempPassword(result.tempPassword);
-      toast({
-        title: "Password Generated",
-        description: `A temporary password has been created for ${userToReset.name}.`,
-      });
-    }
-    setResetDialogOpen(false);
-  };
+    if (userToReset && newPasswordInput) {
+      if (newPasswordInput.length < 4) {
+        toast({ title: "Security Warning", description: "Password should be at least 4 characters.", variant: "destructive" });
+        return;
+      }
 
-  const copyToClipboard = () => {
-    if (tempPassword) {
-      navigator.clipboard.writeText(tempPassword);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setIsResetting(true);
+      try {
+        await resetUserPassword(userToReset.id, newPasswordInput);
+        toast({
+          title: "Password Updated",
+          description: `The credentials for ${userToReset.name} have been updated successfully.`,
+        });
+        setResetDialogOpen(false);
+        setUserToReset(null);
+        setNewPasswordInput('');
+      } catch (e) {
+        toast({ title: "Error", description: "Failed to update password.", variant: "destructive" });
+      } finally {
+        setIsResetting(false);
+      }
     }
   };
 
@@ -633,43 +629,40 @@ export default function UserManagementPage() {
         </CardContent>
       </Card>
 
-      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset System Password?</AlertDialogTitle>
-            <AlertDialogDescription>
-              A new temporary password will be generated for <strong>{userToReset?.name}</strong>. 
-              The system will attempt to notify the user if SMTP is configured.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmReset} className="bg-primary hover:bg-primary/90">
-              Confirm Reset
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog open={!!tempPassword} onOpenChange={() => { setTempPassword(null); setUserToReset(null); }}>
+      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Temporary Password Generated</DialogTitle>
+            <DialogTitle>Update User Password</DialogTitle>
             <DialogDescription>
-              Please provide this password to <strong>{userToReset?.name}</strong>. They will be required to change it upon login.
+              Enter a new temporary password for <strong>{userToReset?.name}</strong>. 
+              The user will need to use this for their next login.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center space-x-2 bg-muted/50 p-6 rounded-2xl border border-dashed justify-center">
-            <span className="text-4xl font-black font-mono tracking-widest text-primary uppercase">
-              {tempPassword}
-            </span>
-            <Button size="icon" variant="ghost" onClick={copyToClipboard} className="h-12 w-12">
-              {copied ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
-            </Button>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <Input 
+                id="new-password"
+                type="text"
+                placeholder="Enter new password"
+                value={newPasswordInput}
+                onChange={(e) => setNewPasswordInput(e.target.value)}
+                autoFocus
+              />
+              <p className="text-[10px] text-muted-foreground">Minimum 4 characters recommended.</p>
+            </div>
           </div>
-          <DialogFooter className="sm:justify-start">
-            <Button type="button" variant="secondary" onClick={() => setTempPassword(null)}>
-              Done
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetDialogOpen(false)} disabled={isResetting}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmReset} 
+              disabled={isResetting || !newPasswordInput} 
+              className="bg-primary hover:bg-primary/90 font-bold"
+            >
+              {isResetting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <KeyRound className="h-4 w-4 mr-2" />}
+              Set New Password
             </Button>
           </DialogFooter>
         </DialogContent>
