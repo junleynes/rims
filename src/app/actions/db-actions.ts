@@ -6,7 +6,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig, SystemUpdate } from '@/lib/types';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from '@/lib/types';
 
 // Strict validation schemas
 const BudgetEntrySchema = z.object({
@@ -62,6 +62,17 @@ const SystemUpdateSchema = z.object({
   createdAt: z.string(),
 });
 
+const KnowledgeBaseEntrySchema = z.object({
+  id: z.string(),
+  title: z.string().min(1),
+  description: z.string(),
+  fileName: z.string(),
+  fileType: z.string(),
+  fileData: z.string(),
+  uploadedBy: z.string(),
+  createdAt: z.string(),
+});
+
 export async function getBudgets() {
   return db.getAllResources();
 }
@@ -83,6 +94,21 @@ export async function fetchSystemUpdates() {
 export async function saveSystemUpdates(updates: SystemUpdate[]) {
   const validated = updates.map(u => SystemUpdateSchema.parse(u));
   await db.saveSystemUpdates(validated);
+}
+
+export async function fetchKnowledgeBaseEntries() {
+  return db.getAllKnowledgeBaseEntries();
+}
+
+export async function createKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
+  const validated = KnowledgeBaseEntrySchema.parse(entry);
+  await db.saveKnowledgeBaseEntry(validated);
+  return true;
+}
+
+export async function removeKnowledgeBaseEntry(id: string) {
+  await db.deleteKnowledgeBaseEntry(id);
+  return true;
 }
 
 export async function getSystemData() {
@@ -137,7 +163,6 @@ export async function verifyUserCredentials(username: string, password?: string)
 
   try {
     const userRecord = await db.getUserByUsername(username);
-    // Block staff-only records and handle missing password hashes
     if (!userRecord || userRecord.isStaffOnly || !userRecord.password_hash) return null;
 
     const isPasswordValid = bcrypt.compareSync(password, userRecord.password_hash);
@@ -175,7 +200,7 @@ export async function updateSmtpConfig(config: SmtpConfig) {
 }
 
 export async function resetUserPassword(userId: string) {
-  const tempPassword = crypto.randomBytes(4).toString('hex'); // 8 characters
+  const tempPassword = crypto.randomBytes(4).toString('hex');
   const hash = bcrypt.hashSync(tempPassword, 10);
   
   await db.updateUserPassword(userId, hash);

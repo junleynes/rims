@@ -89,6 +89,17 @@ export interface SmtpConfig {
   secure: boolean;
 }
 
+export interface KnowledgeBaseEntry {
+  id: string;
+  title: string;
+  description: string;
+  fileName: string;
+  fileType: string;
+  fileData: string;
+  uploadedBy: string;
+  createdAt: string;
+}
+
 export interface Location {
   id: string;
   name: string;

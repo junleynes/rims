@@ -15,7 +15,8 @@ import {
   FileBarChart,
   Network,
   UsersRound,
-  Megaphone
+  Megaphone,
+  BookOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -75,6 +76,7 @@ export function SidebarNav() {
   const navItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', color: 'bg-blue-500', badge: hasUnreadUpdates },
     { name: 'Resource Log', icon: Table2, href: '/budgets', color: 'bg-emerald-500' },
+    { name: 'Knowledge Base', icon: BookOpen, href: '/knowledge-base', color: 'bg-indigo-500' },
   ];
 
   if (!isReadOnly) {

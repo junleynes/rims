@@ -2,7 +2,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig, SystemUpdate } from './types';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from './types';
 
 const DB_PATH = path.join(process.cwd(), 'data.db');
 
@@ -67,6 +67,17 @@ db.exec(`
     content TEXT NOT NULL,
     type TEXT NOT NULL,
     createdBy TEXT NOT NULL,
+    createdAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS knowledge_base (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    fileName TEXT NOT NULL,
+    fileType TEXT NOT NULL,
+    fileData TEXT NOT NULL,
+    uploadedBy TEXT NOT NULL,
     createdAt TEXT NOT NULL
   );
 
@@ -197,11 +208,8 @@ const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('
 if (!existingAdmin) {
   db.prepare(`
     INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
-    VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@example.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
+    VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@rims.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
   `).run(adminPasswordHash);
-} else {
-  // Repair admin account if it was somehow converted to staff or lost role
-  db.prepare("UPDATE users SET isStaffOnly = 0, role = 'Admin' WHERE username = 'admin'").run();
 }
 
 // 5. Locations
@@ -241,13 +249,9 @@ export async function getAllResources(): Promise<BudgetEntry[]> {
     let attachments: string[] = [];
     try {
       attachments = row.attachments ? JSON.parse(row.attachments) : [];
-      // Handle legacy single-string data if migration wasn't perfectly clean
-      if (!Array.isArray(attachments) && typeof attachments === 'string') {
-        attachments = [attachments];
-      }
+      if (!Array.isArray(attachments)) attachments = [];
     } catch (e) {
-      // If it's just a plain string (legacy), wrap it
-      attachments = row.attachments ? [row.attachments] : [];
+      attachments = [];
     }
 
     return {
@@ -292,6 +296,23 @@ export async function deleteResourcesByYear(year: number) {
   db.prepare('DELETE FROM resources WHERE year = ?').run(year);
 }
 
+// --- Knowledge Base Logic ---
+
+export async function getAllKnowledgeBaseEntries(): Promise<KnowledgeBaseEntry[]> {
+  return db.prepare('SELECT * FROM knowledge_base ORDER BY createdAt DESC').all() as KnowledgeBaseEntry[];
+}
+
+export async function saveKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
+  db.prepare(`
+    INSERT INTO knowledge_base (id, title, description, fileName, fileType, fileData, uploadedBy, createdAt)
+    VALUES (@id, @title, @description, @fileName, @fileType, @fileData, @uploadedBy, @createdAt)
+  `).run(entry);
+}
+
+export async function deleteKnowledgeBaseEntry(id: string) {
+  db.prepare('DELETE FROM knowledge_base WHERE id = ?').run(id);
+}
+
 // --- User & Auth Logic ---
 
 export async function getAllUsers(): Promise<User[]> {
@@ -328,7 +349,7 @@ export async function saveUsers(users: User[]) {
       const payload = {
         ...user,
         id: user.username === 'admin' ? 'admin-001' : user.id,
-        username: user.username || null, // Ensure empty strings are NULL
+        username: user.username || null,
         password_hash: existingHash || defaultHash,
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
         isStaffOnly: user.isStaffOnly ? 1 : 0,
