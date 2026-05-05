@@ -160,6 +160,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
         (b.itemDescription || '').toLowerCase().includes(search.toLowerCase()) ||
         (b.section || '').toLowerCase().includes(search.toLowerCase()) ||
         (b.location || '').toLowerCase().includes(search.toLowerCase()) ||
+        (b.locationDetails || '').toLowerCase().includes(search.toLowerCase()) ||
         (b.accountablePerson || '').toLowerCase().includes(search.toLowerCase());
       return matchesCategory && matchesSearch;
     });
@@ -189,6 +190,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       "Division",
       "Section",
       "Location",
+      "Location Details",
       "Classification",
       "Category",
       "Account",
@@ -213,6 +215,7 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
       `"${b.division || ''}"`,
       `"${b.section || ''}"`,
       `"${b.location || ''}"`,
+      `"${b.locationDetails || ''}"`,
       `"${b.classification || ''}"`,
       `"${b.category || ''}"`,
       `"${b.account || ''}"`,
@@ -536,9 +539,16 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                     </TableCell>
                   )}
                   <TableCell>
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-                      <MapPin className="h-3 w-3 text-red-500" />
-                      {budget.location}
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                        <MapPin className="h-3 w-3 text-red-500" />
+                        {budget.location}
+                      </div>
+                      {budget.locationDetails && (
+                        <span className="text-[10px] text-muted-foreground italic truncate max-w-[150px] pl-4">
+                          {budget.locationDetails}
+                        </span>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>

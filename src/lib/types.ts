@@ -23,6 +23,7 @@ export interface BudgetEntry {
   division: string;
   section: string;
   location: string;
+  locationDetails?: string;
   classification: Classification;
   category: BudgetCategory;
   account: Account;

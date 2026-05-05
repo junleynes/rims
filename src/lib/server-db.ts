@@ -22,6 +22,7 @@ db.exec(`
     division TEXT NOT NULL,
     section TEXT NOT NULL,
     location TEXT,
+    locationDetails TEXT,
     classification TEXT,
     category TEXT NOT NULL,
     account TEXT,
@@ -140,6 +141,7 @@ addColumnIfNotExists('users', 'reportingTo', 'TEXT');
 addColumnIfNotExists('smtp_settings', 'secure', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('branding', 'theme', 'TEXT');
 addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
+addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
 
 // --- Granular Seeding Logic ---
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
@@ -245,12 +247,12 @@ export async function saveResources(resources: BudgetEntry[]) {
   const deleteStmt = db.prepare('DELETE FROM resources');
   const insertStmt = db.prepare(`
     INSERT INTO resources (
-      id, year, division, section, location, classification, category, account,
+      id, year, division, section, location, locationDetails, classification, category, account,
       projectTitle, itemDescription, quantity, unitCostBudget, totalCostBudget,
       unitCostActual, totalCostActual, prNumber, dateDelivered, grSisNumber,
       accountablePerson, status, statusOthers, remarks, attachmentUrl, createdAt
     ) VALUES (
-      @id, @year, @division, @section, @location, @classification, @category, @account,
+      @id, @year, @division, @section, @location, @locationDetails, @classification, @category, @account,
       @projectTitle, @itemDescription, @quantity, @unitCostBudget, @totalCostBudget,
       @unitCostActual, @totalCostActual, @prNumber, @dateDelivered, @grSisNumber,
       @accountablePerson, @status, @statusOthers, @remarks, @attachmentUrl, @createdAt

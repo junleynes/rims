@@ -15,6 +15,7 @@ const BudgetEntrySchema = z.object({
   division: z.string(),
   section: z.string(),
   location: z.string(),
+  locationDetails: z.string().optional(),
   classification: z.enum(['Hardware', 'Software', 'Others']),
   category: z.enum(['CAPEX', 'OPEX']),
   account: z.string(),

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -42,6 +43,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     division: initialData?.division || (user?.division || divisions[0]?.name || ''),
     section: initialData?.section || (user?.section || sections[0]?.name || ''),
     location: initialData?.location || (locations[0]?.name || ''),
+    locationDetails: initialData?.locationDetails || '',
     classification: initialData?.classification || CLASSIFICATIONS[0],
     category: initialData?.category || 'CAPEX',
     account: initialData?.account || 'Capex',
@@ -210,7 +212,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
+                <Label htmlFor="location">General Location</Label>
                 <Select 
                   value={formData.location} 
                   onValueChange={(v) => setFormData(prev => ({ ...prev, location: v }))}
@@ -224,6 +226,16 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="locationDetails">Specific Office / Work Area / Address</Label>
+                <Input 
+                  id="locationDetails" 
+                  placeholder="e.g. Office 502, Video Suite A, or Full Delivery Address for deployed units"
+                  value={formData.locationDetails}
+                  onChange={(e) => setFormData(prev => ({ ...prev, locationDetails: e.target.value }))}
+                />
               </div>
 
               <div className="space-y-2">
