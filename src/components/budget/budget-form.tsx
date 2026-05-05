@@ -39,6 +39,11 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   
   const [isLoading, setIsLoading] = useState(false);
 
+  // Determine organizational restrictions
+  const isManager = user?.role === 'Manager';
+  const isAVP = user?.role === 'AVP';
+  const isGlobalUser = user?.role === 'Admin' || user?.role === 'VP' || user?.role === 'Viewer';
+
   const [formData, setFormData] = useState<Omit<BudgetEntry, 'id' | 'createdAt'>>({
     year: initialData?.year || new Date().getFullYear(),
     division: initialData?.division || (user?.division || divisions[0]?.name || ''),
@@ -89,10 +94,23 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     }
   }, [formData.category, initialData]);
 
-  const filteredSections = sections.filter(s => {
+  // Logic to filter available divisions based on role
+  const availableDivisions = useMemo(() => {
+    if (isGlobalUser) return divisions;
+    return divisions.filter(d => d.name === user?.division);
+  }, [divisions, user, isGlobalUser]);
+
+  // Logic to filter sections based on selected division and user role
+  const availableSections = useMemo(() => {
     const divId = divisions.find(d => d.name === formData.division)?.id;
-    return s.divisionId === divId;
-  });
+    let filtered = sections.filter(s => s.divisionId === divId);
+    
+    if (isManager && formData.division === user?.division) {
+      filtered = filtered.filter(s => s.name === user?.section);
+    }
+    
+    return filtered;
+  }, [sections, divisions, formData.division, user, isManager]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -202,12 +220,13 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 <Select 
                   value={formData.division} 
                   onValueChange={(v) => setFormData(prev => ({ ...prev, division: v, section: '' }))}
+                  disabled={availableDivisions.length <= 1}
                 >
                   <SelectTrigger id="division">
                     <SelectValue placeholder="Select Division" />
                   </SelectTrigger>
                   <SelectContent>
-                    {divisions.map(d => (
+                    {availableDivisions.map(d => (
                       <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -219,13 +238,13 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 <Select 
                   value={formData.section} 
                   onValueChange={(v) => setFormData(prev => ({ ...prev, section: v }))}
-                  disabled={!formData.division}
+                  disabled={!formData.division || availableSections.length <= 1}
                 >
                   <SelectTrigger id="section">
                     <SelectValue placeholder="Select Section/Unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredSections.map(s => (
+                    {availableSections.map(s => (
                       <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
