@@ -1,7 +1,9 @@
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BrandingConfig } from '@/lib/types';
+import { getSystemData } from '@/app/actions/db-actions';
 
 interface BrandingContextType {
   config: BrandingConfig;
@@ -16,6 +18,7 @@ const defaultBranding: BrandingConfig = {
   logoUrl: '',
   theme: 'oceanic',
   darkMode: false,
+  maxUploadSize: 20
 };
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
@@ -24,19 +27,31 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
   const [config, setConfig] = useState<BrandingConfig>(defaultBranding);
 
   useEffect(() => {
-    const saved = localStorage.getItem('rims_branding');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setConfig(prev => ({ ...prev, ...parsed }));
-        applyBranding(parsed);
-      } catch (e) {
-        console.error("Failed to parse branding config", e);
+    async function loadConfig() {
+      // First try localStorage for immediate UI (optimistic)
+      const saved = localStorage.getItem('rims_branding');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setConfig(prev => ({ ...prev, ...parsed }));
+          applyBranding(parsed);
+        } catch (e) {}
       }
-    } else {
-      // Apply default theme if nothing is saved
-      applyBranding(defaultBranding);
+
+      // Then fetch definitive state from server-db
+      try {
+        const { branding } = await getSystemData();
+        if (branding) {
+          setConfig(branding);
+          applyBranding(branding);
+          localStorage.setItem('rims_branding', JSON.stringify(branding));
+        }
+      } catch (e) {
+        console.error("Failed to sync branding from server", e);
+      }
     }
+    
+    loadConfig();
   }, []);
 
   const applyBranding = (branding: BrandingConfig) => {

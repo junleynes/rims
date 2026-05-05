@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/components/auth-context';
+import { useBranding } from '@/components/branding-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,7 @@ import { cn } from '@/lib/utils';
 
 export default function KnowledgeBasePage() {
   const { user } = useAuth();
+  const { config } = useBranding();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -48,6 +50,7 @@ export default function KnowledgeBasePage() {
   });
 
   const isAdmin = user?.role === 'Admin';
+  const MAX_FILE_SIZE = (config.maxUploadSize || 20) * 1024 * 1024;
 
   useEffect(() => {
     loadEntries();
@@ -63,8 +66,13 @@ export default function KnowledgeBasePage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 20 * 1024 * 1024) {
-        toast({ title: "File too large", description: "Maximum file size is 20MB.", variant: "destructive" });
+      if (file.size > MAX_FILE_SIZE) {
+        toast({ 
+          title: "File too large", 
+          description: `Maximum file size allowed by administrator is ${config.maxUploadSize || 20}MB.`, 
+          variant: "destructive" 
+        });
+        if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
 
@@ -104,7 +112,7 @@ export default function KnowledgeBasePage() {
       setShowUploadForm(false);
       loadEntries();
     } catch (error) {
-      toast({ title: "Upload Failed", description: "An error occurred while saving the file.", variant: "destructive" });
+      toast({ title: "Upload Failed", description: "An error occurred while saving the file. Ensure the file size is within server limits.", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -167,7 +175,7 @@ export default function KnowledgeBasePage() {
           <div className="h-1.5 bg-primary" />
           <CardHeader>
             <CardTitle className="text-lg">New Document Upload</CardTitle>
-            <CardDescription>Upload procedures in PDF, Word, or PowerPoint formats (Max 20MB).</CardDescription>
+            <CardDescription>Upload procedures in PDF, Word, or PowerPoint formats (Limit: {config.maxUploadSize || 20}MB).</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleUpload} className="space-y-4">

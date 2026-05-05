@@ -28,16 +28,17 @@ import {
   Server, 
   Key, 
   AtSign,
-  ShieldCheck
+  ShieldCheck,
+  FileUp
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { fetchSmtpConfig, updateSmtpConfig } from '@/app/actions/db-actions';
-import { SmtpConfig } from '@/lib/types';
+import { fetchSmtpConfig, updateSmtpConfig, saveSystemData } from '@/app/actions/db-actions';
+import { SmtpConfig, BrandingConfig } from '@/lib/types';
 
 const THEMES = [
-  { id: 'sunset', name: 'Sunset (Default)', primary: 'bg-[#E03E1A]', accent: 'bg-[#D6B51E]' },
-  { id: 'oceanic', name: 'Oceanic', primary: 'bg-[#2E86AB]', accent: 'bg-[#31C1A5]' },
+  { id: 'sunset', name: 'Sunset', primary: 'bg-[#E03E1A]', accent: 'bg-[#D6B51E]' },
+  { id: 'oceanic', name: 'Oceanic (Default)', primary: 'bg-[#2E86AB]', accent: 'bg-[#31C1A5]' },
   { id: 'forest', name: 'Forest', primary: 'bg-[#154726]', accent: 'bg-[#968215]' },
   { id: 'midnight', name: 'Midnight', primary: 'bg-[#7C3AED]', accent: 'bg-[#D946EF]' },
   { id: 'rose', name: 'Rose', primary: 'bg-[#E11D48]', accent: 'bg-[#FB7185]' },
@@ -55,8 +56,9 @@ export default function SettingsPage() {
   const [loginDescription, setLoginDescription] = useState(config.loginDescription);
   const [copyright, setCopyright] = useState(config.copyright);
   const [logoUrl, setLogoUrl] = useState(config.logoUrl || '');
-  const [theme, setTheme] = useState(config.theme || 'sunset');
+  const [theme, setTheme] = useState(config.theme || 'oceanic');
   const [darkMode, setDarkMode] = useState(!!config.darkMode);
+  const [maxUploadSize, setMaxUploadSize] = useState(config.maxUploadSize || 20);
   
   const [smtp, setSmtp] = useState<SmtpConfig>({
     host: '',
@@ -77,14 +79,45 @@ export default function SettingsPage() {
     loadSmtp();
   }, []);
 
+  // Update local state when config context changes (e.g. on mount/sync)
+  useEffect(() => {
+    setAppName(config.appName);
+    setAppAcronym(config.appAcronym);
+    setLoginDescription(config.loginDescription);
+    setCopyright(config.copyright);
+    setLogoUrl(config.logoUrl || '');
+    setTheme(config.theme || 'oceanic');
+    setDarkMode(!!config.darkMode);
+    setMaxUploadSize(config.maxUploadSize || 20);
+  }, [config]);
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await updateConfig({ appName, appAcronym, loginDescription, copyright, logoUrl, theme, darkMode });
+      const updatedBranding: BrandingConfig = { 
+        appName, 
+        appAcronym, 
+        loginDescription, 
+        copyright, 
+        logoUrl, 
+        theme, 
+        darkMode, 
+        maxUploadSize 
+      };
+
+      await updateConfig(updatedBranding);
+      await saveSystemData({ branding: updatedBranding });
       await updateSmtpConfig(smtp);
+      
       toast({
         title: "Settings Saved",
         description: "Branding and system settings have been updated.",
+      });
+    } catch (e) {
+      toast({
+        title: "Error Saving",
+        description: "An error occurred while saving system configuration.",
+        variant: "destructive"
       });
     } finally {
       setIsSaving(false);
@@ -97,8 +130,9 @@ export default function SettingsPage() {
     setLoginDescription('A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.');
     setCopyright(`© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`);
     setLogoUrl('');
-    setTheme('sunset');
+    setTheme('oceanic');
     setDarkMode(false);
+    setMaxUploadSize(20);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,18 +208,40 @@ export default function SettingsPage() {
               </div>
 
               <div className="pt-4 border-t space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed">
-                  <div className="space-y-1">
-                    <Label className="flex items-center gap-2">
-                      {darkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                      Dark Mode Enablement
-                    </Label>
-                    <p className="text-xs text-muted-foreground">Toggle application-wide theme mode.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed h-full">
+                    <div className="space-y-1">
+                      <Label className="flex items-center gap-2">
+                        {darkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                        Dark Mode Enablement
+                      </Label>
+                      <p className="text-xs text-muted-foreground">Toggle application-wide theme mode.</p>
+                    </div>
+                    <Switch checked={darkMode} onCheckedChange={setDarkMode} />
                   </div>
-                  <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+
+                  <div className="p-4 bg-muted/30 rounded-xl border border-dashed space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FileUp className="h-4 w-4 text-primary" />
+                      <Label>Max Upload Size (MB)</Label>
+                    </div>
+                    <div className="flex items-center gap-3">
+                       <Input 
+                        type="number" 
+                        min="1" 
+                        max="50" 
+                        value={maxUploadSize} 
+                        onChange={(e) => setMaxUploadSize(parseInt(e.target.value) || 1)} 
+                        className="w-24 font-bold"
+                       />
+                       <p className="text-[10px] text-muted-foreground leading-tight">
+                         Limit for attachments and knowledge base (Max 50MB per server config).
+                       </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3 pt-2">
                   <Label className="text-sm font-semibold flex items-center gap-2"><Palette className="h-4 w-4" /> System Color Theme</Label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {THEMES.map((t) => (

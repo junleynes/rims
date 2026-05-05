@@ -1,3 +1,4 @@
+
 import Database from 'better-sqlite3';
 import path from 'path';
 import bcrypt from 'bcryptjs';
@@ -114,7 +115,8 @@ db.exec(`
     copyright TEXT,
     logoUrl TEXT,
     theme TEXT,
-    darkMode INTEGER DEFAULT 0
+    darkMode INTEGER DEFAULT 0,
+    maxUploadSize INTEGER DEFAULT 20
   );
 
   CREATE TABLE IF NOT EXISTS smtp_settings (
@@ -151,6 +153,7 @@ addColumnIfNotExists('users', 'reportingTo', 'TEXT');
 addColumnIfNotExists('smtp_settings', 'secure', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('branding', 'theme', 'TEXT');
 addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
+addColumnIfNotExists('branding', 'maxUploadSize', 'INTEGER DEFAULT 20');
 addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
 addColumnIfNotExists('resources', 'attachments', 'TEXT');
 
@@ -164,10 +167,10 @@ const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
 
 // 1. Branding
 seedIfEmpty('branding', `
-  INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
+  INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode, maxUploadSize)
   VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
   'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
-  '© 2025 Resource Inventory Management System. All rights reserved.', 'oceanic', 0)
+  '© 2025 Resource Inventory Management System. All rights reserved.', 'oceanic', 0, 20)
 `);
 
 // 2. Divisions
@@ -463,6 +466,7 @@ export async function getBranding(): Promise<BrandingConfig> {
       copyright: '© 2025 Resource Inventory Management System. All rights reserved.',
       theme: 'oceanic',
       darkMode: false,
+      maxUploadSize: 20
     };
   }
   return {
@@ -480,11 +484,13 @@ export async function saveBranding(branding: BrandingConfig) {
       copyright = @copyright,
       logoUrl = @logoUrl,
       theme = @theme,
-      darkMode = @darkMode
+      darkMode = @darkMode,
+      maxUploadSize = @maxUploadSize
     WHERE id = 1
   `).run({
     ...branding,
     darkMode: branding.darkMode ? 1 : 0,
+    maxUploadSize: branding.maxUploadSize || 20
   });
 }
 

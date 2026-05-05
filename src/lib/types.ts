@@ -78,6 +78,7 @@ export interface BrandingConfig {
   logoUrl?: string;
   theme?: string;
   darkMode?: boolean;
+  maxUploadSize?: number;
 }
 
 export interface SmtpConfig {

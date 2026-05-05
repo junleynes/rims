@@ -17,6 +17,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useAuth } from '@/components/auth-context';
+import { useBranding } from '@/components/branding-context';
 import { useBudgets } from '@/components/budget-context';
 import { useSystemData } from '@/components/system-data-context';
 import { CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
@@ -31,6 +32,7 @@ interface BudgetFormProps {
 export function BudgetForm({ initialData }: BudgetFormProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { config } = useBranding();
   const { addBudget, updateBudget } = useBudgets();
   const { divisions, sections, locations, users, statusOptions } = useSystemData();
   const { toast } = useToast();
@@ -64,6 +66,8 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     attachments: initialData?.attachments || [],
   });
 
+  const MAX_FILE_SIZE = (config.maxUploadSize || 20) * 1024 * 1024;
+
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const years = [];
@@ -96,8 +100,12 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     if (files.length === 0) return;
 
     files.forEach(file => {
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ title: "File too large", description: `${file.name} exceeds 5MB limit.`, variant: "destructive" });
+      if (file.size > MAX_FILE_SIZE) {
+        toast({ 
+          title: "File too large", 
+          description: `${file.name} exceeds the ${config.maxUploadSize || 20}MB limit set by administrator.`, 
+          variant: "destructive" 
+        });
         return;
       }
 
@@ -514,7 +522,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                   />
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground italic">You can upload multiple images or PDFs (Max 5MB each).</p>
+              <p className="text-[10px] text-muted-foreground italic">Max {config.maxUploadSize || 20}MB per file.</p>
             </div>
           </CardContent>
           <div className="p-6 border-t border-primary/10 bg-muted/30 flex justify-end gap-3">
