@@ -15,8 +15,7 @@ import {
   FileBarChart,
   Network,
   UsersRound,
-  Megaphone,
-  Bell
+  Megaphone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/components/auth-context';
@@ -30,15 +29,13 @@ import {
   SidebarMenuButton, 
   SidebarMenuItem,
   SidebarGroup,
-  SidebarGroupLabel,
-  SidebarMenuBadge
+  SidebarGroupLabel
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { fetchSystemUpdates } from '@/app/actions/db-actions';
-import { SystemUpdate } from '@/lib/types';
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -67,7 +64,6 @@ export function SidebarNav() {
     }
     
     checkUpdates();
-    // Refresh check every 5 minutes
     const interval = setInterval(checkUpdates, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, [user, pathname]);
@@ -115,11 +111,11 @@ export function SidebarNav() {
             pathname === item.href ? "bg-primary/10 text-primary" : "hover:bg-muted/50"
           )}
         >
-          <Link href={item.href} className="flex items-center gap-3 w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0">
+          <Link href={item.href} className="flex items-center gap-3 w-full group-data-[collapsible=icon]:justify-center">
             <div className={cn(
               "flex items-center justify-center h-8 w-8 rounded-lg shadow-sm text-white shrink-0 transition-transform group-hover:scale-105",
               item.color,
-              "group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9"
+              "group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:mx-auto"
             )}>
               <item.icon className="h-4 w-4 group-data-[collapsible=icon]:h-5 group-data-[collapsible=icon]:w-5" />
             </div>
@@ -198,7 +194,7 @@ export function SidebarNav() {
           <Link 
             href="/profile" 
             className={cn(
-              "flex items-center gap-3 px-2 py-2 rounded-xl transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0",
+              "flex items-center gap-3 px-2 py-2 rounded-xl transition-colors group-data-[collapsible=icon]:justify-center",
               pathname === '/profile' ? "bg-primary/10" : "hover:bg-muted/50"
             )}
           >
@@ -218,7 +214,7 @@ export function SidebarNav() {
           <Button 
             variant="ghost" 
             size="sm" 
-            className="justify-start gap-3 h-11 px-3 rounded-xl hover:bg-destructive/10 hover:text-destructive transition-colors font-semibold group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+            className="justify-start gap-3 h-11 px-3 rounded-xl hover:bg-destructive/10 hover:text-destructive transition-colors font-semibold group-data-[collapsible=icon]:justify-center"
             onClick={logout}
           >
             <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-slate-800 text-white shrink-0 shadow-sm">

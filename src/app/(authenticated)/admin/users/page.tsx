@@ -101,15 +101,28 @@ export default function UserManagementPage() {
       return;
     }
 
-    if (!formData.isStaffOnly && !formData.username) {
-      toast({ title: "Validation Error", description: "Username is required for system accounts.", variant: "destructive" });
-      return;
+    if (!formData.isStaffOnly) {
+      if (!formData.username) {
+        toast({ title: "Validation Error", description: "Username is required for system accounts.", variant: "destructive" });
+        return;
+      }
+      
+      const usernameExists = users.some(u => 
+        u.username?.toLowerCase() === formData.username.toLowerCase() && 
+        u.id !== editingUserId
+      );
+      
+      if (usernameExists) {
+        toast({ title: "Validation Error", description: "This username is already in use.", variant: "destructive" });
+        return;
+      }
     }
 
     const payload = {
       ...formData,
       username: formData.isStaffOnly ? undefined : formData.username,
       role: formData.isStaffOnly ? undefined : formData.role,
+      email: formData.email || undefined,
     };
 
     if (editingUserId) {
@@ -362,7 +375,6 @@ export default function UserManagementPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col md:flex-row gap-8">
-            {/* Profile Photo Section */}
             <div className="flex flex-col items-center gap-4 shrink-0">
                <div className="relative group">
                  <Avatar className="h-32 w-32 border-4 border-slate-100 shadow-md">

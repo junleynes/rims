@@ -41,16 +41,16 @@ const BudgetEntrySchema = z.object({
 
 const UserSchema = z.object({
   id: z.string(),
-  username: z.string().optional(),
+  username: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
   name: z.string().min(1),
-  email: z.string().email().optional().or(z.literal('')),
-  contactNumber: z.string().optional(),
-  role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).optional(),
-  section: z.string().optional(),
-  division: z.string().optional(),
+  email: z.string().email().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  contactNumber: z.string().optional().nullable(),
+  role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).optional().nullable(),
+  section: z.string().optional().nullable(),
+  division: z.string().optional().nullable(),
   twoFactorEnabled: z.boolean().optional(),
-  position: z.string().optional(),
-  reportingTo: z.string().optional(),
+  position: z.string().optional().nullable(),
+  reportingTo: z.string().optional().nullable(),
   isStaffOnly: z.boolean().optional(),
   profilePicture: z.string().optional().nullable(),
 });
@@ -204,7 +204,6 @@ export async function resetUserPassword(userId: string) {
         subject: "Temporary System Password",
         text: `Hello ${targetUser.name},\n\nYour password has been reset. Your temporary password is: ${tempPassword}\n\nPlease change it after logging in.\n\nBest regards,\nSystem Admin`,
       });
-      console.log(`Password reset email sent to ${targetUser.name}`);
     } catch (err) {
       console.error('Failed to send reset email:', err);
     }

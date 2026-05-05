@@ -64,9 +64,14 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const sync = async (update: any) => {
-    const newData = { ...data, ...update };
-    setData(newData);
-    await saveSystemData(update);
+    setData(prev => {
+      const newData = { ...prev, ...update };
+      // Call server action asynchronously
+      saveSystemData(update).catch(err => {
+        console.error("Failed to sync system data:", err);
+      });
+      return newData;
+    });
   };
 
   const addDivision = (name: string) => {

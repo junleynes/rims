@@ -119,27 +119,27 @@ db.exec(`
 
 // --- Advanced Migrations (Safe Column Addition) ---
 function addColumnIfNotExists(table: string, column: string, type: string) {
-  const info = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
-  const exists = info.some(col => col.name === column);
-  if (!exists) {
-    db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
+  try {
+    const info = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
+    const exists = info.some(col => col.name === column);
+    if (!exists) {
+      db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
+    }
+  } catch (e) {
+    console.warn(`Migration failed for ${table}.${column}:`, e);
   }
 }
 
-try {
-  addColumnIfNotExists('users', 'password_hash', 'TEXT');
-  addColumnIfNotExists('users', 'profilePicture', 'TEXT');
-  addColumnIfNotExists('users', 'isStaffOnly', 'INTEGER DEFAULT 0');
-  addColumnIfNotExists('users', 'contactNumber', 'TEXT');
-  addColumnIfNotExists('users', 'email', 'TEXT');
-  addColumnIfNotExists('users', 'position', 'TEXT');
-  addColumnIfNotExists('users', 'reportingTo', 'TEXT');
-  addColumnIfNotExists('smtp_settings', 'secure', 'INTEGER DEFAULT 0');
-  addColumnIfNotExists('branding', 'theme', 'TEXT');
-  addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
-} catch (e) {
-  console.warn("Migration warning:", e);
-}
+addColumnIfNotExists('users', 'password_hash', 'TEXT');
+addColumnIfNotExists('users', 'profilePicture', 'TEXT');
+addColumnIfNotExists('users', 'isStaffOnly', 'INTEGER DEFAULT 0');
+addColumnIfNotExists('users', 'contactNumber', 'TEXT');
+addColumnIfNotExists('users', 'email', 'TEXT');
+addColumnIfNotExists('users', 'position', 'TEXT');
+addColumnIfNotExists('users', 'reportingTo', 'TEXT');
+addColumnIfNotExists('smtp_settings', 'secure', 'INTEGER DEFAULT 0');
+addColumnIfNotExists('branding', 'theme', 'TEXT');
+addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
 
 // --- Granular Seeding Logic ---
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
@@ -149,7 +149,7 @@ const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
   }
 };
 
-// 1. Branding - oceanic is now default
+// 1. Branding
 seedIfEmpty('branding', `
   INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
   VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
@@ -197,8 +197,8 @@ if (!existingAdmin) {
     VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@example.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 1, 0)
   `).run(adminPasswordHash);
 } else {
-  db.prepare("UPDATE users SET isStaffOnly = 0, role = 'Admin', username = 'admin' WHERE username = 'admin'")
-    .run();
+  // Repair admin account if it was somehow converted to staff or lost role
+  db.prepare("UPDATE users SET isStaffOnly = 0, role = 'Admin' WHERE username = 'admin'").run();
 }
 
 // 5. Locations
@@ -307,10 +307,17 @@ export async function saveUsers(users: User[]) {
       const payload = {
         ...user,
         id: user.username === 'admin' ? 'admin-001' : user.id,
+        username: user.username || null, // Ensure empty strings are NULL
         password_hash: existingHash || defaultHash,
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
         isStaffOnly: user.isStaffOnly ? 1 : 0,
-        profilePicture: user.profilePicture || null
+        profilePicture: user.profilePicture || null,
+        email: user.email || null,
+        contactNumber: user.contactNumber || null,
+        position: user.position || null,
+        reportingTo: user.reportingTo || null,
+        section: user.section || null,
+        division: user.division || null
       };
       
       insertStmt.run(payload);
