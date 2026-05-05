@@ -32,9 +32,8 @@ interface BudgetFormProps {
 export function BudgetForm({ initialData }: BudgetFormProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const { config } = useBranding();
   const { addBudget, updateBudget } = useBudgets();
-  const { divisions, sections, locations, users, statusOptions } = useSystemData();
+  const { divisions, sections, locations, users, statusOptions, systemConfig } = useSystemData();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -66,7 +65,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     attachments: initialData?.attachments || [],
   });
 
-  const MAX_FILE_SIZE = (config.maxUploadSize || 20) * 1024 * 1024;
+  const MAX_FILE_SIZE = (systemConfig.maxUploadSize || 20) * 1024 * 1024;
 
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -103,7 +102,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
       if (file.size > MAX_FILE_SIZE) {
         toast({ 
           title: "File too large", 
-          description: `${file.name} exceeds the ${config.maxUploadSize || 20}MB limit set by administrator.`, 
+          description: `${file.name} exceeds the ${systemConfig.maxUploadSize || 20}MB limit.`, 
           variant: "destructive" 
         });
         return;
@@ -522,7 +521,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                   />
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground italic">Max {config.maxUploadSize || 20}MB per file.</p>
+              <p className="text-[10px] text-muted-foreground italic">Max {systemConfig.maxUploadSize || 20}MB per file.</p>
             </div>
           </CardContent>
           <div className="p-6 border-t border-primary/10 bg-muted/30 flex justify-end gap-3">

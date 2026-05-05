@@ -2,7 +2,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from './types';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from './types';
 
 const DB_PATH = path.join(process.cwd(), 'data.db');
 
@@ -115,7 +115,11 @@ db.exec(`
     copyright TEXT,
     logoUrl TEXT,
     theme TEXT,
-    darkMode INTEGER DEFAULT 0,
+    darkMode INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS system_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
     maxUploadSize INTEGER DEFAULT 20
   );
 
@@ -153,7 +157,6 @@ addColumnIfNotExists('users', 'reportingTo', 'TEXT');
 addColumnIfNotExists('smtp_settings', 'secure', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('branding', 'theme', 'TEXT');
 addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
-addColumnIfNotExists('branding', 'maxUploadSize', 'INTEGER DEFAULT 20');
 addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
 addColumnIfNotExists('resources', 'attachments', 'TEXT');
 
@@ -167,13 +170,19 @@ const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
 
 // 1. Branding
 seedIfEmpty('branding', `
-  INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode, maxUploadSize)
+  INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
   VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
   'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
-  '© 2025 Resource Inventory Management System. All rights reserved.', 'oceanic', 0, 20)
+  '© 2025 Resource Inventory Management System. All rights reserved.', 'oceanic', 0)
 `);
 
-// 2. Divisions
+// 2. System Config
+seedIfEmpty('system_config', `
+  INSERT INTO system_config (id, maxUploadSize)
+  VALUES (1, 20)
+`);
+
+// 3. Divisions
 seedIfEmpty('divisions', `
   INSERT INTO divisions (id, name) VALUES 
   ('office-of-the-head', 'Office of the Head'),
@@ -182,7 +191,7 @@ seedIfEmpty('divisions', `
   ('project-management-division', 'Project Management Division')
 `);
 
-// 3. Sections
+// 4. Sections
 seedIfEmpty('sections', `
   INSERT INTO sections (id, name, divisionId) VALUES 
   ('office-of-the-head', 'Office of the Head', 'office-of-the-head'),
@@ -203,7 +212,7 @@ seedIfEmpty('sections', `
   ('code-compliance-unit', 'CODE Compliance Unit', 'project-management-division')
 `);
 
-// 4. Administrator Identity Protection
+// 5. Administrator Identity Protection
 const adminPasswordHash = bcrypt.hashSync('password', 10);
 const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin') as any;
 
@@ -214,7 +223,7 @@ if (!existingAdmin) {
   `).run(adminPasswordHash);
 }
 
-// 5. Locations
+// 6. Locations
 seedIfEmpty('locations', `
   INSERT INTO locations (id, name) VALUES 
   ('4th-floor', '4th floor'),
@@ -223,7 +232,7 @@ seedIfEmpty('locations', `
   ('deployed', 'Deployed')
 `);
 
-// 6. Status Options
+// 7. Status Options
 seedIfEmpty('status_options', `
   INSERT INTO status_options (id, name) VALUES 
   ('working', 'working'),
@@ -232,7 +241,7 @@ seedIfEmpty('status_options', `
   ('others', 'others:')
 `);
 
-// 7. Positions
+// 8. Positions
 seedIfEmpty('positions', `
   INSERT INTO positions (id, name) VALUES 
   ('vp', 'VP'),
@@ -465,8 +474,7 @@ export async function getBranding(): Promise<BrandingConfig> {
       loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
       copyright: '© 2025 Resource Inventory Management System. All rights reserved.',
       theme: 'oceanic',
-      darkMode: false,
-      maxUploadSize: 20
+      darkMode: false
     };
   }
   return {
@@ -484,14 +492,28 @@ export async function saveBranding(branding: BrandingConfig) {
       copyright = @copyright,
       logoUrl = @logoUrl,
       theme = @theme,
-      darkMode = @darkMode,
-      maxUploadSize = @maxUploadSize
+      darkMode = @darkMode
     WHERE id = 1
   `).run({
     ...branding,
-    darkMode: branding.darkMode ? 1 : 0,
-    maxUploadSize: branding.maxUploadSize || 20
+    darkMode: branding.darkMode ? 1 : 0
   });
+}
+
+export async function getSystemConfig(): Promise<SystemConfig> {
+  const row = db.prepare('SELECT * FROM system_config WHERE id = 1').get() as any;
+  if (!row) return { maxUploadSize: 20 };
+  return {
+    maxUploadSize: row.maxUploadSize || 20
+  };
+}
+
+export async function saveSystemConfig(config: SystemConfig) {
+  db.prepare(`
+    UPDATE system_config SET
+      maxUploadSize = @maxUploadSize
+    WHERE id = 1
+  `).run(config);
 }
 
 export async function getSmtpConfig(): Promise<SmtpConfig | null> {

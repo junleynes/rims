@@ -6,7 +6,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from '@/lib/types';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from '@/lib/types';
 
 // Strict validation schemas
 const BudgetEntrySchema = z.object({
@@ -112,14 +112,15 @@ export async function removeKnowledgeBaseEntry(id: string) {
 }
 
 export async function getSystemData() {
-  const [divisions, sections, locations, statusOptions, users, branding, positions] = await Promise.all([
+  const [divisions, sections, locations, statusOptions, users, branding, positions, systemConfig] = await Promise.all([
     db.getAllDivisions(),
     db.getAllSections(),
     db.getAllLocations(),
     db.getAllStatusOptions(),
     db.getAllUsers(),
     db.getBranding(),
-    db.getAllPositions()
+    db.getAllPositions(),
+    db.getSystemConfig()
   ]);
 
   return {
@@ -129,7 +130,8 @@ export async function getSystemData() {
     statusOptions,
     users,
     branding,
-    positions
+    positions,
+    systemConfig
   };
 }
 
@@ -140,7 +142,8 @@ export async function saveSystemData(update: {
   statusOptions?: StatusOption[],
   users?: User[],
   branding?: BrandingConfig,
-  positions?: Position[]
+  positions?: Position[],
+  systemConfig?: SystemConfig
 }) {
   if (update.divisions) await db.saveDivisions(update.divisions);
   if (update.sections) await db.saveSections(update.sections);
@@ -154,6 +157,7 @@ export async function saveSystemData(update: {
   
   if (update.branding) await db.saveBranding(update.branding);
   if (update.positions) await db.savePositions(update.positions);
+  if (update.systemConfig) await db.saveSystemConfig(update.systemConfig);
   
   return true;
 }

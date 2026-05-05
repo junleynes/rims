@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/components/auth-context';
-import { useBranding } from '@/components/branding-context';
+import { useSystemData } from '@/components/system-data-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 
 export default function KnowledgeBasePage() {
   const { user } = useAuth();
-  const { config } = useBranding();
+  const { systemConfig } = useSystemData();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -50,7 +50,7 @@ export default function KnowledgeBasePage() {
   });
 
   const isAdmin = user?.role === 'Admin';
-  const MAX_FILE_SIZE = (config.maxUploadSize || 20) * 1024 * 1024;
+  const MAX_FILE_SIZE = (systemConfig.maxUploadSize || 20) * 1024 * 1024;
 
   useEffect(() => {
     loadEntries();
@@ -69,7 +69,7 @@ export default function KnowledgeBasePage() {
       if (file.size > MAX_FILE_SIZE) {
         toast({ 
           title: "File too large", 
-          description: `Maximum file size allowed by administrator is ${config.maxUploadSize || 20}MB.`, 
+          description: `Maximum file size allowed by administrator is ${systemConfig.maxUploadSize || 20}MB.`, 
           variant: "destructive" 
         });
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -112,7 +112,7 @@ export default function KnowledgeBasePage() {
       setShowUploadForm(false);
       loadEntries();
     } catch (error) {
-      toast({ title: "Upload Failed", description: "An error occurred while saving the file. Ensure the file size is within server limits.", variant: "destructive" });
+      toast({ title: "Upload Failed", description: "An error occurred while saving the file. Ensure the file size is within limits.", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -175,7 +175,7 @@ export default function KnowledgeBasePage() {
           <div className="h-1.5 bg-primary" />
           <CardHeader>
             <CardTitle className="text-lg">New Document Upload</CardTitle>
-            <CardDescription>Upload procedures in PDF, Word, or PowerPoint formats (Limit: {config.maxUploadSize || 20}MB).</CardDescription>
+            <CardDescription>Upload procedures in PDF, Word, or PowerPoint formats (Limit: {systemConfig.maxUploadSize || 20}MB).</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleUpload} className="space-y-4">

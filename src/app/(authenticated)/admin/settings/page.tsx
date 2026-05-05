@@ -3,6 +3,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useBranding } from '@/components/branding-context';
+import { useSystemData } from '@/components/system-data-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,12 +30,13 @@ import {
   Key, 
   AtSign,
   ShieldCheck,
-  FileUp
+  FileUp,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { fetchSmtpConfig, updateSmtpConfig, saveSystemData } from '@/app/actions/db-actions';
-import { SmtpConfig, BrandingConfig } from '@/lib/types';
+import { SmtpConfig, BrandingConfig, SystemConfig } from '@/lib/types';
 
 const THEMES = [
   { id: 'sunset', name: 'Sunset', primary: 'bg-[#E03E1A]', accent: 'bg-[#D6B51E]' },
@@ -47,18 +49,20 @@ const THEMES = [
 ];
 
 export default function SettingsPage() {
-  const { config, updateConfig } = useBranding();
+  const { config: brandingConfig, updateConfig: updateBranding } = useBranding();
+  const { systemConfig, updateSystemConfig } = useSystemData();
   const { toast } = useToast();
   const logoInputRef = useRef<HTMLInputElement>(null);
   
-  const [appName, setAppName] = useState(config.appName);
-  const [appAcronym, setAppAcronym] = useState(config.appAcronym);
-  const [loginDescription, setLoginDescription] = useState(config.loginDescription);
-  const [copyright, setCopyright] = useState(config.copyright);
-  const [logoUrl, setLogoUrl] = useState(config.logoUrl || '');
-  const [theme, setTheme] = useState(config.theme || 'oceanic');
-  const [darkMode, setDarkMode] = useState(!!config.darkMode);
-  const [maxUploadSize, setMaxUploadSize] = useState(config.maxUploadSize || 20);
+  const [appName, setAppName] = useState(brandingConfig.appName);
+  const [appAcronym, setAppAcronym] = useState(brandingConfig.appAcronym);
+  const [loginDescription, setLoginDescription] = useState(brandingConfig.loginDescription);
+  const [copyright, setCopyright] = useState(brandingConfig.copyright);
+  const [logoUrl, setLogoUrl] = useState(brandingConfig.logoUrl || '');
+  const [theme, setTheme] = useState(brandingConfig.theme || 'oceanic');
+  const [darkMode, setDarkMode] = useState(!!brandingConfig.darkMode);
+  
+  const [maxUploadSize, setMaxUploadSize] = useState(systemConfig.maxUploadSize || 20);
   
   const [smtp, setSmtp] = useState<SmtpConfig>({
     host: '',
@@ -79,17 +83,20 @@ export default function SettingsPage() {
     loadSmtp();
   }, []);
 
-  // Update local state when config context changes (e.g. on mount/sync)
+  // Update local state when config contexts change
   useEffect(() => {
-    setAppName(config.appName);
-    setAppAcronym(config.appAcronym);
-    setLoginDescription(config.loginDescription);
-    setCopyright(config.copyright);
-    setLogoUrl(config.logoUrl || '');
-    setTheme(config.theme || 'oceanic');
-    setDarkMode(!!config.darkMode);
-    setMaxUploadSize(config.maxUploadSize || 20);
-  }, [config]);
+    setAppName(brandingConfig.appName);
+    setAppAcronym(brandingConfig.appAcronym);
+    setLoginDescription(brandingConfig.loginDescription);
+    setCopyright(brandingConfig.copyright);
+    setLogoUrl(brandingConfig.logoUrl || '');
+    setTheme(brandingConfig.theme || 'oceanic');
+    setDarkMode(!!brandingConfig.darkMode);
+  }, [brandingConfig]);
+
+  useEffect(() => {
+    setMaxUploadSize(systemConfig.maxUploadSize || 20);
+  }, [systemConfig]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -101,22 +108,26 @@ export default function SettingsPage() {
         copyright, 
         logoUrl, 
         theme, 
-        darkMode, 
-        maxUploadSize 
+        darkMode 
       };
 
-      await updateConfig(updatedBranding);
-      await saveSystemData({ branding: updatedBranding });
+      const updatedSystem: SystemConfig = {
+        maxUploadSize
+      };
+
+      await updateBranding(updatedBranding);
+      await updateSystemConfig(updatedSystem);
+      await saveSystemData({ branding: updatedBranding, systemConfig: updatedSystem });
       await updateSmtpConfig(smtp);
       
       toast({
         title: "Settings Saved",
-        description: "Branding and system settings have been updated.",
+        description: "System and branding settings have been updated.",
       });
     } catch (e) {
       toast({
         title: "Error Saving",
-        description: "An error occurred while saving system configuration.",
+        description: "An error occurred while saving configuration.",
         variant: "destructive"
       });
     } finally {
@@ -149,7 +160,8 @@ export default function SettingsPage() {
   const handleExportData = () => {
     const data = {
       timestamp: new Date().toISOString(),
-      branding: config,
+      branding: brandingConfig,
+      system: systemConfig,
       smtp: smtp,
     };
     
@@ -165,7 +177,7 @@ export default function SettingsPage() {
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-primary">System Settings</h1>
-        <p className="text-muted-foreground">Manage application identity, email infrastructure, and database maintenance.</p>
+        <p className="text-muted-foreground">Manage application identity, limits, and infrastructure.</p>
       </div>
 
       <Tabs defaultValue="branding" className="space-y-6">
@@ -173,11 +185,14 @@ export default function SettingsPage() {
           <TabsTrigger value="branding" className="rounded-lg px-6 gap-2">
             <Palette className="h-4 w-4" /> Branding
           </TabsTrigger>
+          <TabsTrigger value="system" className="rounded-lg px-6 gap-2">
+            <SettingsIcon className="h-4 w-4" /> System
+          </TabsTrigger>
           <TabsTrigger value="smtp" className="rounded-lg px-6 gap-2">
             <Mail className="h-4 w-4" /> Email (SMTP)
           </TabsTrigger>
           <TabsTrigger value="database" className="rounded-lg px-6 gap-2">
-            <Database className="h-4 w-4" /> Data Management
+            <Database className="h-4 w-4" /> Maintenance
           </TabsTrigger>
         </TabsList>
 
@@ -208,37 +223,15 @@ export default function SettingsPage() {
               </div>
 
               <div className="pt-4 border-t space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed h-full">
-                    <div className="space-y-1">
-                      <Label className="flex items-center gap-2">
-                        {darkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                        Dark Mode Enablement
-                      </Label>
-                      <p className="text-xs text-muted-foreground">Toggle application-wide theme mode.</p>
-                    </div>
-                    <Switch checked={darkMode} onCheckedChange={setDarkMode} />
+                <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed">
+                  <div className="space-y-1">
+                    <Label className="flex items-center gap-2">
+                      {darkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                      Dark Mode Enablement
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Toggle application-wide theme mode.</p>
                   </div>
-
-                  <div className="p-4 bg-muted/30 rounded-xl border border-dashed space-y-2">
-                    <div className="flex items-center gap-2">
-                      <FileUp className="h-4 w-4 text-primary" />
-                      <Label>Max Upload Size (MB)</Label>
-                    </div>
-                    <div className="flex items-center gap-3">
-                       <Input 
-                        type="number" 
-                        min="1" 
-                        max="50" 
-                        value={maxUploadSize} 
-                        onChange={(e) => setMaxUploadSize(parseInt(e.target.value) || 1)} 
-                        className="w-24 font-bold"
-                       />
-                       <p className="text-[10px] text-muted-foreground leading-tight">
-                         Limit for attachments and knowledge base (Max 50MB per server config).
-                       </p>
-                    </div>
-                  </div>
+                  <Switch checked={darkMode} onCheckedChange={setDarkMode} />
                 </div>
 
                 <div className="space-y-3 pt-2">
@@ -291,6 +284,49 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="system" className="animate-in slide-in-from-bottom-2">
+          <Card className="border-none shadow-lg">
+            <CardHeader>
+              <CardTitle>System Constraints</CardTitle>
+              <CardDescription>Manage technical limits and global operational settings.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="p-4 bg-muted/30 rounded-xl border border-dashed space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                    <FileUp className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-base font-bold">Max Upload Size (MB)</Label>
+                    <p className="text-xs text-muted-foreground">Global limit for Knowledge Base and Resource attachments.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Input 
+                      type="number" 
+                      min="1" 
+                      max="50" 
+                      value={maxUploadSize} 
+                      onChange={(e) => setMaxUploadSize(parseInt(e.target.value) || 1)} 
+                      className="w-24 font-bold text-center h-11"
+                    />
+                    <span className="font-bold text-muted-foreground">MB</span>
+                  </div>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-3 text-xs text-amber-800">
+                  <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                  <p>The server ceiling is set to 50MB. Setting a value higher than this will still be capped by server-side configuration.</p>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="bg-muted/30 border-t flex justify-end p-6">
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Constraints
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="smtp" className="animate-in slide-in-from-bottom-2">
           <Card className="border-none shadow-lg">
             <CardHeader>
@@ -329,10 +365,6 @@ export default function SettingsPage() {
                   </div>
                   <Switch checked={smtp.secure} onCheckedChange={(v) => setSmtp({...smtp, secure: v})} />
                 </div>
-              </div>
-              <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-sm flex gap-3">
-                <Key className="h-5 w-5 shrink-0" />
-                <p>SMTP credentials are stored securely and never exposed to standard dashboard queries.</p>
               </div>
             </CardContent>
             <CardFooter className="bg-muted/30 border-t flex justify-end p-6">

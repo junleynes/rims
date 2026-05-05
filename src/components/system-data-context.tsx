@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Division, Section, Location, StatusOption, Position } from '@/lib/types';
+import { User, Division, Section, Location, StatusOption, Position, SystemConfig } from '@/lib/types';
 import { getSystemData, saveSystemData } from '@/app/actions/db-actions';
 
 interface SystemDataContextType {
@@ -12,6 +12,7 @@ interface SystemDataContextType {
   statusOptions: StatusOption[];
   users: User[];
   positions: Position[];
+  systemConfig: SystemConfig;
   addDivision: (name: string) => void;
   updateDivision: (id: string, name: string) => void;
   deleteDivision: (id: string) => void;
@@ -31,6 +32,7 @@ interface SystemDataContextType {
   addPosition: (name: string) => void;
   updatePosition: (id: string, name: string) => void;
   deletePosition: (id: string) => void;
+  updateSystemConfig: (config: Partial<SystemConfig>) => void;
   isLoading: boolean;
 }
 
@@ -44,13 +46,15 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
     statusOptions: StatusOption[];
     users: User[];
     positions: Position[];
+    systemConfig: SystemConfig;
   }>({
     divisions: [],
     sections: [],
     locations: [],
     statusOptions: [],
     users: [],
-    positions: []
+    positions: [],
+    systemConfig: { maxUploadSize: 20 }
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -157,6 +161,10 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
     sync({ positions: data.positions.filter(p => p.id !== id) });
   };
 
+  const updateSystemConfig = (newConfig: Partial<SystemConfig>) => {
+    sync({ systemConfig: { ...data.systemConfig, ...newConfig } });
+  };
+
   return (
     <SystemDataContext.Provider value={{ 
       ...data, isLoading,
@@ -165,7 +173,8 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
       addLocation, updateLocation, deleteLocation,
       addStatusOption, updateStatusOption, deleteStatusOption,
       addUser, importUsers, updateUser, deleteUser,
-      addPosition, updatePosition, deletePosition
+      addPosition, updatePosition, deletePosition,
+      updateSystemConfig
     }}>
       {children}
     </SystemDataContext.Provider>

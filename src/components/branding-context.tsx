@@ -17,8 +17,7 @@ const defaultBranding: BrandingConfig = {
   copyright: `© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`,
   logoUrl: '',
   theme: 'oceanic',
-  darkMode: false,
-  maxUploadSize: 20
+  darkMode: false
 };
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
