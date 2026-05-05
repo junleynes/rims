@@ -1,4 +1,3 @@
-
 import Database from 'better-sqlite3';
 import path from 'path';
 import bcrypt from 'bcryptjs';
@@ -303,10 +302,11 @@ export async function getAllKnowledgeBaseEntries(): Promise<KnowledgeBaseEntry[]
 }
 
 export async function saveKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
-  db.prepare(`
+  const stmt = db.prepare(`
     INSERT INTO knowledge_base (id, title, description, fileName, fileType, fileData, uploadedBy, createdAt)
     VALUES (@id, @title, @description, @fileName, @fileType, @fileData, @uploadedBy, @createdAt)
-  `).run(entry);
+  `);
+  stmt.run(entry);
 }
 
 export async function deleteKnowledgeBaseEntry(id: string) {
