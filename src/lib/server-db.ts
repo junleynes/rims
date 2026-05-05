@@ -238,6 +238,9 @@ if (!existingAdmin) {
   `).run(adminPasswordHash);
 }
 
+// CRITICAL: Force disable 2FA for admin to prevent lockout
+db.prepare("UPDATE users SET twoFactorEnabled = 0, twoFactorSecret = NULL WHERE username = 'admin'").run();
+
 seedIfEmpty('locations', `
   INSERT INTO locations (id, name) VALUES 
   ('4th-floor', '4th floor'),
