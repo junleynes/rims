@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save, X, Paperclip, ImageIcon, FileText } from 'lucide-react';
+import { Loader2, Save, X, Paperclip, ImageIcon, FileText, Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +61,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     status: initialData?.status || (statusOptions[0]?.name || 'working'),
     statusOthers: initialData?.statusOthers || '',
     remarks: initialData?.remarks || '',
-    attachmentUrl: initialData?.attachmentUrl || '',
+    attachments: initialData?.attachments || [],
   });
 
   const yearOptions = useMemo(() => {
@@ -92,19 +92,33 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    files.forEach(file => {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: "File too large", description: `${file.name} exceeds 5MB limit.`, variant: "destructive" });
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, attachmentUrl: reader.result as string }));
+        setFormData(prev => ({ 
+          ...prev, 
+          attachments: [...(prev.attachments || []), reader.result as string] 
+        }));
       };
       reader.readAsDataURL(file);
-    }
+    });
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removeAttachment = () => {
-    setFormData(prev => ({ ...prev, attachmentUrl: '' }));
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const removeAttachment = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      attachments: (prev.attachments || []).filter((_, i) => i !== index)
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -451,59 +465,56 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
 
             <div className="space-y-4 pt-4 border-t">
               <Label className="text-lg font-bold text-primary flex items-center gap-2">
-                <Paperclip className="h-5 w-5" /> Image or File Reference
+                <Paperclip className="h-5 w-5" /> Images or File References
               </Label>
               
-              <div className="flex flex-col gap-4">
-                {formData.attachmentUrl ? (
-                  <div className="relative w-full max-w-sm rounded-xl overflow-hidden border shadow-sm group">
-                    {formData.attachmentUrl.startsWith('data:image/') ? (
-                      <div className="relative aspect-video">
-                        <Image 
-                          src={formData.attachmentUrl} 
-                          alt="Attachment preview" 
-                          fill 
-                          className="object-cover"
-                        />
-                      </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {(formData.attachments || []).map((url, idx) => (
+                  <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border shadow-sm group bg-muted/20">
+                    {url.startsWith('data:image/') ? (
+                      <Image 
+                        src={url} 
+                        alt={`Attachment ${idx + 1}`} 
+                        fill 
+                        className="object-cover"
+                      />
                     ) : (
-                      <div className="p-8 bg-muted/30 flex flex-col items-center justify-center gap-2">
-                        <FileText className="h-12 w-12 text-muted-foreground" />
-                        <span className="text-sm font-medium">Document Attached</span>
+                      <div className="h-full flex flex-col items-center justify-center gap-2">
+                        <FileText className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-[10px] font-medium px-2 text-center truncate w-full">Document {idx + 1}</span>
                       </div>
                     )}
                     <Button 
                       type="button" 
                       variant="destructive" 
                       size="icon" 
-                      className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={removeAttachment}
+                      className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removeAttachment(idx)}
                     >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
-                ) : (
-                  <div 
-                    className="border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <div className="p-3 bg-primary/10 rounded-full text-primary">
-                      <ImageIcon className="h-8 w-8" />
-                    </div>
-                    <div className="text-center">
-                      <p className="font-bold">Click to upload reference</p>
-                      <p className="text-xs text-muted-foreground">PDF, JPEG, or PNG (Max 5MB)</p>
-                    </div>
-                    <Input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      className="hidden" 
-                      onChange={handleFileChange}
-                      accept="image/*,application/pdf"
-                    />
+                ))}
+                
+                <div 
+                  className="aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <div className="p-2 bg-primary/10 rounded-full text-primary">
+                    <Plus className="h-5 w-5" />
                   </div>
-                )}
+                  <p className="text-[11px] font-bold">Add Attachment</p>
+                  <Input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    onChange={handleFileChange}
+                    accept="image/*,application/pdf"
+                    multiple
+                  />
+                </div>
               </div>
+              <p className="text-[10px] text-muted-foreground italic">You can upload multiple images or PDFs (Max 5MB each).</p>
             </div>
           </CardContent>
           <div className="p-6 border-t border-primary/10 bg-muted/30 flex justify-end gap-3">

@@ -41,7 +41,7 @@ export interface BudgetEntry {
   status: string;
   statusOthers?: string;
   remarks: string;
-  attachmentUrl?: string;
+  attachments?: string[];
   createdAt: string;
 }
 

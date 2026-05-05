@@ -558,8 +558,11 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-primary group-hover:underline text-sm">{budget.projectTitle || 'Untitled'}</span>
-                        {budget.attachmentUrl && (
-                          <Paperclip className="h-3.5 w-3.5 text-blue-500" />
+                        {budget.attachments && budget.attachments.length > 0 && (
+                          <div className="flex items-center gap-0.5 text-blue-500">
+                            <Paperclip className="h-3.5 w-3.5" />
+                            <span className="text-[9px] font-black">{budget.attachments.length}</span>
+                          </div>
                         )}
                       </div>
                       <div className="flex items-center gap-2">

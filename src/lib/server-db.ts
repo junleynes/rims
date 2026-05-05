@@ -40,7 +40,7 @@ db.exec(`
     status TEXT,
     statusOthers TEXT,
     remarks TEXT,
-    attachmentUrl TEXT,
+    attachments TEXT,
     createdAt TEXT NOT NULL
   );
 
@@ -142,6 +142,7 @@ addColumnIfNotExists('smtp_settings', 'secure', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('branding', 'theme', 'TEXT');
 addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
+addColumnIfNotExists('resources', 'attachments', 'TEXT');
 
 // --- Granular Seeding Logic ---
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
@@ -236,11 +237,26 @@ seedIfEmpty('positions', `
 
 export async function getAllResources(): Promise<BudgetEntry[]> {
   const rows = db.prepare('SELECT * FROM resources ORDER BY createdAt DESC').all() as any[];
-  return rows.map(row => ({
-    ...row,
-    unitCostActual: row.unitCostActual || 0,
-    totalCostActual: row.totalCostActual || 0,
-  }));
+  return rows.map(row => {
+    let attachments: string[] = [];
+    try {
+      attachments = row.attachments ? JSON.parse(row.attachments) : [];
+      // Handle legacy single-string data if migration wasn't perfectly clean
+      if (!Array.isArray(attachments) && typeof attachments === 'string') {
+        attachments = [attachments];
+      }
+    } catch (e) {
+      // If it's just a plain string (legacy), wrap it
+      attachments = row.attachments ? [row.attachments] : [];
+    }
+
+    return {
+      ...row,
+      unitCostActual: row.unitCostActual || 0,
+      totalCostActual: row.totalCostActual || 0,
+      attachments: attachments,
+    };
+  });
 }
 
 export async function saveResources(resources: BudgetEntry[]) {
@@ -250,19 +266,22 @@ export async function saveResources(resources: BudgetEntry[]) {
       id, year, division, section, location, locationDetails, classification, category, account,
       projectTitle, itemDescription, quantity, unitCostBudget, totalCostBudget,
       unitCostActual, totalCostActual, prNumber, dateDelivered, grSisNumber,
-      accountablePerson, status, statusOthers, remarks, attachmentUrl, createdAt
+      accountablePerson, status, statusOthers, remarks, attachments, createdAt
     ) VALUES (
       @id, @year, @division, @section, @location, @locationDetails, @classification, @category, @account,
       @projectTitle, @itemDescription, @quantity, @unitCostBudget, @totalCostBudget,
       @unitCostActual, @totalCostActual, @prNumber, @dateDelivered, @grSisNumber,
-      @accountablePerson, @status, @statusOthers, @remarks, @attachmentUrl, @createdAt
+      @accountablePerson, @status, @statusOthers, @remarks, @attachments, @createdAt
     )
   `);
 
   const transaction = db.transaction((data: BudgetEntry[]) => {
     deleteStmt.run();
     for (const item of data) {
-      insertStmt.run(item);
+      insertStmt.run({
+        ...item,
+        attachments: JSON.stringify(item.attachments || [])
+      });
     }
   });
 

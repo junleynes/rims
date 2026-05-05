@@ -33,10 +33,7 @@ const BudgetEntrySchema = z.object({
   status: z.string(),
   statusOthers: z.string().optional(),
   remarks: z.string(),
-  attachmentUrl: z.string().optional().refine((val) => {
-    if (!val) return true;
-    return /^(data:image|http:\/\/|https:\/\/)/i.test(val);
-  }, "Invalid attachment URL protocol"),
+  attachments: z.array(z.string()).optional().default([]),
   createdAt: z.string(),
 });
 
