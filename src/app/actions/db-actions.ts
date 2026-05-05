@@ -39,18 +39,18 @@ const BudgetEntrySchema = z.object({
 
 const UserSchema = z.object({
   id: z.string(),
-  username: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
+  username: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   name: z.string().min(1),
-  email: z.string().email().nullable().optional().or(z.literal('')).transform(v => (v === '' || v === null) ? undefined : v),
-  contactNumber: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
+  email: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().email().optional()),
+  contactNumber: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).nullable().optional(),
-  section: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
-  division: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
+  section: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
+  division: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   twoFactorEnabled: z.boolean().nullable().optional().transform(v => v === null ? true : v),
-  position: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
-  reportingTo: z.string().nullable().optional().transform(v => (v === '' || v === null) ? undefined : v),
+  position: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
+  reportingTo: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   isStaffOnly: z.boolean().nullable().optional().transform(v => v === null ? false : v),
-  profilePicture: z.string().nullable().optional().transform(v => v === '' ? undefined : v),
+  profilePicture: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
 });
 
 const SystemUpdateSchema = z.object({

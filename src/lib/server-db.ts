@@ -368,12 +368,14 @@ export async function saveUsers(users: User[]) {
     for (const user of data) {
       if (user.username === 'admin') adminInPayload = true;
 
+      // Try to find an existing hash for this user by ID or Username
       const existingHash = hashMap.get(user.id) || (user.username ? usernameMap.get(user.username) : null);
       
       const payload = {
         ...user,
         id: user.username === 'admin' ? 'admin-001' : user.id,
         username: user.username || null,
+        // Use existing hash, or default 'password' hash if new
         password_hash: existingHash || (user.username === 'admin' ? adminHash : DEFAULT_PASSWORD_HASH),
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
         isStaffOnly: user.isStaffOnly ? 1 : 0,
