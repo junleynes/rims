@@ -1,9 +1,22 @@
-
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, Lock, ShieldCheck, Loader2, ArrowLeft, ShieldAlert, QrCode, CheckCircle2 } from 'lucide-react';
+import { 
+  TrendingUp, 
+  Lock, 
+  ShieldCheck, 
+  Loader2, 
+  ArrowLeft, 
+  ShieldAlert, 
+  QrCode, 
+  CheckCircle2,
+  BarChart3,
+  Users,
+  Table2,
+  BookOpen,
+  Layers
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -97,7 +110,7 @@ function LoginPage() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl -mr-32 -mt-32" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl -ml-48 -mb-48" />
         
-        <div className="relative z-10 max-w-md">
+        <div className="relative z-10 max-w-md w-full">
           <div className="flex items-center gap-3 mb-8">
             <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
               {config.logoUrl ? (
@@ -111,15 +124,58 @@ function LoginPage() {
             <h1 className="text-4xl font-bold tracking-tight">{config.appAcronym}</h1>
           </div>
           <h2 className="text-2xl font-semibold mb-4 text-accent">{config.appName}</h2>
-          <p className="text-white/80 leading-relaxed text-lg mb-8">
+          <p className="text-white/80 leading-relaxed text-lg mb-10">
             {config.loginDescription}
           </p>
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <ShieldCheck className="h-6 w-6 text-accent shrink-0 mt-1" />
+          
+          <div className="space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="bg-white/10 p-2 rounded-lg">
+                <Users className="h-5 w-5 text-accent" />
+              </div>
               <div>
-                <p className="font-semibold">Standard TOTP Protection</p>
-                <p className="text-sm text-white/60">Compatible with Google Authenticator and professional security apps.</p>
+                <p className="font-bold text-sm uppercase tracking-tight">Role-Based Data Access</p>
+                <p className="text-sm text-white/60">Automated filtering ensures privacy and departmental data integrity.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="bg-white/10 p-2 rounded-lg">
+                <BarChart3 className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <p className="font-bold text-sm uppercase tracking-tight">Real-Time Analytics</p>
+                <p className="text-sm text-white/60">Dynamic dashboards with comprehensive CAPEX and OPEX visualizations.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="bg-white/10 p-2 rounded-lg">
+                <Table2 className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <p className="font-bold text-sm uppercase tracking-tight">Resource Inventory Log</p>
+                <p className="text-sm text-white/60">Structured tracking of hardware and software assets across the organization.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="bg-white/10 p-2 rounded-lg">
+                <BookOpen className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <p className="font-bold text-sm uppercase tracking-tight">Centralized Knowledge Base</p>
+                <p className="text-sm text-white/60">Quick access to standard operating procedures and technical manuals.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="bg-white/10 p-2 rounded-lg">
+                <ShieldCheck className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <p className="font-bold text-sm uppercase tracking-tight">Multi-Factor Authentication</p>
+                <p className="text-sm text-white/60">Secure TOTP verification compatible with Google Authenticator.</p>
               </div>
             </div>
           </div>
