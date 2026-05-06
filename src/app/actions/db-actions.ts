@@ -313,6 +313,22 @@ export async function resetUserPassword(userId: string, newPassword: string) {
   return { success: true };
 }
 
+export async function changeUserPassword(userId: string, oldPassword?: string, newPassword?: string) {
+  if (!newPassword) throw new Error("New password required");
+  
+  const user = await db.getUserById(userId);
+  if (!user || !user.password_hash) throw new Error("User not found");
+
+  if (oldPassword) {
+    const isValid = bcrypt.compareSync(oldPassword, user.password_hash);
+    if (!isValid) return { success: false, message: "Current password is incorrect." };
+  }
+
+  const hash = bcrypt.hashSync(newPassword, 10);
+  await db.updateUserPassword(userId, hash);
+  return { success: true };
+}
+
 // --- TOTP 2FA Actions ---
 export async function setupTwoFactor(userId: string) {
   const user = await db.getUserById(userId);

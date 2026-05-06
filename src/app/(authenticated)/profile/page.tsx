@@ -28,10 +28,13 @@ import {
   QrCode,
   CheckCircle2,
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  RefreshCw,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { setupTwoFactor, confirmTwoFactor, disableTwoFactor } from '@/app/actions/db-actions';
+import { setupTwoFactor, confirmTwoFactor, disableTwoFactor, changeUserPassword } from '@/app/actions/db-actions';
 import Image from 'next/image';
 
 export default function ProfilePage() {
@@ -45,6 +48,13 @@ export default function ProfilePage() {
   const [contactNumber, setContactNumber] = useState(user?.contactNumber || '');
   const [profilePicture, setProfilePicture] = useState(user?.profilePicture || '');
   const [isSaving, setIsSaving] = useState(false);
+
+  // Password Update State
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwords, setPasswords] = useState({ old: '', new: '', confirm: '' });
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [showOldPass, setShowOldPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
 
   // 2FA Setup State
   const [isSettingUp2FA, setIsSettingUp2FA] = useState(false);
@@ -75,6 +85,38 @@ export default function ProfilePage() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!passwords.old || !passwords.new || !passwords.confirm) {
+      toast({ title: "Validation Error", description: "All password fields are required.", variant: "destructive" });
+      return;
+    }
+    if (passwords.new !== passwords.confirm) {
+      toast({ title: "Validation Error", description: "New passwords do not match.", variant: "destructive" });
+      return;
+    }
+    if (passwords.new.length < 4) {
+      toast({ title: "Validation Error", description: "Password must be at least 4 characters.", variant: "destructive" });
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      const result = await changeUserPassword(user.id, passwords.old, passwords.new);
+      if (result.success) {
+        toast({ title: "Password Updated", description: "Your account security credentials have been changed." });
+        setPasswords({ old: '', new: '', confirm: '' });
+        setShowPasswordForm(false);
+      } else {
+        toast({ title: "Update Failed", description: result.message || "Could not change password.", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
+    } finally {
+      setIsUpdatingPassword(false);
     }
   };
 
@@ -250,9 +292,91 @@ export default function ProfilePage() {
             <CardFooter className="border-t p-6 bg-muted/20 flex justify-end">
               <Button onClick={handleSave} disabled={isSaving} className="gap-2 min-w-[140px] font-bold h-12">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                Update Settings
+                Update Profile
               </Button>
             </CardFooter>
+          </Card>
+
+          <Card className="border-none shadow-lg overflow-hidden">
+            <CardHeader className="bg-slate-50 border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Lock className="h-5 w-5 text-primary" />
+                    Account Password
+                  </CardTitle>
+                  <CardDescription>Update your system authentication credentials.</CardDescription>
+                </div>
+                {!showPasswordForm && (
+                  <Button variant="outline" size="sm" onClick={() => setShowPasswordForm(true)} className="font-bold">
+                    Change Password
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            {showPasswordForm && (
+              <CardContent className="pt-6 animate-in slide-in-from-top-2">
+                <form onSubmit={handlePasswordChange} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="oldPass">Current Password</Label>
+                      <div className="relative">
+                        <Input 
+                          id="oldPass" 
+                          type={showOldPass ? "text" : "password"} 
+                          value={passwords.old} 
+                          onChange={(e) => setPasswords({...passwords, old: e.target.value})}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowOldPass(!showOldPass)} 
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                        >
+                          {showOldPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="hidden md:block" />
+                    <div className="space-y-2">
+                      <Label htmlFor="newPass">New Password</Label>
+                      <div className="relative">
+                        <Input 
+                          id="newPass" 
+                          type={showNewPass ? "text" : "password"} 
+                          value={passwords.new} 
+                          onChange={(e) => setPasswords({...passwords, new: e.target.value})}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowNewPass(!showNewPass)} 
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                        >
+                          {showNewPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPass">Confirm New Password</Label>
+                      <Input 
+                        id="confirmPass" 
+                        type="password" 
+                        value={passwords.confirm} 
+                        onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button variant="ghost" type="button" onClick={() => { setShowPasswordForm(false); setPasswords({old:'', new:'', confirm:''}); }}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isUpdatingPassword} className="gap-2 font-bold min-w-[140px]">
+                      {isUpdatingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                      Apply New Password
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            )}
           </Card>
 
           <Card className="border-none shadow-lg overflow-hidden">
