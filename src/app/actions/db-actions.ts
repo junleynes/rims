@@ -224,10 +224,14 @@ export async function testSmtpConnection(config: SmtpConfig, targetEmail: string
     },
   });
 
+  const fromField = config.fromName 
+    ? `${config.fromName} <${config.fromEmail}>` 
+    : config.fromEmail || 'noreply@rims.com';
+
   try {
     await transporter.verify();
     await transporter.sendMail({
-      from: config.fromEmail || 'noreply@rims.com',
+      from: fromField,
       to: targetEmail,
       subject: 'R.I.M.S SMTP Connection Test',
       html: `
@@ -279,9 +283,13 @@ export async function emailUserCredentials(userId: string) {
     },
   });
 
+  const fromField = smtp.fromName 
+    ? `${smtp.fromName} <${smtp.fromEmail}>` 
+    : smtp.fromEmail;
+
   try {
     await transporter.sendMail({
-      from: smtp.fromEmail,
+      from: fromField,
       to: user.email,
       subject: 'R.I.M.S Account Credentials - Password Reset',
       html: `

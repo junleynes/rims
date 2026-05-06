@@ -132,6 +132,7 @@ db.exec(`
     user TEXT,
     pass TEXT,
     fromEmail TEXT,
+    fromName TEXT,
     secure INTEGER DEFAULT 0
   );
 
@@ -162,6 +163,7 @@ addColumnIfNotExists('users', 'position', 'TEXT');
 addColumnIfNotExists('users', 'reportingTo', 'TEXT');
 addColumnIfNotExists('users', 'twoFactorSecret', 'TEXT');
 addColumnIfNotExists('smtp_settings', 'secure', 'INTEGER DEFAULT 0');
+addColumnIfNotExists('smtp_settings', 'fromName', 'TEXT');
 addColumnIfNotExists('branding', 'theme', 'TEXT');
 addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
@@ -549,6 +551,7 @@ export async function getSmtpConfig(): Promise<SmtpConfig | null> {
   return {
     ...row,
     secure: !!row.secure,
+    fromName: row.fromName || '',
   };
 }
 
@@ -566,13 +569,14 @@ export async function saveSmtpConfig(config: SmtpConfig) {
         user = @user,
         pass = @pass,
         fromEmail = @fromEmail,
+        fromName = @fromName,
         secure = @secure
       WHERE id = 1
     `).run(params);
   } else {
     db.prepare(`
-      INSERT INTO smtp_settings (id, host, port, user, pass, fromEmail, secure)
-      VALUES (1, @host, @port, @user, @pass, @fromEmail, @secure)
+      INSERT INTO smtp_settings (id, host, port, user, pass, fromEmail, fromName, secure)
+      VALUES (1, @host, @port, @user, @pass, @fromEmail, @fromName, @secure)
     `).run(params);
   }
 }

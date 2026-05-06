@@ -92,6 +92,7 @@ export interface SmtpConfig {
   user: string;
   pass: string;
   fromEmail: string;
+  fromName: string;
   secure: boolean;
 }
 

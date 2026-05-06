@@ -45,7 +45,8 @@ import {
   Loader2,
   Lock,
   Unlock,
-  Calendar
+  Calendar,
+  User as UserIcon
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -86,6 +87,7 @@ export default function SettingsPage() {
     user: '',
     pass: '',
     fromEmail: '',
+    fromName: '',
     secure: false,
   });
 
@@ -481,8 +483,12 @@ export default function SettingsPage() {
                   <Label className="flex items-center gap-2"><Key className="h-3.5 w-3.5" /> Password</Label>
                   <Input type="password" placeholder="••••••••" value={smtp.pass} onChange={(e) => setSmtp({...smtp, pass: e.target.value})} />
                 </div>
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Sender Address ("From")</Label>
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><UserIcon className="h-3.5 w-3.5" /> Sender Name ("From Name")</Label>
+                  <Input placeholder="R.I.M.S. Notifications" value={smtp.fromName} onChange={(e) => setSmtp({...smtp, fromName: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Sender Address ("From Email")</Label>
                   <Input placeholder="noreply@rims.com" value={smtp.fromEmail} onChange={(e) => setSmtp({...smtp, fromEmail: e.target.value})} />
                 </div>
                 <div className="md:col-span-2 flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed">
