@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -21,7 +22,6 @@ import {
   X, 
   TrendingUp, 
   Palette, 
-  Check, 
   Moon, 
   Sun, 
   Mail, 
@@ -31,11 +31,13 @@ import {
   ShieldCheck,
   FileUp,
   Settings as SettingsIcon,
-  Info
+  Info,
+  Send,
+  Loader2
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { fetchSmtpConfig, updateSmtpConfig, saveSystemData } from '@/app/actions/db-actions';
+import { fetchSmtpConfig, updateSmtpConfig, saveSystemData, testSmtpConnection } from '@/app/actions/db-actions';
 import { SmtpConfig, BrandingConfig, SystemConfig } from '@/lib/types';
 
 const THEMES = [
@@ -74,6 +76,7 @@ export default function SettingsPage() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isTestingSmtp, setIsTestingSmtp] = useState(false);
 
   useEffect(() => {
     async function loadSmtp() {
@@ -83,7 +86,6 @@ export default function SettingsPage() {
     loadSmtp();
   }, []);
 
-  // Update local state when config contexts change
   useEffect(() => {
     setAppName(brandingConfig.appName);
     setAppAcronym(brandingConfig.appAcronym);
@@ -132,6 +134,42 @@ export default function SettingsPage() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleTestSmtp = async () => {
+    if (!smtp.host || !smtp.user || !smtp.pass) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please fill in Host, Username, and Password before testing.", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    setIsTestingSmtp(true);
+    try {
+      const result = await testSmtpConnection(smtp);
+      if (result.success) {
+        toast({
+          title: "SMTP Test Successful",
+          description: "A test email has been sent to your 'From' address.",
+        });
+      } else {
+        toast({
+          title: "SMTP Connection Failed",
+          description: result.message,
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      toast({
+        title: "Unexpected Error",
+        description: "Could not complete the SMTP test.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsTestingSmtp(false);
     }
   };
 
@@ -372,7 +410,16 @@ export default function SettingsPage() {
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="bg-muted/30 border-t flex justify-end p-6">
+            <CardFooter className="bg-muted/30 border-t flex justify-between p-6">
+              <Button 
+                variant="outline" 
+                onClick={handleTestSmtp} 
+                disabled={isTestingSmtp} 
+                className="gap-2 border-primary/20 hover:bg-primary/5 text-primary font-bold"
+              >
+                {isTestingSmtp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Test Connection
+              </Button>
               <Button onClick={handleSave} disabled={isSaving} className="font-bold">
                 {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Save Configuration

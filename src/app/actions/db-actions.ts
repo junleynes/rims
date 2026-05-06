@@ -6,6 +6,7 @@ import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
+import nodemailer from 'nodemailer';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from '@/lib/types';
 
 // Strict validation schemas with permissive empty-string handling
@@ -206,6 +207,79 @@ export async function fetchSmtpConfig() {
 export async function updateSmtpConfig(config: SmtpConfig) {
   await db.saveSmtpConfig(config);
   return true;
+}
+
+export async function testSmtpConnection(config: SmtpConfig) {
+  const transporter = nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass,
+    },
+  });
+
+  try {
+    await transporter.verify();
+    await transporter.sendMail({
+      from: config.fromEmail,
+      to: config.fromEmail,
+      subject: 'R.I.M.S SMTP Test',
+      text: 'This is a test email confirming that your SMTP configuration for the Resource Inventory Management System is working correctly.',
+    });
+    return { success: true };
+  } catch (error: any) {
+    console.error('SMTP Test Error:', error);
+    return { success: false, message: error.message || 'Unknown SMTP error occurred.' };
+  }
+}
+
+export async function emailUserCredentials(userId: string) {
+  const smtp = await db.getSmtpConfig();
+  if (!smtp || !smtp.host) {
+    return { success: false, message: "SMTP is not configured. Please go to System Settings." };
+  }
+
+  const user = await db.getUserById(userId);
+  if (!user || !user.email) {
+    return { success: false, message: "User email not found or user does not exist." };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.secure,
+    auth: {
+      user: smtp.user,
+      pass: smtp.pass,
+    },
+  });
+
+  try {
+    await transporter.sendMail({
+      from: smtp.fromEmail,
+      to: user.email,
+      subject: 'R.I.M.S Account Credentials',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; rounded: 12px;">
+          <h2 style="color: #2E86AB;">Account Access Information</h2>
+          <p>Hello <strong>${user.name}</strong>,</p>
+          <p>Your account on the <strong>Resource Inventory Management System (R.I.M.S)</strong> is ready for use.</p>
+          <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Username:</strong> ${user.username}</p>
+            <p style="margin: 5px 0 0 0;"><strong>Security:</strong> ${user.twoFactorEnabled ? 'Multi-Factor Enabled' : 'Standard Password'}</p>
+          </div>
+          <p>Please coordinate with your system administrator to receive your temporary password.</p>
+          <p style="margin-top: 30px; font-size: 12px; color: #64748b;">This is an automated notification. Please do not reply directly to this email.</p>
+        </div>
+      `,
+    });
+    return { success: true };
+  } catch (error: any) {
+    console.error('Email Dispatch Error:', error);
+    return { success: false, message: error.message || 'Failed to dispatch email.' };
+  }
 }
 
 export async function resetUserPassword(userId: string, newPassword: string) {

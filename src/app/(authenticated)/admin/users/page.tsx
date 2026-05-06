@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef } from 'react';
@@ -63,11 +64,12 @@ import {
   Loader2,
   ShieldCheck,
   ShieldAlert,
-  ShieldOff
+  ShieldOff,
+  Send
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { resetUserPassword } from '@/app/actions/db-actions';
+import { resetUserPassword, emailUserCredentials } from '@/app/actions/db-actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
@@ -97,6 +99,7 @@ export default function UserManagementPage() {
   const [userToReset, setUserToReset] = useState<User | null>(null);
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+  const [isDispatchingEmail, setIsDispatchingEmail] = useState<string | null>(null);
 
   // 2FA Reset State
   const [reset2FADialogOpen, setReset2FADialogOpen] = useState(false);
@@ -184,6 +187,27 @@ export default function UserManagementPage() {
     setUserToReset(user);
     setNewPasswordInput('');
     setResetDialogOpen(true);
+  };
+
+  const handleSendCredentialsEmail = async (user: User) => {
+    if (!user.email) {
+      toast({ title: "Email Missing", description: "This user does not have a registered email address.", variant: "destructive" });
+      return;
+    }
+
+    setIsDispatchingEmail(user.id);
+    try {
+      const result = await emailUserCredentials(user.id);
+      if (result.success) {
+        toast({ title: "Email Sent", description: `Account instructions have been dispatched to ${user.email}.` });
+      } else {
+        toast({ title: "Email Failed", description: result.message, variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to communicate with email server.", variant: "destructive" });
+    } finally {
+      setIsDispatchingEmail(null);
+    }
   };
 
   const confirmReset = async () => {
@@ -638,7 +662,7 @@ export default function UserManagementPage() {
                         <Mail className="h-3 w-3" /> {u.email || 'N/A'}
                       </div>
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
-                        <Phone className="h-3 w-3" /> {u.contactNumber || 'N/A'}
+                        Phone: {u.contactNumber || 'N/A'}
                       </div>
                     </div>
                   </TableCell>
@@ -683,6 +707,18 @@ export default function UserManagementPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
+                      {!u.isStaffOnly && (
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          title="Email Credentials" 
+                          onClick={() => handleSendCredentialsEmail(u)} 
+                          disabled={isDispatchingEmail === u.id || !u.email}
+                          className="h-8 w-8 hover:bg-blue-100"
+                        >
+                          {isDispatchingEmail === u.id ? <Loader2 className="h-4 w-4 animate-spin text-blue-600" /> : <Send className="h-4 w-4 text-blue-600" />}
+                        </Button>
+                      )}
                       <Button size="icon" variant="ghost" title="Edit Personnel" onClick={() => handleEditUser(u)} className="h-8 w-8 hover:bg-primary/10">
                         <Edit2 className="h-4 w-4 text-primary" />
                       </Button>
