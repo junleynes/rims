@@ -175,23 +175,28 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-primary">System Settings</h1>
-        <p className="text-muted-foreground">Manage application identity, limits, and infrastructure.</p>
+      <div className="flex items-center gap-4">
+        <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg">
+          <SettingsIcon className="h-6 w-6" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">System Settings</h1>
+          <p className="text-muted-foreground font-medium">Manage application identity, limits, and infrastructure.</p>
+        </div>
       </div>
 
       <Tabs defaultValue="branding" className="space-y-6">
-        <TabsList className="bg-white border p-1 rounded-xl h-12">
-          <TabsTrigger value="branding" className="rounded-lg px-6 gap-2">
+        <TabsList className="bg-white border p-1 rounded-xl h-12 shadow-sm">
+          <TabsTrigger value="branding" className="rounded-lg px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
             <Palette className="h-4 w-4" /> Branding
           </TabsTrigger>
-          <TabsTrigger value="system" className="rounded-lg px-6 gap-2">
+          <TabsTrigger value="system" className="rounded-lg px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
             <SettingsIcon className="h-4 w-4" /> System
           </TabsTrigger>
-          <TabsTrigger value="smtp" className="rounded-lg px-6 gap-2">
+          <TabsTrigger value="smtp" className="rounded-lg px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
             <Mail className="h-4 w-4" /> Email (SMTP)
           </TabsTrigger>
-          <TabsTrigger value="database" className="rounded-lg px-6 gap-2">
+          <TabsTrigger value="database" className="rounded-lg px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
             <Database className="h-4 w-4" /> Maintenance
           </TabsTrigger>
         </TabsList>
@@ -267,7 +272,7 @@ export default function SettingsPage() {
                       <TrendingUp className="h-10 w-10 text-muted-foreground/30" />
                     )}
                   </div>
-                  <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()}>
+                  <Button variant="outline" size="sm" onClick={() => logoInputRef.current?.click()} className="font-bold">
                     <ImageIcon className="h-4 w-4 mr-2" /> Upload Logo
                   </Button>
                   <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={handleLogoUpload} />
@@ -275,8 +280,8 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter className="bg-muted/30 border-t flex justify-between p-6">
-              <Button variant="outline" onClick={handleReset}><RefreshCw className="h-4 w-4 mr-2" /> Restore Default</Button>
-              <Button onClick={handleSave} disabled={isSaving} className="min-w-[140px]">
+              <Button variant="outline" onClick={handleReset} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> Restore Default</Button>
+              <Button onClick={handleSave} disabled={isSaving} className="min-w-[140px] font-bold">
                 {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Apply Changes
               </Button>
@@ -319,7 +324,7 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter className="bg-muted/30 border-t flex justify-end p-6">
-              <Button onClick={handleSave} disabled={isSaving}>
+              <Button onClick={handleSave} disabled={isSaving} className="font-bold">
                 {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Save Constraints
               </Button>
@@ -368,7 +373,7 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter className="bg-muted/30 border-t flex justify-end p-6">
-              <Button onClick={handleSave} disabled={isSaving}>
+              <Button onClick={handleSave} disabled={isSaving} className="font-bold">
                 {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                 Save Configuration
               </Button>

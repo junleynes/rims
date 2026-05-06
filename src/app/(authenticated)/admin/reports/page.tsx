@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -105,9 +104,14 @@ export default function ReportsPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-12 print:p-0">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Financial Reports</h1>
-          <p className="text-muted-foreground">Generate and export comprehensive resource expenditure summaries.</p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg">
+            <FileBarChart className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">Financial Reports</h1>
+            <p className="text-muted-foreground font-medium">Generate and export comprehensive resource expenditure summaries.</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" onClick={handlePrint} className="gap-2 font-bold h-10 border-primary/20 hover:bg-primary/5">

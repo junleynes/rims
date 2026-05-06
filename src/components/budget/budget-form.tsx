@@ -1,9 +1,8 @@
-
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save, X, Paperclip, ImageIcon, FileText, Plus } from 'lucide-react';
+import { Loader2, Save, X, Paperclip, ImageIcon, FileText, Plus, PlusCircle, Edit2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -185,8 +184,11 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
       <form onSubmit={handleSubmit} className="space-y-6">
-        <Card className="shadow-lg border-primary/10">
-          <CardHeader className="bg-primary/5 border-b border-primary/10 flex flex-row items-center justify-between">
+        <Card className="shadow-lg border-primary/10 overflow-hidden">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 flex flex-row items-center gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg shrink-0">
+              {initialData ? <Edit2 className="h-6 w-6" /> : <PlusCircle className="h-6 w-6" />}
+            </div>
             <div>
               <CardTitle className="text-2xl font-bold text-primary">
                 {initialData ? 'Edit Resource' : 'Item Entry'}
@@ -548,14 +550,14 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
               type="button" 
               variant="ghost" 
               onClick={() => router.back()}
-              className="gap-2"
+              className="gap-2 font-bold"
             >
               <X className="h-4 w-4" /> Cancel
             </Button>
             <Button 
               type="submit" 
               disabled={isLoading}
-              className="bg-primary hover:bg-primary/90 gap-2 min-w-[120px]"
+              className="bg-primary hover:bg-primary/90 gap-2 min-w-[140px] font-bold"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {initialData ? 'Update Resource' : 'Save Resource'}

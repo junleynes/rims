@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useRef } from 'react';
@@ -374,11 +373,16 @@ export default function UserManagementPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">System Registry</h1>
-          <p className="text-muted-foreground">Manage system users and organizational personnel records.</p>
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg">
+            <Shield className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">System Registry</h1>
+            <p className="text-muted-foreground font-medium">Manage system users and organizational personnel records.</p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <input 
@@ -388,10 +392,10 @@ export default function UserManagementPage() {
             accept=".csv" 
             onChange={handleImportCSV} 
           />
-          <Button variant="outline" onClick={handleExportCSV} className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+          <Button variant="outline" onClick={handleExportCSV} className="gap-2 border-primary/20 hover:bg-primary/5 text-primary font-bold">
             <Download className="h-4 w-4" /> Export CSV
           </Button>
-          <Button variant="outline" onClick={triggerImport} className="gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+          <Button variant="outline" onClick={triggerImport} className="gap-2 border-primary/20 hover:bg-primary/5 text-primary font-bold">
             <Upload className="h-4 w-4" /> Import CSV
           </Button>
         </div>

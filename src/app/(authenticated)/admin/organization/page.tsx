@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState } from 'react';
@@ -23,7 +22,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function OrganizationPage() {
@@ -101,19 +100,24 @@ export default function OrganizationPage() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-primary">Organization Management</h1>
-        <p className="text-muted-foreground">Manage Divisions, Sections, Job Positions, and system dropdowns.</p>
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+      <div className="flex items-center gap-4">
+        <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg">
+          <Building2 className="h-6 w-6" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Organization Management</h1>
+          <p className="text-muted-foreground font-medium">Manage Divisions, Sections, Job Positions, and system dropdowns.</p>
+        </div>
       </div>
 
       <Tabs defaultValue="divisions" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="divisions">Divisions</TabsTrigger>
-          <TabsTrigger value="sections">Sections</TabsTrigger>
-          <TabsTrigger value="positions">Positions</TabsTrigger>
-          <TabsTrigger value="locations">Locations</TabsTrigger>
-          <TabsTrigger value="statuses">Statuses</TabsTrigger>
+        <TabsList className="bg-white border shadow-sm p-1 rounded-xl h-11 inline-flex">
+          <TabsTrigger value="divisions" className="px-6 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">Divisions</TabsTrigger>
+          <TabsTrigger value="sections" className="px-6 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">Sections</TabsTrigger>
+          <TabsTrigger value="positions" className="px-6 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">Positions</TabsTrigger>
+          <TabsTrigger value="locations" className="px-6 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">Locations</TabsTrigger>
+          <TabsTrigger value="statuses" className="px-6 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">Statuses</TabsTrigger>
         </TabsList>
 
         <TabsContent value="divisions" className="space-y-4">
@@ -129,7 +133,7 @@ export default function OrganizationPage() {
                   value={newDivName} 
                   onChange={(e) => setNewDivName(e.target.value)} 
                 />
-                <Button onClick={handleAddDivision} className="gap-2">
+                <Button onClick={handleAddDivision} className="gap-2 font-bold">
                   <Plus className="h-4 w-4" /> Add
                 </Button>
               </div>
@@ -137,8 +141,8 @@ export default function OrganizationPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="font-bold">Name</TableHead>
+                    <TableHead className="text-right font-bold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -204,7 +208,7 @@ export default function OrganizationPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={handleAddSection} className="gap-2">
+                <Button onClick={handleAddSection} className="gap-2 font-bold">
                   <Plus className="h-4 w-4" /> Add
                 </Button>
               </div>
@@ -212,9 +216,9 @@ export default function OrganizationPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Section Name</TableHead>
-                    <TableHead>Division</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="font-bold">Section Name</TableHead>
+                    <TableHead className="font-bold">Division</TableHead>
+                    <TableHead className="text-right font-bold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -248,7 +252,7 @@ export default function OrganizationPage() {
                   value={newPosName} 
                   onChange={(e) => setNewPosName(e.target.value)} 
                 />
-                <Button onClick={handleAddPosition} className="gap-2">
+                <Button onClick={handleAddPosition} className="gap-2 font-bold">
                   <Plus className="h-4 w-4" /> Add
                 </Button>
               </div>
@@ -256,8 +260,8 @@ export default function OrganizationPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Position Name</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="font-bold">Position Name</TableHead>
+                    <TableHead className="text-right font-bold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -313,7 +317,7 @@ export default function OrganizationPage() {
                   value={newLocName} 
                   onChange={(e) => setNewLocName(e.target.value)} 
                 />
-                <Button onClick={handleAddLocation} className="gap-2">
+                <Button onClick={handleAddLocation} className="gap-2 font-bold">
                   <Plus className="h-4 w-4" /> Add
                 </Button>
               </div>
@@ -321,8 +325,8 @@ export default function OrganizationPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Location Name</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="font-bold">Location Name</TableHead>
+                    <TableHead className="text-right font-bold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -378,7 +382,7 @@ export default function OrganizationPage() {
                   value={newStatusName} 
                   onChange={(e) => setNewStatusName(e.target.value)} 
                 />
-                <Button onClick={handleAddStatus} className="gap-2">
+                <Button onClick={handleAddStatus} className="gap-2 font-bold">
                   <Plus className="h-4 w-4" /> Add
                 </Button>
               </div>
@@ -386,8 +390,8 @@ export default function OrganizationPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Status Name</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="font-bold">Status Name</TableHead>
+                    <TableHead className="text-right font-bold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
