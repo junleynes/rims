@@ -4,6 +4,7 @@ import React, { useRef, useState, useMemo } from 'react';
 import { BudgetTableView } from '@/components/budget/budget-table-view';
 import { useBudgets } from '@/components/budget-context';
 import { useAuth } from '@/components/auth-context';
+import { useSystemData } from '@/components/system-data-context';
 import { Button } from '@/components/ui/button';
 import { Plus, Upload, Trash2, AlertTriangle, Loader2, FileDown, Table2 } from 'lucide-react';
 import Link from 'next/link';
@@ -33,6 +34,7 @@ import { Label } from '@/components/ui/label';
 export default function BudgetsPage() {
   const { budgets, deleteBudget, importBudgets, clearYearResources } = useBudgets();
   const { user } = useAuth();
+  const { users } = useSystemData();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,7 +68,7 @@ export default function BudgetsPage() {
       "PR Number",
       "Date Delivered",
       "GR SIS Number",
-      "Accountable Person",
+      "Accountable Username",
       "Status",
       "Status Others",
       "Remarks"
@@ -88,7 +90,7 @@ export default function BudgetsPage() {
       "PR-XXXXX",
       "",
       "",
-      "System Administrator",
+      "admin",
       "working",
       "",
       "Sample remarks"
@@ -107,7 +109,7 @@ export default function BudgetsPage() {
 
     toast({
       title: "Template Downloaded",
-      description: "Follow the sample format for successful bulk importing.",
+      description: "Follow the sample format for successful bulk importing. Note: Use usernames for Accountable Username.",
     });
   };
 
@@ -139,6 +141,11 @@ export default function BudgetsPage() {
 
               const division = user?.role === 'Manager' ? (user.division || '') : (row['Division'] || '');
               const section = user?.role === 'Manager' ? (user.section || '') : (row['Section'] || '');
+              
+              // Map Accountable Username to Full Name
+              const username = row['Accountable Username'] || '';
+              const foundUser = users.find(u => u.username?.toLowerCase() === username.toLowerCase());
+              const accountablePerson = foundUser ? foundUser.name : (row['Accountable Person'] || username || '');
 
               return {
                 year: parseInt(row['Year']) || new Date().getFullYear(),
@@ -158,7 +165,7 @@ export default function BudgetsPage() {
                 prNumber: row['PR Number'] || '',
                 dateDelivered: row['Date Delivered'] || '',
                 grSisNumber: row['GR SIS Number'] || '',
-                accountablePerson: row['Accountable Person'] || '',
+                accountablePerson: accountablePerson,
                 status: row['Status'] || 'working',
                 statusOthers: row['Status Others'] || '',
                 remarks: row['Remarks'] || '',
@@ -179,7 +186,7 @@ export default function BudgetsPage() {
           console.error(err);
           toast({
             title: "Import Failed",
-            description: "Check if the CSV format is correct. Required headers: Year, Division, Section, Location, Classification, Category, Account, Project Title, Item Description, Quantity, Unit Cost Budget",
+            description: "Check if the CSV format is correct. Required headers: Year, Division, Section, Location, Classification, Category, Account, Project Title, Item Description, Quantity, Unit Cost Budget, Accountable Username",
             variant: "destructive",
           });
         }
@@ -189,10 +196,10 @@ export default function BudgetsPage() {
   };
 
   const triggerImport = () => {
-    let desc = "Ensure headers are: Year, Division, Section, Location, Classification, Category, Account, Project Title, Item Description, Quantity, Unit Cost Budget";
+    let desc = "Ensure headers match the template. Use usernames for the 'Accountable Username' column.";
     
     if (user?.role === 'Manager') {
-      desc = `Importing for ${user.section}. All items in the CSV will be automatically assigned to your section. Headers: Year, Location, Classification, Category, Account, Project Title, Item Description, Quantity, Unit Cost Budget`;
+      desc = `Importing for ${user.section}. All items in the CSV will be automatically assigned to your section. Use usernames for Accountable Username.`;
     }
 
     toast({
