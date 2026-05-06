@@ -15,7 +15,8 @@ import {
   Users,
   Table2,
   BookOpen,
-  Layers
+  Layers,
+  Network
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,7 +135,7 @@ function LoginPage() {
                 <Users className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <p className="font-bold text-sm uppercase tracking-tight">Role-Based Data Access</p>
+                <p className="font-bold text-sm tracking-tight">Role-Based Data Access</p>
                 <p className="text-sm text-white/60">Automated filtering ensures privacy and departmental data integrity.</p>
               </div>
             </div>
@@ -144,7 +145,7 @@ function LoginPage() {
                 <BarChart3 className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <p className="font-bold text-sm uppercase tracking-tight">Real-Time Analytics</p>
+                <p className="font-bold text-sm tracking-tight">Real-Time Analytics</p>
                 <p className="text-sm text-white/60">Dynamic dashboards with comprehensive CAPEX and OPEX visualizations.</p>
               </div>
             </div>
@@ -154,7 +155,7 @@ function LoginPage() {
                 <Table2 className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <p className="font-bold text-sm uppercase tracking-tight">Resource Inventory Log</p>
+                <p className="font-bold text-sm tracking-tight">Resource Inventory Log</p>
                 <p className="text-sm text-white/60">Structured tracking of hardware and software assets across the organization.</p>
               </div>
             </div>
@@ -164,8 +165,18 @@ function LoginPage() {
                 <BookOpen className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <p className="font-bold text-sm uppercase tracking-tight">Centralized Knowledge Base</p>
+                <p className="font-bold text-sm tracking-tight">Centralized Knowledge Base</p>
                 <p className="text-sm text-white/60">Quick access to standard operating procedures and technical manuals.</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="bg-white/10 p-2 rounded-lg">
+                <Network className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <p className="font-bold text-sm tracking-tight">Table of Organization</p>
+                <p className="text-sm text-white/60">Comprehensive mapping of functional reporting lines and command chains.</p>
               </div>
             </div>
 
@@ -174,7 +185,7 @@ function LoginPage() {
                 <ShieldCheck className="h-5 w-5 text-accent" />
               </div>
               <div>
-                <p className="font-bold text-sm uppercase tracking-tight">Multi-Factor Authentication</p>
+                <p className="font-bold text-sm tracking-tight">Multi-Factor Authentication</p>
                 <p className="text-sm text-white/60">Secure TOTP verification compatible with Google Authenticator.</p>
               </div>
             </div>
