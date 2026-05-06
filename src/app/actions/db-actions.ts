@@ -1,4 +1,3 @@
-
 'use server';
 
 import * as db from '@/lib/server-db';
@@ -224,14 +223,13 @@ export async function testSmtpConnection(config: SmtpConfig, targetEmail: string
     },
   });
 
-  const fromField = config.fromName 
-    ? `${config.fromName} <${config.fromEmail}>` 
-    : config.fromEmail || 'noreply@rims.com';
-
   try {
     await transporter.verify();
     await transporter.sendMail({
-      from: fromField,
+      from: {
+        name: config.fromName || 'R.I.M.S. Notifications',
+        address: config.fromEmail,
+      },
       to: targetEmail,
       subject: 'R.I.M.S SMTP Connection Test',
       html: `
@@ -283,13 +281,12 @@ export async function emailUserCredentials(userId: string) {
     },
   });
 
-  const fromField = smtp.fromName 
-    ? `${smtp.fromName} <${smtp.fromEmail}>` 
-    : smtp.fromEmail;
-
   try {
     await transporter.sendMail({
-      from: fromField,
+      from: {
+        name: smtp.fromName || 'R.I.M.S. Notifications',
+        address: smtp.fromEmail,
+      },
       to: user.email,
       subject: 'R.I.M.S Account Credentials - Password Reset',
       html: `
