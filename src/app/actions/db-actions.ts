@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import nodemailer from 'nodemailer';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from '@/lib/types';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry, LockedYear } from '@/lib/types';
 
 // Strict validation schemas with permissive empty-string handling
 const BudgetEntrySchema = z.object({
@@ -114,7 +114,7 @@ export async function removeKnowledgeBaseEntry(id: string) {
 }
 
 export async function getSystemData() {
-  const [divisions, sections, locations, statusOptions, users, branding, positions, systemConfig] = await Promise.all([
+  const [divisions, sections, locations, statusOptions, users, branding, positions, systemConfig, lockedYears] = await Promise.all([
     db.getAllDivisions(),
     db.getAllSections(),
     db.getAllLocations(),
@@ -122,7 +122,8 @@ export async function getSystemData() {
     db.getAllUsers(),
     db.getBranding(),
     db.getAllPositions(),
-    db.getSystemConfig()
+    db.getSystemConfig(),
+    db.getAllLockedYears()
   ]);
 
   return {
@@ -133,7 +134,8 @@ export async function getSystemData() {
     users,
     branding,
     positions,
-    systemConfig
+    systemConfig,
+    lockedYears
   };
 }
 
@@ -145,7 +147,8 @@ export async function saveSystemData(update: {
   users?: User[],
   branding?: BrandingConfig,
   positions?: Position[],
-  systemConfig?: SystemConfig
+  systemConfig?: SystemConfig,
+  lockedYears?: LockedYear[]
 }) {
   if (update.divisions) await db.saveDivisions(update.divisions);
   if (update.sections) await db.saveSections(update.sections);
@@ -160,6 +163,7 @@ export async function saveSystemData(update: {
   if (update.branding) await db.saveBranding(update.branding);
   if (update.positions) await db.savePositions(update.positions);
   if (update.systemConfig) await db.saveSystemConfig(update.systemConfig);
+  if (update.lockedYears) await db.saveLockedYears(update.lockedYears);
   
   return true;
 }

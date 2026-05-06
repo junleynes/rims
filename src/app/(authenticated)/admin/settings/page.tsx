@@ -1,9 +1,10 @@
 
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useBranding } from '@/components/branding-context';
 import { useSystemData } from '@/components/system-data-context';
+import { useBudgets } from '@/components/budget-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,12 +42,16 @@ import {
   Settings as SettingsIcon,
   Info,
   Send,
-  Loader2
+  Loader2,
+  Lock,
+  Unlock,
+  Calendar
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { fetchSmtpConfig, updateSmtpConfig, saveSystemData, testSmtpConnection } from '@/app/actions/db-actions';
 import { SmtpConfig, BrandingConfig, SystemConfig } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
 
 const THEMES = [
   { id: 'sunset', name: 'Sunset', primary: 'bg-[#E03E1A]', accent: 'bg-[#D6B51E]' },
@@ -60,7 +65,8 @@ const THEMES = [
 
 export default function SettingsPage() {
   const { config: brandingConfig, updateConfig: updateBranding } = useBranding();
-  const { systemConfig, updateSystemConfig } = useSystemData();
+  const { systemConfig, updateSystemConfig, lockedYears, toggleYearLock } = useSystemData();
+  const { budgets } = useBudgets();
   const { toast } = useToast();
   const logoInputRef = useRef<HTMLInputElement>(null);
   
@@ -109,6 +115,13 @@ export default function SettingsPage() {
   useEffect(() => {
     setMaxUploadSize(systemConfig.maxUploadSize || 20);
   }, [systemConfig]);
+
+  const availableYears = useMemo(() => {
+    const years = budgets.map(b => b.year.toString());
+    const currentYear = new Date().getFullYear();
+    const dynamicYears = [currentYear - 1, currentYear, currentYear + 1].map(y => y.toString());
+    return Array.from(new Set([...years, ...dynamicYears])).sort().reverse();
+  }, [budgets]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -231,6 +244,15 @@ export default function SettingsPage() {
     link.click();
   };
 
+  const handleToggleLock = async (year: string) => {
+    await toggleYearLock(parseInt(year));
+    const isLocked = !lockedYears.some(ly => ly.year === parseInt(year));
+    toast({
+      title: isLocked ? "Year Locked" : "Year Unlocked",
+      description: `Modifications for FY ${year} are now ${isLocked ? 'restricted' : 'allowed'}.`,
+    });
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="flex items-center gap-4">
@@ -347,7 +369,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="system" className="animate-in slide-in-from-bottom-2">
+        <TabsContent value="system" className="space-y-6 animate-in slide-in-from-bottom-2">
           <Card className="border-none shadow-lg">
             <CardHeader>
               <CardTitle>System Constraints</CardTitle>
@@ -387,6 +409,51 @@ export default function SettingsPage() {
                 Save Constraints
               </Button>
             </CardFooter>
+          </Card>
+
+          <Card className="border-none shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Lock className="h-5 w-5" /> Year Locking Control</CardTitle>
+              <CardDescription>Prevent non-admin users from editing resources for specific fiscal years.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {availableYears.map(year => {
+                  const isLocked = lockedYears.some(ly => ly.year === parseInt(year));
+                  return (
+                    <div 
+                      key={year} 
+                      className={cn(
+                        "flex items-center justify-between p-4 rounded-xl border-2 transition-all",
+                        isLocked ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "p-2 rounded-lg",
+                          isLocked ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"
+                        )}>
+                          <Calendar className="h-4 w-4" />
+                        </div>
+                        <span className="font-black text-lg">FY {year}</span>
+                      </div>
+                      <Button 
+                        size="icon" 
+                        variant={isLocked ? "destructive" : "outline"} 
+                        className="h-9 w-9 rounded-full shadow-sm"
+                        onClick={() => handleToggleLock(year)}
+                      >
+                        {isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-6 p-4 bg-muted/30 rounded-xl border border-dashed flex gap-3 text-xs text-muted-foreground italic">
+                <Info className="h-4 w-4 shrink-0 text-primary" />
+                <p>Locking a year prevents Managers and AVPs from adding, editing, or deleting entries for that period. Admins and VPs can always override locks.</p>
+              </div>
+            </CardContent>
           </Card>
         </TabsContent>
 

@@ -2,7 +2,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import bcrypt from 'bcryptjs';
-import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry } from './types';
+import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry, LockedYear } from './types';
 
 const DB_PATH = path.join(process.cwd(), 'data.db');
 const db = new Database(DB_PATH);
@@ -133,6 +133,10 @@ db.exec(`
     pass TEXT,
     fromEmail TEXT,
     secure INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS locked_years (
+    year INTEGER PRIMARY KEY
   );
 `);
 
@@ -571,4 +575,18 @@ export async function saveSmtpConfig(config: SmtpConfig) {
       VALUES (1, @host, @port, @user, @pass, @fromEmail, @secure)
     `).run(params);
   }
+}
+
+export async function getAllLockedYears(): Promise<LockedYear[]> {
+  return db.prepare('SELECT year FROM locked_years ORDER BY year DESC').all() as LockedYear[];
+}
+
+export async function saveLockedYears(years: LockedYear[]) {
+  const deleteStmt = db.prepare('DELETE FROM locked_years');
+  const insertStmt = db.prepare('INSERT INTO locked_years (year) VALUES (@year)');
+  const trans = db.transaction((d: LockedYear[]) => {
+    deleteStmt.run();
+    d.forEach(i => insertStmt.run(i));
+  });
+  trans(years);
 }

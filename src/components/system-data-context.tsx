@@ -2,7 +2,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Division, Section, Location, StatusOption, Position, SystemConfig } from '@/lib/types';
+import { User, Division, Section, Location, StatusOption, Position, SystemConfig, LockedYear } from '@/lib/types';
 import { getSystemData, saveSystemData } from '@/app/actions/db-actions';
 
 interface SystemDataContextType {
@@ -13,6 +13,7 @@ interface SystemDataContextType {
   users: User[];
   positions: Position[];
   systemConfig: SystemConfig;
+  lockedYears: LockedYear[];
   addDivision: (name: string) => Promise<void>;
   updateDivision: (id: string, name: string) => Promise<void>;
   deleteDivision: (id: string) => Promise<void>;
@@ -33,6 +34,7 @@ interface SystemDataContextType {
   updatePosition: (id: string, name: string) => Promise<void>;
   deletePosition: (id: string) => Promise<void>;
   updateSystemConfig: (config: Partial<SystemConfig>) => Promise<void>;
+  toggleYearLock: (year: number) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -47,6 +49,7 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
     users: User[];
     positions: Position[];
     systemConfig: SystemConfig;
+    lockedYears: LockedYear[];
   }>({
     divisions: [],
     sections: [],
@@ -54,7 +57,8 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
     statusOptions: [],
     users: [],
     positions: [],
-    systemConfig: { maxUploadSize: 20 }
+    systemConfig: { maxUploadSize: 20 },
+    lockedYears: []
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -199,6 +203,18 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
     await saveSystemData({ systemConfig: updated });
   };
 
+  const toggleYearLock = async (year: number) => {
+    let updated: LockedYear[];
+    const isLocked = data.lockedYears.some(ly => ly.year === year);
+    if (isLocked) {
+      updated = data.lockedYears.filter(ly => ly.year !== year);
+    } else {
+      updated = [...data.lockedYears, { year }];
+    }
+    setData(prev => ({ ...prev, lockedYears: updated }));
+    await saveSystemData({ lockedYears: updated });
+  };
+
   return (
     <SystemDataContext.Provider value={{ 
       ...data, isLoading,
@@ -208,7 +224,7 @@ export function SystemDataProvider({ children }: { children: React.ReactNode }) 
       addStatusOption, updateStatusOption, deleteStatusOption,
       addUser, importUsers, updateUser, deleteUser,
       addPosition, updatePosition, deletePosition,
-      updateSystemConfig
+      updateSystemConfig, toggleYearLock
     }}>
       {children}
     </SystemDataContext.Provider>

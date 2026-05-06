@@ -131,3 +131,7 @@ export interface Position {
   id: string;
   name: string;
 }
+
+export interface LockedYear {
+  year: number;
+}
