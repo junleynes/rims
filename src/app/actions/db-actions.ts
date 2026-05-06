@@ -209,7 +209,7 @@ export async function updateSmtpConfig(config: SmtpConfig) {
   return true;
 }
 
-export async function testSmtpConnection(config: SmtpConfig) {
+export async function testSmtpConnection(config: SmtpConfig, targetEmail: string) {
   const transporter = nodemailer.createTransport({
     host: config.host,
     port: config.port,
@@ -223,10 +223,22 @@ export async function testSmtpConnection(config: SmtpConfig) {
   try {
     await transporter.verify();
     await transporter.sendMail({
-      from: config.fromEmail,
-      to: config.fromEmail,
-      subject: 'R.I.M.S SMTP Test',
-      text: 'This is a test email confirming that your SMTP configuration for the Resource Inventory Management System is working correctly.',
+      from: config.fromEmail || 'noreply@rims.com',
+      to: targetEmail,
+      subject: 'R.I.M.S SMTP Connection Test',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #2E86AB;">SMTP Connection Test</h2>
+          <p>Hello,</p>
+          <p>This is a test email confirming that your SMTP configuration for the <strong>Resource Inventory Management System (R.I.M.S)</strong> is working correctly.</p>
+          <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0;"><strong>Sent To:</strong> ${targetEmail}</p>
+            <p style="margin: 5px 0 0 0;"><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
+          </div>
+          <p>If you received this, your email infrastructure is ready for system notifications.</p>
+          <p style="margin-top: 30px; font-size: 12px; color: #64748b;">This is an automated test message.</p>
+        </div>
+      `,
     });
     return { success: true };
   } catch (error: any) {
@@ -262,7 +274,7 @@ export async function emailUserCredentials(userId: string) {
       to: user.email,
       subject: 'R.I.M.S Account Credentials',
       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; rounded: 12px;">
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #2E86AB;">Account Access Information</h2>
           <p>Hello <strong>${user.name}</strong>,</p>
           <p>Your account on the <strong>Resource Inventory Management System (R.I.M.S)</strong> is ready for use.</p>

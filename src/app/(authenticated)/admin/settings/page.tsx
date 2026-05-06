@@ -13,6 +13,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/components/ui/dialog";
+import { 
   Save, 
   RefreshCw, 
   Download, 
@@ -77,6 +85,8 @@ export default function SettingsPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [isTestingSmtp, setIsTestingSmtp] = useState(false);
+  const [testRecipientEmail, setTestRecipientEmail] = useState('');
+  const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
 
   useEffect(() => {
     async function loadSmtp() {
@@ -137,7 +147,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleTestSmtp = async () => {
+  const handleTestSmtp = () => {
     if (!smtp.host || !smtp.user || !smtp.pass) {
       toast({ 
         title: "Validation Error", 
@@ -146,14 +156,24 @@ export default function SettingsPage() {
       });
       return;
     }
+    setTestRecipientEmail(smtp.fromEmail || '');
+    setIsTestDialogOpen(true);
+  };
 
+  const confirmTestSmtp = async () => {
+    if (!testRecipientEmail) {
+      toast({ title: "Recipient Missing", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+
+    setIsTestDialogOpen(false);
     setIsTestingSmtp(true);
     try {
-      const result = await testSmtpConnection(smtp);
+      const result = await testSmtpConnection(smtp, testRecipientEmail);
       if (result.success) {
         toast({
           title: "SMTP Test Successful",
-          description: "A test email has been sent to your 'From' address.",
+          description: `A test email has been sent to ${testRecipientEmail}.`,
         });
       } else {
         toast({
@@ -320,7 +340,7 @@ export default function SettingsPage() {
             <CardFooter className="bg-muted/30 border-t flex justify-between p-6">
               <Button variant="outline" onClick={handleReset} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> Restore Default</Button>
               <Button onClick={handleSave} disabled={isSaving} className="min-w-[140px] font-bold">
-                {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4" />}
                 Apply Changes
               </Button>
             </CardFooter>
@@ -363,7 +383,7 @@ export default function SettingsPage() {
             </CardContent>
             <CardFooter className="bg-muted/30 border-t flex justify-end p-6">
               <Button onClick={handleSave} disabled={isSaving} className="font-bold">
-                {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Constraints
               </Button>
             </CardFooter>
@@ -421,7 +441,7 @@ export default function SettingsPage() {
                 Test Connection
               </Button>
               <Button onClick={handleSave} disabled={isSaving} className="font-bold">
-                {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Configuration
               </Button>
             </CardFooter>
@@ -456,6 +476,35 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isTestDialogOpen} onOpenChange={setIsTestDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Test SMTP Delivery</DialogTitle>
+            <DialogDescription>
+              Enter a recipient email address to verify that system notifications are delivering correctly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2">
+              <Label htmlFor="test-email">Recipient Email Address</Label>
+              <Input 
+                id="test-email"
+                placeholder="recipient@example.com"
+                value={testRecipientEmail}
+                onChange={(e) => setTestRecipientEmail(e.target.value)}
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTestDialogOpen(false)}>Cancel</Button>
+            <Button onClick={confirmTestSmtp} disabled={!testRecipientEmail} className="gap-2 font-bold">
+              <Send className="h-4 w-4" /> Send Test Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
