@@ -199,7 +199,7 @@ export default function UserManagementPage() {
     try {
       const result = await emailUserCredentials(user.id);
       if (result.success) {
-        toast({ title: "Email Sent", description: `Account instructions have been dispatched to ${user.email}.` });
+        toast({ title: "Password Reset & Emailed", description: `A temporary password has been dispatched to ${user.email}.` });
       } else {
         toast({ title: "Email Failed", description: result.message, variant: "destructive" });
       }
@@ -711,7 +711,7 @@ export default function UserManagementPage() {
                         <Button 
                           size="icon" 
                           variant="ghost" 
-                          title="Email Credentials" 
+                          title="Reset Password & Email Credentials" 
                           onClick={() => handleSendCredentialsEmail(u)} 
                           disabled={isDispatchingEmail === u.id || !u.email}
                           className="h-8 w-8 hover:bg-blue-100"
@@ -724,7 +724,7 @@ export default function UserManagementPage() {
                       </Button>
                       {!u.isStaffOnly && (
                         <>
-                          <Button size="icon" variant="ghost" title="Reset Password" onClick={() => initiateReset(u)} className="h-8 w-8 hover:bg-primary/10">
+                          <Button size="icon" variant="ghost" title="Manual Password Set" onClick={() => initiateReset(u)} className="h-8 w-8 hover:bg-primary/10">
                             <KeyRound className="h-4 w-4 text-primary" />
                           </Button>
                           <Button 
@@ -763,7 +763,7 @@ export default function UserManagementPage() {
           <DialogHeader>
             <DialogTitle>Update User Password</DialogTitle>
             <DialogDescription>
-              Enter a new temporary password for <strong>{userToReset?.name}</strong>. 
+              Enter a new password for <strong>{userToReset?.name}</strong>. 
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

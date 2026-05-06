@@ -258,6 +258,13 @@ export async function emailUserCredentials(userId: string) {
     return { success: false, message: "User email not found or user does not exist." };
   }
 
+  // Generate random temporary password
+  const tempPassword = Math.random().toString(36).substring(2, 10);
+  const hash = bcrypt.hashSync(tempPassword, 10);
+
+  // Update password in DB
+  await db.updateUserPassword(userId, hash);
+
   const transporter = nodemailer.createTransport({
     host: smtp.host,
     port: smtp.port,
@@ -272,18 +279,20 @@ export async function emailUserCredentials(userId: string) {
     await transporter.sendMail({
       from: smtp.fromEmail,
       to: user.email,
-      subject: 'R.I.M.S Account Credentials',
+      subject: 'R.I.M.S Account Credentials - Password Reset',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #2E86AB;">Account Access Information</h2>
           <p>Hello <strong>${user.name}</strong>,</p>
-          <p>Your account on the <strong>Resource Inventory Management System (R.I.M.S)</strong> is ready for use.</p>
-          <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-            <p style="margin: 0;"><strong>Username:</strong> ${user.username}</p>
-            <p style="margin: 5px 0 0 0;"><strong>Security:</strong> ${user.twoFactorEnabled ? 'Multi-Factor Enabled' : 'Standard Password'}</p>
+          <p>Your password for the <strong>Resource Inventory Management System (R.I.M.S)</strong> has been reset by an administrator.</p>
+          <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px dashed #2E86AB; text-align: center;">
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Username:</p>
+            <p style="margin: 5px 0 15px 0; font-weight: bold; font-size: 18px;">${user.username}</p>
+            <p style="margin: 0; color: #64748b; font-size: 14px;">Temporary Password:</p>
+            <p style="margin: 5px 0 0 0; font-weight: bold; font-size: 24px; color: #E03E1A; letter-spacing: 2px; font-family: monospace;">${tempPassword}</p>
           </div>
-          <p>Please coordinate with your system administrator to receive your temporary password.</p>
-          <p style="margin-top: 30px; font-size: 12px; color: #64748b;">This is an automated notification. Please do not reply directly to this email.</p>
+          <p>Please log in and change your password immediately in your profile settings.</p>
+          <p style="margin-top: 30px; font-size: 12px; color: #64748b;">This is an automated notification. For security reasons, do not share this email. Please do not reply directly to this email.</p>
         </div>
       `,
     });
