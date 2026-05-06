@@ -23,10 +23,50 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthProvider, useAuth } from '@/components/auth-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { 
+  Carousel, 
+  CarouselContent, 
+  CarouselItem, 
+  CarouselNext, 
+  CarouselPrevious 
+} from '@/components/ui/carousel';
 import { useToast } from '@/hooks/use-toast';
 import { useBranding } from '@/components/branding-context';
 import Image from 'next/image';
 import { setupTwoFactor } from '@/app/actions/db-actions';
+
+const FEATURES = [
+  {
+    title: "Role-Based Data Access",
+    desc: "Automated filtering ensures privacy and departmental data integrity.",
+    icon: Users
+  },
+  {
+    title: "Real-Time Analytics",
+    desc: "Dynamic dashboards with comprehensive CAPEX and OPEX visualizations.",
+    icon: BarChart3
+  },
+  {
+    title: "Resource Inventory Log",
+    desc: "Structured tracking of hardware and software assets across the organization.",
+    icon: Table2
+  },
+  {
+    title: "Centralized Knowledge Base",
+    desc: "Quick access to standard operating procedures and technical manuals.",
+    icon: BookOpen
+  },
+  {
+    title: "Table of Organization",
+    desc: "Comprehensive mapping of functional reporting lines and command chains.",
+    icon: Network
+  },
+  {
+    title: "Multi-Factor Authentication",
+    desc: "Secure TOTP verification compatible with Google Authenticator.",
+    icon: ShieldCheck
+  }
+];
 
 function LoginPage() {
   const router = useRouter();
@@ -129,66 +169,28 @@ function LoginPage() {
             {config.loginDescription}
           </p>
           
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="bg-white/10 p-2 rounded-lg">
-                <Users className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="font-bold text-sm tracking-tight">Role-Based Data Access</p>
-                <p className="text-sm text-white/60">Automated filtering ensures privacy and departmental data integrity.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="bg-white/10 p-2 rounded-lg">
-                <BarChart3 className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="font-bold text-sm tracking-tight">Real-Time Analytics</p>
-                <p className="text-sm text-white/60">Dynamic dashboards with comprehensive CAPEX and OPEX visualizations.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="bg-white/10 p-2 rounded-lg">
-                <Table2 className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="font-bold text-sm tracking-tight">Resource Inventory Log</p>
-                <p className="text-sm text-white/60">Structured tracking of hardware and software assets across the organization.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="bg-white/10 p-2 rounded-lg">
-                <BookOpen className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="font-bold text-sm tracking-tight">Centralized Knowledge Base</p>
-                <p className="text-sm text-white/60">Quick access to standard operating procedures and technical manuals.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="bg-white/10 p-2 rounded-lg">
-                <Network className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="font-bold text-sm tracking-tight">Table of Organization</p>
-                <p className="text-sm text-white/60">Comprehensive mapping of functional reporting lines and command chains.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="bg-white/10 p-2 rounded-lg">
-                <ShieldCheck className="h-5 w-5 text-accent" />
-              </div>
-              <div>
-                <p className="font-bold text-sm tracking-tight">Multi-Factor Authentication</p>
-                <p className="text-sm text-white/60">Secure TOTP verification compatible with Google Authenticator.</p>
-              </div>
-            </div>
+          <div className="relative px-8">
+            <Carousel className="w-full">
+              <CarouselContent>
+                {FEATURES.map((feature, index) => (
+                  <CarouselItem key={index}>
+                    <div className="flex flex-col items-center text-center space-y-4 p-4">
+                      <div className="bg-white/10 p-4 rounded-2xl shadow-inner">
+                        <feature.icon className="h-10 w-10 text-accent" />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-xl font-bold tracking-tight">{feature.title}</h3>
+                        <p className="text-sm text-white/60 leading-relaxed max-w-[280px] mx-auto">
+                          {feature.desc}
+                        </p>
+                      </div>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white" />
+              <CarouselNext className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white" />
+            </Carousel>
           </div>
         </div>
       </div>
