@@ -1,26 +1,34 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useBudgets } from '@/components/budget-context';
 import { useSystemData } from '@/components/system-data-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { 
   Printer, 
   Download, 
   FileBarChart, 
-  PieChart as PieChartIcon, 
   TrendingUp, 
   Layers,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Brain,
+  AlertTriangle,
+  Sparkles,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  XCircle
 } from 'lucide-react';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Legend, CartesianGrid, Bar as RechartsBar } from 'recharts';
 import { cn } from '@/lib/utils';
 import { BudgetEntry } from '@/lib/types';
+import { detectAnomalies, generateNarrativeReport, type AnomalyFlag } from '@/app/actions/ai-actions';
 
 type SortConfig = {
   key: keyof BudgetEntry | 'variance';
@@ -33,6 +41,49 @@ export default function ReportsPage() {
   const [yearFilter, setYearFilter] = useState('2026');
   const [divisionFilter, setDivisionFilter] = useState('All');
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+
+  const [anomalies, setAnomalies] = useState<AnomalyFlag[]>([]);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [anomalyError, setAnomalyError] = useState('');
+  const [showAnomalies, setShowAnomalies] = useState(false);
+
+  const [narrative, setNarrative] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [narrativeError, setNarrativeError] = useState('');
+
+  const handleDetectAnomalies = useCallback(async () => {
+    setIsDetecting(true);
+    setAnomalyError('');
+    try {
+      const filtered = budgets.filter(b => {
+        if (b.year.toString() !== yearFilter) return false;
+        if (divisionFilter !== 'All' && b.division !== divisionFilter) return false;
+        return true;
+      });
+      const result = await detectAnomalies(filtered);
+      setAnomalies(result.flags);
+      setShowAnomalies(true);
+    } catch (e: any) {
+      setAnomalyError(e.message ?? 'Detection failed.');
+    } finally {
+      setIsDetecting(false);
+    }
+  }, [budgets, yearFilter, divisionFilter]);
+
+  const handleGenerateNarrative = useCallback(async () => {
+    setIsGenerating(true);
+    setNarrativeError('');
+    setNarrative('');
+    try {
+      const result = await generateNarrativeReport(budgets, yearFilter, divisionFilter);
+      if (result.error) setNarrativeError(result.error);
+      else setNarrative(result.narrative);
+    } catch (e: any) {
+      setNarrativeError(e.message ?? 'Generation failed.');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [budgets, yearFilter, divisionFilter]);
 
   const handleSort = (key: keyof BudgetEntry | 'variance') => {
     setSortConfig(current => {
@@ -119,6 +170,23 @@ export default function ReportsPage() {
           </Button>
           <Button variant="outline" className="gap-2 font-bold h-10 border-primary/20 hover:bg-primary/5">
             <Download className="h-4 w-4" /> Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleDetectAnomalies}
+            disabled={isDetecting}
+            className="gap-2 font-bold h-10 border-amber-300 text-amber-700 hover:bg-amber-50"
+          >
+            {isDetecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <AlertTriangle className="h-4 w-4" />}
+            Detect Anomalies
+          </Button>
+          <Button
+            onClick={handleGenerateNarrative}
+            disabled={isGenerating}
+            className="gap-2 font-bold h-10"
+          >
+            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            AI Narrative
           </Button>
         </div>
       </div>
@@ -210,6 +278,123 @@ export default function ReportsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Anomaly Detection Panel */}
+      {(showAnomalies || anomalyError) && (
+        <Card className="border-none shadow-lg border-l-4 border-l-amber-400 print:hidden">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-amber-700">
+                <AlertTriangle className="h-5 w-5" />
+                Anomaly Detection Results
+                {anomalies.length > 0 && (
+                  <Badge variant="outline" className="ml-2 border-amber-400 text-amber-700 font-bold">
+                    {anomalies.length} flag{anomalies.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setShowAnomalies(v => !v)}>
+                  {showAnomalies ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setAnomalies([]); setShowAnomalies(false); setAnomalyError(''); }}>
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          {showAnomalies && (
+            <CardContent>
+              {anomalyError ? (
+                <p className="text-sm text-destructive">{anomalyError}</p>
+              ) : anomalies.length === 0 ? (
+                <div className="flex items-center gap-3 text-emerald-700 bg-emerald-50 p-4 rounded-xl border border-emerald-200">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  <p className="text-sm font-semibold">No anomalies detected for the current filter. Budget data looks clean.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {anomalies.map((flag) => (
+                    <div
+                      key={flag.id}
+                      className={cn(
+                        'flex items-start gap-4 p-4 rounded-xl border',
+                        flag.severity === 'high' ? 'bg-red-50 border-red-200' :
+                        flag.severity === 'medium' ? 'bg-amber-50 border-amber-200' :
+                        'bg-blue-50 border-blue-200'
+                      )}
+                    >
+                      <div className={cn(
+                        'shrink-0 px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mt-0.5',
+                        flag.severity === 'high' ? 'bg-red-200 text-red-800' :
+                        flag.severity === 'medium' ? 'bg-amber-200 text-amber-800' :
+                        'bg-blue-200 text-blue-800'
+                      )}>
+                        {flag.severity}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm truncate">{flag.projectTitle}</p>
+                        <p className="text-xs text-muted-foreground font-semibold mb-1">{flag.section} · {flag.category}</p>
+                        <p className="text-sm">{flag.reason}</p>
+                      </div>
+                      <div className="text-right text-xs shrink-0">
+                        <p className="text-muted-foreground">Budget</p>
+                        <p className="font-bold">₱{flag.budgeted.toLocaleString()}</p>
+                        <p className="text-muted-foreground mt-1">Actual</p>
+                        <p className="font-bold">₱{flag.actual.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* AI Narrative Panel */}
+      {(narrative || narrativeError || isGenerating) && (
+        <Card className="border-none shadow-lg border-l-4 border-l-primary print:hidden">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <Brain className="h-5 w-5" />
+                AI Executive Summary
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => { setNarrative(''); setNarrativeError(''); }}>
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </div>
+            <CardDescription>FY {yearFilter} · {divisionFilter} · Generated by AI — review before use.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isGenerating ? (
+              <div className="flex items-center gap-3 text-muted-foreground py-6 justify-center">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="text-sm font-medium">Generating narrative…</span>
+              </div>
+            ) : narrativeError ? (
+              <p className="text-sm text-destructive">{narrativeError}</p>
+            ) : (
+              <div className="space-y-3">
+                <div className="bg-muted/30 rounded-xl p-5 text-sm leading-relaxed whitespace-pre-wrap border">
+                  {narrative}
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="font-bold gap-2"
+                    onClick={() => navigator.clipboard.writeText(narrative)}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Copy to Clipboard
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-none shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between">

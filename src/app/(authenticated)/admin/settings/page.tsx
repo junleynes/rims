@@ -46,12 +46,18 @@ import {
   Lock,
   Unlock,
   Calendar,
-  User as UserIcon
+  User as UserIcon,
+  Brain,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  XCircle,
+  Zap
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { fetchSmtpConfig, updateSmtpConfig, saveSystemData, testSmtpConnection } from '@/app/actions/db-actions';
-import { SmtpConfig, BrandingConfig, SystemConfig } from '@/lib/types';
+import { fetchSmtpConfig, updateSmtpConfig, saveSystemData, testSmtpConnection, fetchAiConfig, updateAiConfig } from '@/app/actions/db-actions';
+import { SmtpConfig, BrandingConfig, SystemConfig, AiConfig, AiProvider } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 
 const THEMES = [
@@ -96,12 +102,32 @@ export default function SettingsPage() {
   const [testRecipientEmail, setTestRecipientEmail] = useState('');
   const [isTestDialogOpen, setIsTestDialogOpen] = useState(false);
 
+  const [aiConfig, setAiConfig] = useState<AiConfig>({
+    provider: 'anthropic',
+    apiKey: '',
+    model: 'claude-sonnet-4-20250514',
+    ollamaBaseUrl: 'http://localhost:11434',
+    enabled: false,
+  });
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isTestingAi, setIsTestingAi] = useState(false);
+  const [aiTestResult, setAiTestResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [isSavingAi, setIsSavingAi] = useState(false);
+
   useEffect(() => {
     async function loadSmtp() {
       const savedSmtp = await fetchSmtpConfig();
       if (savedSmtp) setSmtp(savedSmtp);
     }
     loadSmtp();
+  }, []);
+
+  useEffect(() => {
+    async function loadAi() {
+      const saved = await fetchAiConfig();
+      if (saved) setAiConfig(saved);
+    }
+    loadAi();
   }, []);
 
   useEffect(() => {
@@ -219,6 +245,47 @@ export default function SettingsPage() {
     setMaxUploadSize(20);
   };
 
+  const AI_MODELS: Record<AiProvider, string[]> = {
+    anthropic: ['claude-sonnet-4-20250514', 'claude-opus-4-5', 'claude-haiku-4-5-20251001'],
+    openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o1-mini'],
+    ollama: ['llama3', 'llama3.1', 'mistral', 'phi3', 'gemma2', 'deepseek-r1'],
+  };
+
+  const handleSaveAi = async () => {
+    setIsSavingAi(true);
+    try {
+      await updateAiConfig(aiConfig);
+      toast({ title: 'AI Settings Saved', description: 'Configuration has been updated.' });
+      setAiTestResult(null);
+    } catch {
+      toast({ title: 'Error', description: 'Failed to save AI settings.', variant: 'destructive' });
+    } finally {
+      setIsSavingAi(false);
+    }
+  };
+
+  const handleTestAi = async () => {
+    setIsTestingAi(true);
+    setAiTestResult(null);
+    try {
+      const response = await fetch('/api/ai/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(aiConfig),
+      });
+      const data = await response.json();
+      if (data.ok) {
+        setAiTestResult({ ok: true, msg: `Connection successful. Response: "${data.reply}"` });
+      } else {
+        setAiTestResult({ ok: false, msg: data.error ?? 'Connection failed.' });
+      }
+    } catch (e: any) {
+      setAiTestResult({ ok: false, msg: e.message ?? 'Connection failed.' });
+    } finally {
+      setIsTestingAi(false);
+    }
+  };
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -277,6 +344,9 @@ export default function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="smtp" className="rounded-lg px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
             <Mail className="h-4 w-4" /> Email (SMTP)
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="rounded-lg px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+            <Brain className="h-4 w-4" /> AI Integration
           </TabsTrigger>
           <TabsTrigger value="database" className="rounded-lg px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
             <Database className="h-4 w-4" /> Maintenance
@@ -516,6 +586,149 @@ export default function SettingsPage() {
               <Button onClick={handleSave} disabled={isSaving} className="font-bold">
                 {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Configuration
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ai" className="space-y-6 animate-in slide-in-from-bottom-2">
+          <Card className="border-none shadow-lg">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2"><Brain className="h-5 w-5" /> AI Integration</CardTitle>
+                  <CardDescription>Configure the AI provider for anomaly detection and narrative report generation.</CardDescription>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-muted-foreground">{aiConfig.enabled ? 'Enabled' : 'Disabled'}</span>
+                  <Switch checked={aiConfig.enabled} onCheckedChange={(v) => setAiConfig({ ...aiConfig, enabled: v })} />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Provider selection */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">AI Provider</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {(['anthropic', 'openai', 'ollama'] as AiProvider[]).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => {
+                        const defaultModels: Record<AiProvider, string> = { anthropic: 'claude-sonnet-4-20250514', openai: 'gpt-4o', ollama: 'llama3' };
+                        setAiConfig({ ...aiConfig, provider: p, model: defaultModels[p] });
+                        setAiTestResult(null);
+                      }}
+                      className={cn(
+                        'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all',
+                        aiConfig.provider === p ? 'border-primary bg-primary/5' : 'border-transparent bg-muted/30 hover:bg-muted/50'
+                      )}
+                    >
+                      <Zap className={cn('h-6 w-6', aiConfig.provider === p ? 'text-primary' : 'text-muted-foreground')} />
+                      <span className="text-xs font-black uppercase tracking-widest capitalize">{p}</span>
+                      {p === 'ollama' && <span className="text-[9px] text-muted-foreground font-semibold">Local / Self-hosted</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* API Key (not for Ollama) */}
+              {aiConfig.provider !== 'ollama' && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Key className="h-3.5 w-3.5" /> API Key</Label>
+                  <div className="relative">
+                    <Input
+                      type={showApiKey ? 'text' : 'password'}
+                      placeholder={aiConfig.provider === 'anthropic' ? 'sk-ant-...' : 'sk-...'}
+                      value={aiConfig.apiKey}
+                      onChange={(e) => setAiConfig({ ...aiConfig, apiKey: e.target.value })}
+                      className="pr-10 font-mono text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Stored encrypted in the local database. Never exposed to the client.</p>
+                </div>
+              )}
+
+              {/* Ollama base URL */}
+              {aiConfig.provider === 'ollama' && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2"><Server className="h-3.5 w-3.5" /> Ollama Base URL</Label>
+                  <Input
+                    placeholder="http://localhost:11434"
+                    value={aiConfig.ollamaBaseUrl}
+                    onChange={(e) => setAiConfig({ ...aiConfig, ollamaBaseUrl: e.target.value })}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              )}
+
+              {/* Model selection */}
+              <div className="space-y-2">
+                <Label>Model</Label>
+                <div className="flex gap-2">
+                  <select
+                    value={aiConfig.model}
+                    onChange={(e) => setAiConfig({ ...aiConfig, model: e.target.value })}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {(AI_MODELS[aiConfig.provider] || []).map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <Input
+                    placeholder="or type custom model"
+                    value={AI_MODELS[aiConfig.provider]?.includes(aiConfig.model) ? '' : aiConfig.model}
+                    onChange={(e) => e.target.value && setAiConfig({ ...aiConfig, model: e.target.value })}
+                    className="w-56 text-sm font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Features info */}
+              <div className="p-4 bg-muted/30 rounded-xl border border-dashed space-y-3">
+                <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Enabled Features</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start gap-2">
+                    <div className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><CheckCircle2 className="h-3 w-3" /></div>
+                    <div><span className="font-bold">Anomaly Detection</span> — flags budget overruns, unit cost errors, and missing actuals on delivered items in the Reports page.</div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <div className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5"><CheckCircle2 className="h-3 w-3" /></div>
+                    <div><span className="font-bold">Narrative Report</span> — generates an executive summary paragraph from the current report view, ready to copy for VP/AVP briefings.</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Test result */}
+              {aiTestResult && (
+                <div className={cn(
+                  'flex items-start gap-3 p-4 rounded-xl border text-sm',
+                  aiTestResult.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-800'
+                )}>
+                  {aiTestResult.ok ? <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 shrink-0 mt-0.5" />}
+                  <span>{aiTestResult.msg}</span>
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="bg-muted/30 border-t flex justify-between p-6">
+              <Button
+                variant="outline"
+                onClick={handleTestAi}
+                disabled={isTestingAi || (!aiConfig.apiKey && aiConfig.provider !== 'ollama')}
+                className="gap-2 border-primary/20 hover:bg-primary/5 text-primary font-bold"
+              >
+                {isTestingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                Test Connection
+              </Button>
+              <Button onClick={handleSaveAi} disabled={isSavingAi} className="font-bold">
+                {isSavingAi ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4" />}
+                Save AI Settings
               </Button>
             </CardFooter>
           </Card>

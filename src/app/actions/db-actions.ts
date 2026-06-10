@@ -15,24 +15,33 @@ const BudgetEntrySchema = z.object({
   division: z.string(),
   section: z.string(),
   location: z.string(),
-  locationDetails: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
+  locationDetails: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
   classification: z.enum(['Hardware', 'Software', 'Others']),
   category: z.enum(['CAPEX', 'OPEX']),
-  account: z.string(),
+  account: z.enum([
+    'Capex',
+    'Seminars and Trainings - online or face to face',
+    'Seminars and Trainings - Subscriptions/Annual Renewal',
+    'Repairs and Maintenance - one time purchase',
+    'Repairs and Maintenance - Subscriptions/Annual Renewal',
+    'Miscellaneous - Perpetual',
+    'Miscellaneous - Subscriptions/Annual Renewal',
+    'Office Supplies',
+  ]),
   projectTitle: z.string().min(1),
   itemDescription: z.string(),
   quantity: z.number().int().min(1),
   unitCostBudget: z.number().min(0),
   totalCostBudget: z.number(),
-  unitCostActual: z.number().optional().nullable().default(0),
-  totalCostActual: z.number().optional().nullable().default(0),
-  prNumber: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
-  dateDelivered: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
-  grSisNumber: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
-  accountablePerson: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
+  unitCostActual: z.number().optional().nullable().transform(v => v ?? undefined),
+  totalCostActual: z.number().optional().nullable().transform(v => v ?? undefined),
+  prNumber: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
+  dateDelivered: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
+  grSisNumber: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
+  accountablePerson: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
   status: z.string(),
-  statusOthers: z.string().optional().nullable().transform(v => v === '' ? undefined : v),
-  remarks: z.string().optional().nullable().default(''),
+  statusOthers: z.string().optional().nullable().transform(v => (v === '' || v === null) ? undefined : v),
+  remarks: z.string().optional().nullable().transform(v => v ?? ''),
   attachments: z.array(z.string()).optional().default([]),
   createdAt: z.string(),
 });
@@ -43,7 +52,7 @@ const UserSchema = z.object({
   name: z.string().min(1),
   email: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().email().optional()),
   contactNumber: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
-  role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).nullable().optional(),
+  role: z.enum(['Admin', 'Manager', 'AVP', 'VP', 'Viewer']).nullable().optional().transform(v => v ?? undefined),
   section: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   division: z.preprocess(v => (v === '' || v === null) ? undefined : v, z.string().optional()),
   twoFactorEnabled: z.preprocess(v => !!v, z.boolean()),
@@ -365,4 +374,13 @@ export async function verifyLogin2FA(userId: string, code: string) {
   if (!user || !user.twoFactorSecret) return false;
   
   return authenticator.verify({ token: code, secret: user.twoFactorSecret });
+}
+
+export async function fetchAiConfig() {
+  return db.getAiConfig();
+}
+
+export async function updateAiConfig(config: import('@/lib/types').AiConfig) {
+  await db.saveAiConfig(config);
+  return { success: true };
 }

@@ -139,6 +139,15 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS locked_years (
     year INTEGER PRIMARY KEY
   );
+
+  CREATE TABLE IF NOT EXISTS ai_config (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    provider TEXT DEFAULT 'anthropic',
+    apiKey TEXT DEFAULT '',
+    model TEXT DEFAULT 'claude-sonnet-4-20250514',
+    ollamaBaseUrl TEXT DEFAULT 'http://localhost:11434',
+    enabled INTEGER DEFAULT 0
+  );
 `);
 
 // --- Advanced Migrations (Safe Column Addition) ---
@@ -168,6 +177,8 @@ addColumnIfNotExists('branding', 'theme', 'TEXT');
 addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
 addColumnIfNotExists('resources', 'attachments', 'TEXT');
+addColumnIfNotExists('ai_config', 'ollamaBaseUrl', "TEXT DEFAULT 'http://localhost:11434'");
+addColumnIfNotExists('ai_config', 'enabled', 'INTEGER DEFAULT 0');
 
 // --- Seeding Logic ---
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
@@ -578,6 +589,25 @@ export async function saveSmtpConfig(config: SmtpConfig) {
       INSERT INTO smtp_settings (id, host, port, user, pass, fromEmail, fromName, secure)
       VALUES (1, @host, @port, @user, @pass, @fromEmail, @fromName, @secure)
     `).run(params);
+  }
+}
+
+// --- AI Config ---
+export async function getAiConfig(): Promise<import('./types').AiConfig> {
+  const row = db.prepare('SELECT * FROM ai_config WHERE id = 1').get() as any;
+  if (!row) {
+    return { provider: 'anthropic', apiKey: '', model: 'claude-sonnet-4-20250514', ollamaBaseUrl: 'http://localhost:11434', enabled: false };
+  }
+  return { ...row, enabled: !!row.enabled };
+}
+
+export async function saveAiConfig(config: import('./types').AiConfig) {
+  const existing = db.prepare('SELECT id FROM ai_config WHERE id = 1').get();
+  const params = { ...config, enabled: config.enabled ? 1 : 0 };
+  if (existing) {
+    db.prepare('UPDATE ai_config SET provider=@provider, apiKey=@apiKey, model=@model, ollamaBaseUrl=@ollamaBaseUrl, enabled=@enabled WHERE id=1').run(params);
+  } else {
+    db.prepare('INSERT INTO ai_config (id, provider, apiKey, model, ollamaBaseUrl, enabled) VALUES (1, @provider, @apiKey, @model, @ollamaBaseUrl, @enabled)').run(params);
   }
 }
 

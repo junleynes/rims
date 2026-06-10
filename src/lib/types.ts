@@ -136,3 +136,13 @@ export interface Position {
 export interface LockedYear {
   year: number;
 }
+
+export type AiProvider = 'anthropic' | 'openai' | 'ollama';
+
+export interface AiConfig {
+  provider: AiProvider;
+  apiKey: string;
+  model: string;
+  ollamaBaseUrl?: string;
+  enabled: boolean;
+}
