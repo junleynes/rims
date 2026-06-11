@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   TrendingUp, Lock, ShieldCheck, Loader2, ArrowLeft, ShieldAlert, QrCode, CheckCircle2,
-  BarChart3, Users, Table2, BookOpen, Layers, Network, AlertTriangle
+  BarChart3, Users, Table2, BookOpen, Network, Brain, Sparkles, AlertTriangle, Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,12 +17,15 @@ import { useBranding } from '@/components/branding-context';
 import Image from 'next/image';
 
 const FEATURES = [
-  { title: "Role-Based Data Access", desc: "Automated filtering ensures privacy and departmental data integrity.", icon: Users },
-  { title: "Real-Time Analytics", desc: "Dynamic dashboards with comprehensive CAPEX and OPEX visualizations.", icon: BarChart3 },
-  { title: "Resource Inventory Log", desc: "Structured tracking of hardware and software assets across the organization.", icon: Table2 },
-  { title: "Centralized Knowledge Base", desc: "Quick access to standard operating procedures and technical manuals.", icon: BookOpen },
-  { title: "Table of Organization", desc: "Comprehensive mapping of functional reporting lines and command chains.", icon: Network },
-  { title: "Multi-Factor Authentication", desc: "Secure TOTP verification compatible with Google Authenticator.", icon: ShieldCheck },
+  { title: "Role-Based Data Access", desc: "Automated filtering ensures privacy and departmental data integrity across all divisions and sections.", icon: Users },
+  { title: "Real-Time Analytics", desc: "Dynamic dashboards with comprehensive CAPEX and OPEX visualizations, utilization rates, and trend breakdowns.", icon: BarChart3 },
+  { title: "Resource Inventory Log", desc: "Structured tracking of hardware and software assets — from procurement to delivery and SAMD turnover.", icon: Table2 },
+  { title: "AI Anomaly Detection", desc: "Automatically flags budget overruns, unit cost magnitude errors, and unrecorded actuals on delivered items.", icon: AlertTriangle },
+  { title: "AI Budget Autofill", desc: "Intelligent field suggestions for project titles and item descriptions based on category and classification inputs.", icon: Zap },
+  { title: "AI Narrative Reports", desc: "Generates executive-ready summary paragraphs from live report data — ready for VP and AVP briefings.", icon: Sparkles },
+  { title: "Centralized Knowledge Base", desc: "Quick access to standard operating procedures, technical manuals, and policy documents.", icon: BookOpen },
+  { title: "Table of Organization", desc: "Comprehensive mapping of functional reporting lines and division command chains.", icon: Network },
+  { title: "Multi-Factor Authentication", desc: "Secure TOTP verification compatible with Google Authenticator. Enforced per admin policy.", icon: ShieldCheck },
 ];
 
 function LoginPage() {
