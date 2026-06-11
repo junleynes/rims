@@ -229,11 +229,11 @@ seedIfEmpty('sections', `
 `);
 
 const adminPasswordHash = bcrypt.hashSync('P@ssw0rd', 12);
-const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin.rims.local') as any;
+const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin@rims.local') as any;
 if (!existingAdmin) {
   db.prepare(`
     INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
-    VALUES ('admin-001', 'admin.rims.local', ?, 'RIMS Administrator', 'admin@rims.local', 'N/A', 'Admin', 'System Administrator', 'N/A', 0, 0)
+    VALUES ('admin-001', 'admin@rims.local', ?, 'RIMS Administrator', 'admin@rims.local', 'N/A', 'Admin', 'System Administrator', 'N/A', 0, 0)
   `).run(adminPasswordHash);
 }
 

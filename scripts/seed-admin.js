@@ -16,7 +16,7 @@ console.log(`Opening database at: ${DB_PATH}`);
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 
-const USERNAME = 'admin.rims.local';
+const USERNAME = 'admin@rims.local';
 const PASSWORD = 'P@ssw0rd';
 const HASH = bcrypt.hashSync(PASSWORD, 12);
 const ID = crypto.randomUUID();
