@@ -35,13 +35,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<SessionUser | null>(null);
+export function AuthProvider({ children, initialUser }: { children: React.ReactNode; initialUser?: SessionUser }) {
+  const [user, setUser] = useState<SessionUser | null>(initialUser ?? null);
   const [pending, setPending] = useState<PendingState | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // If initialUser was provided by the server layout, skip the async bootstrap
+  const [isLoading, setIsLoading] = useState(!initialUser);
 
-  // Bootstrap: hydrate session from server cookie on mount
+  // Only bootstrap from server if no initialUser was passed (i.e. login page)
   useEffect(() => {
+    if (initialUser) return;
     actionGetSession().then((u) => {
       setUser(u);
       setIsLoading(false);

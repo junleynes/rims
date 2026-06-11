@@ -4,21 +4,12 @@ import { useAuth } from '@/components/auth-context';
 import { useBranding } from '@/components/branding-context';
 import { SidebarNav } from '@/components/layout/sidebar-nav';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { useRouter } from 'next/navigation';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Loader2 } from 'lucide-react';
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const { config } = useBranding();
-  const router = useRouter();
-
-  // Client-side failsafe in case session expires mid-visit
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/');
-    }
-  }, [user, isLoading, router]);
 
   if (isLoading || !user) {
     return (
