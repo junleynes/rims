@@ -2,14 +2,27 @@ import { getIronSession, IronSession, SessionOptions } from 'iron-session';
 import { cookies } from 'next/headers';
 import type { Role } from './types';
 
-// Fail loudly at startup if the secret is missing rather than silently
-// producing broken/insecure sessions at runtime.
-if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
-  throw new Error(
-    '[RIMS] SESSION_SECRET environment variable is missing or too short (minimum 32 characters). ' +
-    'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))" ' +
-    'and add it to your .env.local file.'
-  );
+// Secret is validated at runtime inside getSession(), not at module load,
+// so that `next build` (which statically imports modules) does not fail.
+function getSessionOptions(): SessionOptions {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      '[RIMS] SESSION_SECRET environment variable is missing or too short (minimum 32 characters). ' +
+      "Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\" " +
+      'and add it to your .env.local file.'
+    );
+  }
+  return {
+    password: secret,
+    cookieName: 'rims_session',
+    cookieOptions: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 8, // 8 hours
+    },
+  };
 }
 
 export interface SessionUser {
@@ -36,20 +49,9 @@ export interface RimsSessionData {
   lastFailedAt?: number;
 }
 
-export const SESSION_OPTIONS: SessionOptions = {
-  password: process.env.SESSION_SECRET as string,
-  cookieName: 'rims_session',
-  cookieOptions: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 8, // 8 hours
-  },
-};
-
 export async function getSession(): Promise<IronSession<RimsSessionData>> {
   const cookieStore = await cookies();
-  return getIronSession<RimsSessionData>(cookieStore, SESSION_OPTIONS);
+  return getIronSession<RimsSessionData>(cookieStore, getSessionOptions());
 }
 
 /** Returns the authenticated user or throws a 401-style error */
