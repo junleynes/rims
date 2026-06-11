@@ -43,3 +43,14 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+# SQLite database files — never commit
+data.db
+data.db-shm
+data.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# Environment secrets
+.env.local
+.env.production

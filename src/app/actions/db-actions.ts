@@ -7,6 +7,7 @@ import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 import nodemailer from 'nodemailer';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry, LockedYear } from '@/lib/types';
+import { requireSession, requireAdmin } from '@/lib/session';
 
 // Strict validation schemas with permissive empty-string handling
 const BudgetEntrySchema = z.object({
@@ -88,11 +89,13 @@ export async function getBudgets() {
 }
 
 export async function saveBudgets(budgets: BudgetEntry[]) {
+  await requireSession();
   const validated = budgets.map(b => BudgetEntrySchema.parse(b));
   await db.saveResources(validated);
 }
 
 export async function clearYearData(year: number) {
+  await requireAdmin();
   await db.deleteResourcesByYear(year);
   return true;
 }
@@ -102,6 +105,7 @@ export async function fetchSystemUpdates() {
 }
 
 export async function saveSystemUpdates(updates: SystemUpdate[]) {
+  await requireAdmin();
   const validated = updates.map(u => SystemUpdateSchema.parse(u));
   await db.saveSystemUpdates(validated);
 }
@@ -111,12 +115,14 @@ export async function fetchKnowledgeBaseEntries() {
 }
 
 export async function createKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
+  await requireSession();
   const validated = KnowledgeBaseEntrySchema.parse(entry);
   await db.saveKnowledgeBaseEntry(validated);
   return true;
 }
 
 export async function removeKnowledgeBaseEntry(id: string) {
+  await requireSession();
   await db.deleteKnowledgeBaseEntry(id);
   return true;
 }
@@ -147,8 +153,7 @@ export async function getSystemData() {
   };
 }
 
-export async function saveSystemData(update: {
-  divisions?: Division[],
+export async function saveSystemData(update: {  divisions?: Division[],
   sections?: Section[],
   locations?: Location[],
   statusOptions?: StatusOption[],
@@ -158,6 +163,7 @@ export async function saveSystemData(update: {
   systemConfig?: SystemConfig,
   lockedYears?: LockedYear[]
 }) {
+  await requireAdmin();
   if (update.divisions) await db.saveDivisions(update.divisions);
   if (update.sections) await db.saveSections(update.sections);
   if (update.locations) await db.saveLocations(update.locations);
@@ -217,6 +223,7 @@ export async function fetchSmtpConfig() {
 }
 
 export async function updateSmtpConfig(config: SmtpConfig) {
+  await requireAdmin();
   await db.saveSmtpConfig(config);
   return true;
 }
@@ -381,6 +388,7 @@ export async function fetchAiConfig() {
 }
 
 export async function updateAiConfig(config: import('@/lib/types').AiConfig) {
+  await requireAdmin();
   await db.saveAiConfig(config);
   return { success: true };
 }

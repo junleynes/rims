@@ -1,113 +1,105 @@
-
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/lib/types';
-import { verifyUserCredentials, verifyLogin2FA, confirmTwoFactor } from '@/app/actions/db-actions';
-import { useToast } from '@/hooks/use-toast';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import {
+  actionLogin,
+  actionLogout,
+  actionVerify2FA,
+  actionConfirmSetup2FA,
+  actionGetSession,
+} from '@/app/actions/auth-actions';
+import type { SessionUser } from '@/lib/session';
 
-interface AuthContextType {
-  user: User | null;
-  pendingUser: User | null;
-  login: (username: string, password?: string) => Promise<void>;
-  verify2FA: (code: string) => Promise<boolean>;
-  setupForced2FA: (code: string, secret: string) => Promise<boolean>;
-  cancel2FA: () => void;
-  logout: () => void;
-  updateCurrentUser: (updatedUser: User) => void;
-  isLoading: boolean;
+interface PendingState {
+  needs2FASetup?: boolean;
+  setupData?: { secret: string; qrCodeUrl: string };
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+interface AuthContextType {
+  user: SessionUser | null;
+  pending: PendingState | null;
+  isLoading: boolean;
+  login: (username: string, password: string) => Promise<
+    | { status: 'locked'; remainingSeconds: number }
+    | { status: 'invalid' }
+    | { status: 'needs_2fa_setup'; qrCodeUrl: string; secret: string }
+    | { status: 'needs_2fa_verify' }
+    | { status: 'ok' }
+  >;
+  verify2FA: (code: string) => Promise<{ success: boolean; error?: string }>;
+  confirmSetup2FA: (code: string, secret: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  cancelPending: () => void;
+  updateCurrentUser: (partial: Partial<SessionUser>) => void;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [pendingUser, setPendingUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [pending, setPending] = useState<PendingState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
 
+  // Bootstrap: hydrate session from server cookie on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('rims_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        localStorage.removeItem('rims_user');
-      }
-    }
-    setIsLoading(false);
+    actionGetSession().then((u) => {
+      setUser(u);
+      setIsLoading(false);
+    });
   }, []);
 
-  const login = async (username: string, password?: string) => {
-    const authenticatedUser = await verifyUserCredentials(username, password);
-    
-    if (authenticatedUser) {
-      if (authenticatedUser.twoFactorEnabled) {
-        // Handle forced 2FA or standard 2FA
-        setPendingUser(authenticatedUser);
-      } else {
-        setUser(authenticatedUser);
-        localStorage.setItem('rims_user', JSON.stringify(authenticatedUser));
-      }
-    } else {
-      throw new Error('Authentication failed. Invalid username or password.');
+  const login = useCallback(async (username: string, password: string) => {
+    const result = await actionLogin(username, password);
+    if (result.status === 'ok') {
+      setUser(result.user);
+      setPending(null);
+    } else if (result.status === 'needs_2fa_verify') {
+      setPending({});
+    } else if (result.status === 'needs_2fa_setup') {
+      setPending({ needs2FASetup: true, setupData: { secret: result.secret, qrCodeUrl: result.qrCodeUrl } });
     }
-  };
+    return result;
+  }, []);
 
-  const verify2FA = async (code: string) => {
-    if (!pendingUser) return false;
-
-    const isValid = await verifyLogin2FA(pendingUser.id, code);
-    
-    if (isValid) {
-      setUser(pendingUser);
-      localStorage.setItem('rims_user', JSON.stringify(pendingUser));
-      setPendingUser(null);
-      return true;
+  const verify2FA = useCallback(async (code: string) => {
+    const result = await actionVerify2FA(code);
+    if (result.success && result.user) {
+      setUser(result.user);
+      setPending(null);
     }
-    return false;
-  };
+    return result;
+  }, []);
 
-  const setupForced2FA = async (code: string, secret: string) => {
-    if (!pendingUser) return false;
-    
-    const result = await confirmTwoFactor(pendingUser.id, code, secret);
-    if (result.success) {
-      const updatedUser = { ...pendingUser, twoFactorEnabled: true, needs2FASetup: false };
-      setUser(updatedUser);
-      localStorage.setItem('rims_user', JSON.stringify(updatedUser));
-      setPendingUser(null);
-      return true;
+  const confirmSetup2FA = useCallback(async (code: string, secret: string) => {
+    const result = await actionConfirmSetup2FA(code, secret);
+    if (result.success && result.user) {
+      setUser(result.user);
+      setPending(null);
     }
-    return false;
-  };
+    return result;
+  }, []);
 
-  const cancel2FA = () => {
-    setPendingUser(null);
-  };
-
-  const logout = () => {
+  const logout = useCallback(async () => {
+    await actionLogout();
     setUser(null);
-    setPendingUser(null);
-    localStorage.removeItem('rims_user');
-  };
+    setPending(null);
+  }, []);
 
-  const updateCurrentUser = (updatedUser: User) => {
-    setUser(updatedUser);
-    localStorage.setItem('rims_user', JSON.stringify(updatedUser));
-  };
+  const cancelPending = useCallback(() => setPending(null), []);
+
+  const updateCurrentUser = useCallback((partial: Partial<SessionUser>) => {
+    setUser(prev => prev ? { ...prev, ...partial } : prev);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ user, pendingUser, login, verify2FA, setupForced2FA, cancel2FA, logout, updateCurrentUser, isLoading }}>
+    <AuthContext.Provider value={{ user, pending, isLoading, login, verify2FA, confirmSetup2FA, logout, cancelPending, updateCurrentUser }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+}

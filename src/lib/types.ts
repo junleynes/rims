@@ -80,6 +80,7 @@ export interface BrandingConfig {
   logoUrl?: string;
   theme?: string;
   darkMode?: boolean;
+  financialYear?: string;
 }
 
 export interface SystemConfig {

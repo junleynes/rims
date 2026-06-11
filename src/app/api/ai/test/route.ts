@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callAi } from '@/lib/ai-provider';
+import { requireAdmin } from '@/lib/session';
 import type { AiConfig } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
+  try {
+    await requireAdmin();
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const config: AiConfig = await req.json();
     const reply = await callAi(

@@ -34,7 +34,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { setupTwoFactor, confirmTwoFactor, disableTwoFactor, changeUserPassword } from '@/app/actions/db-actions';
+import { actionSetupTwoFactor, actionConfirmTwoFactor, actionDisableTwoFactor, actionChangePassword } from '@/app/actions/auth-actions';
 import Image from 'next/image';
 
 export default function ProfilePage() {
@@ -98,20 +98,20 @@ export default function ProfilePage() {
       toast({ title: "Validation Error", description: "New passwords do not match.", variant: "destructive" });
       return;
     }
-    if (passwords.new.length < 4) {
-      toast({ title: "Validation Error", description: "Password must be at least 4 characters.", variant: "destructive" });
+    if (passwords.new.length < 12) {
+      toast({ title: "Validation Error", description: "Password must be at least 12 characters.", variant: "destructive" });
       return;
     }
 
     setIsUpdatingPassword(true);
     try {
-      const result = await changeUserPassword(user.id, passwords.old, passwords.new);
+      const result = await actionChangePassword(passwords.old, passwords.new);
       if (result.success) {
         toast({ title: "Password Updated", description: "Your account security credentials have been changed." });
         setPasswords({ old: '', new: '', confirm: '' });
         setShowPasswordForm(false);
       } else {
-        toast({ title: "Update Failed", description: result.message || "Could not change password.", variant: "destructive" });
+        toast({ title: "Update Failed", description: result.error || "Could not change password.", variant: "destructive" });
       }
     } catch (e) {
       toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
@@ -143,7 +143,7 @@ export default function ProfilePage() {
   const handleStart2FASetup = async () => {
     setIsSettingUp2FA(true);
     try {
-      const data = await setupTwoFactor(user.id);
+      const data = await actionSetupTwoFactor();
       setSetupData(data);
     } catch (e) {
       toast({ title: "Setup Error", description: "Could not initiate 2FA setup.", variant: "destructive" });
@@ -155,7 +155,7 @@ export default function ProfilePage() {
     if (!setupData || verificationCode.length !== 6) return;
     setIsVerifying2FA(true);
     try {
-      const result = await confirmTwoFactor(user.id, verificationCode, setupData.secret);
+      const result = await actionConfirmTwoFactor(verificationCode, setupData.secret);
       if (result.success) {
         toast({ title: "2FA Activated", description: "Google Authenticator setup successful." });
         updateCurrentUser({ ...user, twoFactorEnabled: true });
@@ -163,7 +163,7 @@ export default function ProfilePage() {
         setSetupData(null);
         setVerificationCode('');
       } else {
-        toast({ title: "Verification Failed", description: result.message, variant: "destructive" });
+        toast({ title: "Verification Failed", description: result.error, variant: "destructive" });
       }
     } catch (e) {
       toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
@@ -174,7 +174,7 @@ export default function ProfilePage() {
 
   const handleDisable2FA = async () => {
     try {
-      await disableTwoFactor(user.id);
+      await actionDisableTwoFactor();
       updateCurrentUser({ ...user, twoFactorEnabled: false });
       toast({ title: "2FA Disabled", description: "Authenticator security has been removed from your account." });
     } catch (e) {

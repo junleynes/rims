@@ -2,6 +2,7 @@
 
 import * as db from '@/lib/server-db';
 import { callAi } from '@/lib/ai-provider';
+import { requireSession } from '@/lib/session';
 import type { BudgetEntry } from '@/lib/types';
 
 export interface AnomalyFlag {
@@ -16,6 +17,7 @@ export interface AnomalyFlag {
 }
 
 export async function detectAnomalies(budgets: BudgetEntry[]): Promise<{ flags: AnomalyFlag[]; error?: string }> {
+  await requireSession();
   const config = await db.getAiConfig();
 
   // Run rule-based detection first (works even without AI)
@@ -112,6 +114,7 @@ export async function generateNarrativeReport(
   year: string,
   division: string
 ): Promise<{ narrative: string; error?: string }> {
+  await requireSession();
   const config = await db.getAiConfig();
 
   if (!config.enabled) {
