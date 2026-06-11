@@ -3,8 +3,6 @@
 import * as db from '@/lib/server-db';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import { authenticator } from 'otplib';
-import QRCode from 'qrcode';
 import nodemailer from 'nodemailer';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry, LockedYear } from '@/lib/types';
 import { requireSession, requireAdmin } from '@/lib/session';
@@ -332,55 +330,6 @@ export async function resetUserPassword(userId: string, newPassword: string) {
   const hash = bcrypt.hashSync(newPassword, 10);
   await db.updateUserPassword(userId, hash);
   return { success: true };
-}
-
-export async function changeUserPassword(userId: string, oldPassword?: string, newPassword?: string) {
-  if (!newPassword) throw new Error("New password required");
-  
-  const user = await db.getUserById(userId);
-  if (!user || !user.password_hash) throw new Error("User not found");
-
-  if (oldPassword) {
-    const isValid = bcrypt.compareSync(oldPassword, user.password_hash);
-    if (!isValid) return { success: false, message: "Current password is incorrect." };
-  }
-
-  const hash = bcrypt.hashSync(newPassword, 10);
-  await db.updateUserPassword(userId, hash);
-  return { success: true };
-}
-
-// --- TOTP 2FA Actions ---
-export async function setupTwoFactor(userId: string) {
-  const user = await db.getUserById(userId);
-  if (!user) throw new Error("User not found");
-  
-  const secret = authenticator.generateSecret();
-  const otpauth = authenticator.keyuri(user.username || user.name, 'R.I.M.S', secret);
-  const qrCodeUrl = await QRCode.toDataURL(otpauth);
-  
-  return { secret, qrCodeUrl };
-}
-
-export async function confirmTwoFactor(userId: string, code: string, secret: string) {
-  const isValid = authenticator.verify({ token: code, secret });
-  if (isValid) {
-    await db.updateTwoFactor(userId, true, secret);
-    return { success: true };
-  }
-  return { success: false, message: "Invalid verification code. Please try again." };
-}
-
-export async function disableTwoFactor(userId: string) {
-  await db.updateTwoFactor(userId, false, null);
-  return { success: true };
-}
-
-export async function verifyLogin2FA(userId: string, code: string) {
-  const user = await db.getUserById(userId);
-  if (!user || !user.twoFactorSecret) return false;
-  
-  return authenticator.verify({ token: code, secret: user.twoFactorSecret });
 }
 
 export async function fetchAiConfig() {

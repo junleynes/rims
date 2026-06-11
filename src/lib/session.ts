@@ -2,6 +2,16 @@ import { getIronSession, IronSession, SessionOptions } from 'iron-session';
 import { cookies } from 'next/headers';
 import type { Role } from './types';
 
+// Fail loudly at startup if the secret is missing rather than silently
+// producing broken/insecure sessions at runtime.
+if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET.length < 32) {
+  throw new Error(
+    '[RIMS] SESSION_SECRET environment variable is missing or too short (minimum 32 characters). ' +
+    'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))" ' +
+    'and add it to your .env.local file.'
+  );
+}
+
 export interface SessionUser {
   id: string;
   name: string;
