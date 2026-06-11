@@ -61,7 +61,7 @@ function LoginPage() {
       toast({ title: 'Authentication Failed', description: 'Invalid username or password.', variant: 'destructive' });
     } else if (result.status === 'ok') {
       toast({ title: 'Welcome back', description: 'Signed in successfully.' });
-      router.push('/dashboard');
+      window.location.href = '/dashboard';
     }
     // needs_2fa_verify and needs_2fa_setup are handled by pending state
   };
@@ -80,7 +80,7 @@ function LoginPage() {
     setSubmitting(false);
     if (result.success) {
       toast({ title: pending?.needs2FASetup ? '2FA Activated' : 'Welcome back', description: 'Authentication complete.' });
-      router.push('/dashboard');
+      window.location.href = '/dashboard';
     } else {
       toast({ title: 'Invalid Code', description: result.error ?? 'Please try again.', variant: 'destructive' });
     }
