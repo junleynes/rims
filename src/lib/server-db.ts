@@ -228,16 +228,14 @@ seedIfEmpty('sections', `
   ('code-compliance-unit', 'CODE Compliance Unit', 'project-management-division')
 `);
 
-const adminPasswordHash = bcrypt.hashSync('password', 10);
-const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin') as any;
+const adminPasswordHash = bcrypt.hashSync('P@ssw0rd', 12);
+const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin.rims.local') as any;
 if (!existingAdmin) {
   db.prepare(`
     INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
-    VALUES ('admin-001', 'admin', ?, 'System Administrator', 'admin@rims.com', 'N/A', 'Admin', 'Chief Technology Officer', 'Board of Directors', 0, 0)
+    VALUES ('admin-001', 'admin.rims.local', ?, 'RIMS Administrator', 'admin@rims.local', 'N/A', 'Admin', 'System Administrator', 'N/A', 0, 0)
   `).run(adminPasswordHash);
 }
-
-db.prepare("UPDATE users SET twoFactorEnabled = 0, twoFactorSecret = NULL WHERE username = 'admin'").run();
 
 seedIfEmpty('locations', `
   INSERT INTO locations (id, name) VALUES 
