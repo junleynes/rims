@@ -22,6 +22,7 @@ import { useSystemData } from '@/components/system-data-context';
 import { CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
 import { Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { uploadFile, deleteFile, getFileUrl } from '@/lib/file-upload';
 import { autofillBudgetFields } from '@/app/actions/ai-autofill-action';
 import Image from 'next/image';
 
@@ -136,34 +137,39 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     return filtered;
   }, [sections, divisions, formData.division, user, isManager]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    files.forEach(file => {
+    for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
-        toast({ 
-          title: "File too large", 
-          description: `${file.name} exceeds the ${systemConfig.maxUploadSize || 20}MB limit.`, 
-          variant: "destructive" 
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds the ${systemConfig.maxUploadSize || 20}MB limit.`,
+          variant: "destructive"
         });
-        return;
+        continue;
       }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ 
-          ...prev, 
-          attachments: [...(prev.attachments || []), reader.result as string] 
+      try {
+        const result = await uploadFile(file, 'budget-attachments');
+        setFormData(prev => ({
+          ...prev,
+          attachments: [...(prev.attachments || []), result.filePath]
         }));
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err: any) {
+        toast({ title: 'Upload Failed', description: `${file.name}: ${err.message}`, variant: 'destructive' });
+      }
+    }
 
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removeAttachment = (index: number) => {
+  const removeAttachment = async (index: number) => {
+    const path = formData.attachments?.[index];
+    if (path && !path.startsWith('data:')) {
+      await deleteFile(path).catch(() => {}); // best effort
+    }
     setFormData(prev => ({
       ...prev,
       attachments: (prev.attachments || []).filter((_, i) => i !== index)
@@ -539,20 +545,26 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
               </Label>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {(formData.attachments || []).map((url, idx) => (
+                {(formData.attachments || []).map((filePath, idx) => {
+                  const fileUrl = getFileUrl(filePath);
+                  const ext = filePath.split('.').pop()?.toLowerCase() ?? '';
+                  const isImage = ['png','jpg','jpeg','gif','webp'].includes(ext) || filePath.startsWith('data:image/');
+                  return (
                   <div key={idx} className="relative aspect-video rounded-xl overflow-hidden border shadow-sm group bg-muted/20">
-                    {url.startsWith('data:image/') ? (
+                    {isImage ? (
                       <Image 
-                        src={url} 
+                        src={fileUrl} 
                         alt={`Attachment ${idx + 1}`} 
                         fill 
                         className="object-cover"
                       />
                     ) : (
-                      <div className="h-full flex flex-col items-center justify-center gap-2">
+                      <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="h-full flex flex-col items-center justify-center gap-2 hover:bg-muted/30 transition-colors">
                         <FileText className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-[10px] font-medium px-2 text-center truncate w-full">Document {idx + 1}</span>
-                      </div>
+                        <span className="text-[10px] font-medium px-2 text-center truncate w-full">
+                          {filePath.split('/').pop() ?? `Document ${idx + 1}`}
+                        </span>
+                      </a>
                     )}
                     <Button 
                       type="button" 
@@ -564,7 +576,8 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
                 
                 <div 
                   className="aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer"

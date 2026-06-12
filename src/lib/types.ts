@@ -103,7 +103,7 @@ export interface KnowledgeBaseEntry {
   description: string;
   fileName: string;
   fileType: string;
-  fileData: string;
+  filePath: string;
   uploadedBy: string;
   createdAt: string;
 }

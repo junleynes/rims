@@ -1,8 +1,16 @@
 
 import Database from 'better-sqlite3';
 import path from 'path';
+import { mkdirSync, existsSync } from 'fs';
 import bcrypt from 'bcryptjs';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry, LockedYear } from './types';
+
+// Ensure upload directories exist on startup
+const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
+for (const folder of ['knowledge-base', 'budget-attachments', 'avatars']) {
+  const dir = path.join(UPLOAD_DIR, folder);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+}
 
 const DB_PATH = path.join(process.cwd(), 'data.db');
 const db = new Database(DB_PATH);
@@ -78,7 +86,7 @@ db.exec(`
     description TEXT,
     fileName TEXT NOT NULL,
     fileType TEXT NOT NULL,
-    fileData TEXT NOT NULL,
+    filePath TEXT NOT NULL DEFAULT '',
     uploadedBy TEXT NOT NULL,
     createdAt TEXT NOT NULL
   );
@@ -179,6 +187,7 @@ addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
 addColumnIfNotExists('resources', 'attachments', 'TEXT');
 addColumnIfNotExists('ai_config', 'ollamaBaseUrl', "TEXT DEFAULT 'http://localhost:11434'");
 addColumnIfNotExists('ai_config', 'enabled', 'INTEGER DEFAULT 0');
+addColumnIfNotExists('knowledge_base', 'filePath', "TEXT NOT NULL DEFAULT ''");
 
 // --- Seeding Logic ---
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
@@ -322,8 +331,8 @@ export async function getAllKnowledgeBaseEntries(): Promise<KnowledgeBaseEntry[]
 
 export async function saveKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
   const stmt = db.prepare(`
-    INSERT INTO knowledge_base (id, title, description, fileName, fileType, fileData, uploadedBy, createdAt)
-    VALUES (@id, @title, @description, @fileName, @fileType, @fileData, @uploadedBy, @createdAt)
+    INSERT INTO knowledge_base (id, title, description, fileName, fileType, filePath, uploadedBy, createdAt)
+    VALUES (@id, @title, @description, @fileName, @fileType, @filePath, @uploadedBy, @createdAt)
   `);
   stmt.run(entry);
 }

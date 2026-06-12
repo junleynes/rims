@@ -35,6 +35,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { fetchKnowledgeBaseEntries, createKnowledgeBaseEntry, removeKnowledgeBaseEntry } from '@/app/actions/db-actions';
 import { KnowledgeBaseEntry } from '@/lib/types';
+import { uploadFile, deleteFile, getFileUrl } from '@/lib/file-upload';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -57,7 +58,8 @@ export default function KnowledgeBasePage() {
     description: '',
     fileName: '',
     fileType: '',
-    fileData: ''
+    fileData: '',
+    filePath: ''
   });
 
   const isAdmin = user?.role === 'Admin';
@@ -79,7 +81,7 @@ export default function KnowledgeBasePage() {
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > MAX_FILE_SIZE) {
@@ -92,30 +94,35 @@ export default function KnowledgeBasePage() {
         return;
       }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const type = file.name.split('.').pop()?.toLowerCase() || 'file';
+      // Upload immediately to server, store path
+      setIsUploading(true);
+      try {
+        const result = await uploadFile(file, 'knowledge-base');
         setFormData(prev => ({
           ...prev,
-          fileName: file.name,
-          fileType: type,
-          fileData: reader.result as string
+          fileName: result.fileName,
+          fileType: result.fileType,
+          filePath: result.filePath,
         }));
-      };
-      reader.readAsDataURL(file);
+        toast({ title: 'File ready', description: `${file.name} uploaded successfully.` });
+      } catch (err: any) {
+        toast({ title: 'Upload Failed', description: err.message, variant: 'destructive' });
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.fileData) {
+    if (!formData.title || !formData.filePath) {
       toast({ title: "Validation Error", description: "Title and file are required.", variant: "destructive" });
       return;
     }
 
     setIsUploading(true);
     const newEntry: KnowledgeBaseEntry = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(),
       ...formData,
       uploadedBy: user?.name || 'Admin',
       createdAt: new Date().toISOString()
@@ -124,11 +131,11 @@ export default function KnowledgeBasePage() {
     try {
       await createKnowledgeBaseEntry(newEntry);
       toast({ title: "Document Uploaded", description: "The procedural document is now available to all users." });
-      setFormData({ title: '', description: '', fileName: '', fileType: '', fileData: '' });
+      setFormData({ title: '', description: '', fileName: '', fileType: '', filePath: '', fileData: '' });
       setShowUploadForm(false);
       await loadEntries();
     } catch (error) {
-      toast({ title: "Upload Failed", description: "An error occurred while saving the file. Ensure the file size is within limits.", variant: "destructive" });
+      toast({ title: "Upload Failed", description: "An error occurred while saving the document.", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -139,8 +146,15 @@ export default function KnowledgeBasePage() {
     
     setIsDeleting(true);
     try {
+      // Delete file from disk first
+      if (entryToDelete) {
+        const entry = entries.find(e => e.id === entryToDelete);
+        if (entry?.filePath && !entry.filePath.startsWith('data:')) {
+          await deleteFile(entry.filePath);
+        }
+      }
       await removeKnowledgeBaseEntry(entryToDelete);
-      toast({ title: "Document Removed", description: "The manual has been permanently deleted from the repository." });
+      toast({ title: "Document Removed", description: "The document has been permanently deleted." });
       await loadEntries();
     } catch (e) {
       toast({ title: "Delete Failed", description: "Could not remove the document. Please try again.", variant: "destructive" });
@@ -151,9 +165,11 @@ export default function KnowledgeBasePage() {
   };
 
   const downloadFile = (entry: KnowledgeBaseEntry) => {
+    const url = getFileUrl(entry.filePath);
     const link = document.createElement('a');
-    link.href = entry.fileData;
+    link.href = url;
     link.download = entry.fileName;
+    link.target = '_blank';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

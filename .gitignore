@@ -54,3 +54,6 @@ data.db-wal
 # Environment secrets
 .env.local
 .env.production
+
+# User uploaded files - stored locally, not in git
+/uploads/

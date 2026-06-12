@@ -77,7 +77,7 @@ const KnowledgeBaseEntrySchema = z.object({
   description: z.string(),
   fileName: z.string(),
   fileType: z.string(),
-  fileData: z.string(),
+  filePath: z.string(),
   uploadedBy: z.string(),
   createdAt: z.string(),
 });
