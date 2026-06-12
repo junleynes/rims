@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save, X, Paperclip, ImageIcon, FileText, Plus, PlusCircle, Edit2 } from 'lucide-react';
+import { Loader2, Save, X, Paperclip, ImageIcon, FileText, Plus, PlusCircle, Edit2, Sparkles, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import { useSystemData } from '@/components/system-data-context';
 import { CLASSIFICATIONS, OPEX_ACCOUNTS } from '@/lib/mock-data';
 import { Classification, Account, BudgetEntry, BudgetCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { autofillBudgetFields } from '@/app/actions/ai-autofill-action';
 import Image from 'next/image';
 
 interface BudgetFormProps {
@@ -37,6 +38,30 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isLoading, setIsLoading] = useState(false);
+  const [isAutofilling, setIsAutofilling] = useState(false);
+
+  const handleAutofill = async () => {
+    setIsAutofilling(true);
+    try {
+      const result = await autofillBudgetFields({
+        category: formData.category,
+        classification: formData.classification,
+        account: formData.account,
+        projectTitle: formData.projectTitle || undefined,
+      });
+      if (result.error) {
+        toast({ title: 'Autofill Failed', description: result.error, variant: 'destructive' });
+      } else {
+        if (result.projectTitle) setFormData(prev => ({ ...prev, projectTitle: result.projectTitle! }));
+        if (result.itemDescription) setFormData(prev => ({ ...prev, itemDescription: result.itemDescription! }));
+        toast({ title: 'Autofill Complete', description: 'Fields filled by AI. Review before saving.' });
+      }
+    } catch {
+      toast({ title: 'Autofill Failed', description: 'Unexpected error. Try again.', variant: 'destructive' });
+    } finally {
+      setIsAutofilling(false);
+    }
+  };
 
   // Determine organizational restrictions
   const isManager = user?.role === 'Manager';
@@ -331,6 +356,23 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                   </Select>
                 </div>
               )}
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <h3 className="text-sm font-black uppercase tracking-widest text-muted-foreground">Item Details</h3>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAutofill}
+                disabled={isAutofilling}
+                className="gap-2 border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs"
+              >
+                {isAutofilling
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <Sparkles className="h-3.5 w-3.5" />}
+                {isAutofilling ? 'Generating...' : 'AI Autofill'}
+              </Button>
             </div>
 
             <div className="space-y-2">
