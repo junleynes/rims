@@ -50,8 +50,8 @@ export interface RimsSessionData {
 }
 
 export async function getSession(): Promise<IronSession<RimsSessionData>> {
-  const cookieStore = await cookies();
-  return getIronSession<RimsSessionData>(cookieStore, getSessionOptions());
+  const cookieStore = cookies();
+  return getIronSession<RimsSessionData>(cookieStore as any, getSessionOptions());
 }
 
 /** Returns the authenticated user or throws a 401-style error */
