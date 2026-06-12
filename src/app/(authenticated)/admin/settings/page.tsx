@@ -248,6 +248,17 @@ export default function SettingsPage() {
   const AI_MODELS: Record<AiProvider, string[]> = {
     anthropic: ['claude-sonnet-4-20250514', 'claude-opus-4-5', 'claude-haiku-4-5-20251001'],
     openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'o1-mini'],
+    openrouter: [
+      'meta-llama/llama-3.3-70b-instruct',
+      'meta-llama/llama-3.1-8b-instruct:free',
+      'google/gemini-2.0-flash-001',
+      'google/gemini-flash-1.5',
+      'deepseek/deepseek-chat-v3-0324:free',
+      'mistralai/mistral-small-3.2-24b-instruct:free',
+      'qwen/qwen3-235b-a22b:free',
+      'anthropic/claude-sonnet-4-5',
+      'openai/gpt-4o',
+    ],
     ollama: ['llama3', 'llama3.1', 'mistral', 'phi3', 'gemma2', 'deepseek-r1'],
   };
 
@@ -609,12 +620,17 @@ export default function SettingsPage() {
               {/* Provider selection */}
               <div className="space-y-3">
                 <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">AI Provider</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {(['anthropic', 'openai', 'ollama'] as AiProvider[]).map((p) => (
+                <div className="grid grid-cols-4 gap-3">
+                  {(['anthropic', 'openai', 'openrouter', 'ollama'] as AiProvider[]).map((p) => (
                     <button
                       key={p}
                       onClick={() => {
-                        const defaultModels: Record<AiProvider, string> = { anthropic: 'claude-sonnet-4-20250514', openai: 'gpt-4o', ollama: 'llama3' };
+                        const defaultModels: Record<AiProvider, string> = {
+                          anthropic: 'claude-sonnet-4-20250514',
+                          openai: 'gpt-4o',
+                          openrouter: 'meta-llama/llama-3.3-70b-instruct',
+                          ollama: 'llama3',
+                        };
                         setAiConfig({ ...aiConfig, provider: p, model: defaultModels[p] });
                         setAiTestResult(null);
                       }}
@@ -624,8 +640,11 @@ export default function SettingsPage() {
                       )}
                     >
                       <Zap className={cn('h-6 w-6', aiConfig.provider === p ? 'text-primary' : 'text-muted-foreground')} />
-                      <span className="text-xs font-black uppercase tracking-widest capitalize">{p}</span>
+                      <span className="text-xs font-black uppercase tracking-widest capitalize">
+                        {p === 'openrouter' ? 'OpenRouter' : p}
+                      </span>
                       {p === 'ollama' && <span className="text-[9px] text-muted-foreground font-semibold">Local / Self-hosted</span>}
+                      {p === 'openrouter' && <span className="text-[9px] text-muted-foreground font-semibold">300+ Models</span>}
                     </button>
                   ))}
                 </div>
@@ -638,7 +657,11 @@ export default function SettingsPage() {
                   <div className="relative">
                     <Input
                       type={showApiKey ? 'text' : 'password'}
-                      placeholder={aiConfig.provider === 'anthropic' ? 'sk-ant-...' : 'sk-...'}
+                      placeholder={
+                        aiConfig.provider === 'anthropic' ? 'sk-ant-...' :
+                        aiConfig.provider === 'openrouter' ? 'sk-or-v1-...' :
+                        'sk-...'
+                      }
                       value={aiConfig.apiKey}
                       onChange={(e) => setAiConfig({ ...aiConfig, apiKey: e.target.value })}
                       className="pr-10 font-mono text-sm"
@@ -651,7 +674,12 @@ export default function SettingsPage() {
                       {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Stored encrypted in the local database. Never exposed to the client.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Stored encrypted in the local database. Never exposed to the client.
+                    {aiConfig.provider === 'openrouter' && (
+                      <> Get your key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="underline text-primary">openrouter.ai/keys</a>. Free models available.</>
+                    )}
+                  </p>
                 </div>
               )}
 

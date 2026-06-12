@@ -138,7 +138,7 @@ export interface LockedYear {
   year: number;
 }
 
-export type AiProvider = 'anthropic' | 'openai' | 'ollama';
+export type AiProvider = 'anthropic' | 'openai' | 'ollama' | 'openrouter';
 
 export interface AiConfig {
   provider: AiProvider;

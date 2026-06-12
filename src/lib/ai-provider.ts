@@ -12,6 +12,7 @@ export async function callAi(config: AiConfig, messages: AiMessage[], systemProm
   switch (config.provider) {
     case 'anthropic': return callAnthropic(config, messages, systemPrompt);
     case 'openai': return callOpenAI(config, messages, systemPrompt);
+    case 'openrouter': return callOpenRouter(config, messages, systemPrompt);
     case 'ollama': return callOllama(config, messages, systemPrompt);
     default: throw new Error(`Unknown AI provider: ${config.provider}`);
   }
@@ -65,6 +66,35 @@ async function callOpenAI(config: AiConfig, messages: AiMessage[], systemPrompt?
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`OpenAI API error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content ?? '';
+}
+
+async function callOpenRouter(config: AiConfig, messages: AiMessage[], systemPrompt?: string): Promise<string> {
+  const allMessages = systemPrompt
+    ? [{ role: 'system', content: systemPrompt }, ...messages]
+    : messages;
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${config.apiKey}`,
+      'HTTP-Referer': 'https://rims.internal',
+      'X-Title': 'R.I.M.S',
+    },
+    body: JSON.stringify({
+      model: config.model || 'meta-llama/llama-3.3-70b-instruct',
+      max_tokens: 1500,
+      messages: allMessages,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenRouter API error ${res.status}: ${err}`);
   }
 
   const data = await res.json();
