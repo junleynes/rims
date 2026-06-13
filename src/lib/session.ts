@@ -2,8 +2,6 @@ import { getIronSession, IronSession, SessionOptions } from 'iron-session';
 import { cookies } from 'next/headers';
 import type { Role } from './types';
 
-// Secret is validated at runtime inside getSession(), not at module load,
-// so that `next build` (which statically imports modules) does not fail.
 function getSessionOptions(): SessionOptions {
   const secret = process.env.SESSION_SECRET;
   if (!secret || secret.length < 32) {
@@ -43,18 +41,20 @@ export interface SessionUser {
 
 export interface RimsSessionData {
   user?: SessionUser;
-  // Pending: credentials verified but 2FA not yet confirmed
   pendingUserId?: string;
   loginAttempts?: number;
   lastFailedAt?: number;
 }
 
 export async function getSession(): Promise<IronSession<RimsSessionData>> {
-  const cookieStore = cookies();
+  // In Next.js 15, cookies() returns a Promise — must be awaited so that
+  // iron-session receives the actual cookie store object (not a Promise).
+  // Without await, cookieStore.set() does not exist and the session is
+  // never written, causing the login loop.
+  const cookieStore = await cookies();
   return getIronSession<RimsSessionData>(cookieStore as any, getSessionOptions());
 }
 
-/** Returns the authenticated user or throws a 401-style error */
 export async function requireSession(): Promise<SessionUser> {
   const session = await getSession();
   if (!session.user || !session.user.twoFactorVerified) {
@@ -63,7 +63,6 @@ export async function requireSession(): Promise<SessionUser> {
   return session.user;
 }
 
-/** Requires Admin role specifically */
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await requireSession();
   if (user.role !== 'Admin') {
@@ -72,7 +71,6 @@ export async function requireAdmin(): Promise<SessionUser> {
   return user;
 }
 
-// Rate limiting: max 5 failed attempts within 15 minutes
 export const MAX_ATTEMPTS = 5;
 export const LOCKOUT_MS = 15 * 60 * 1000;
 
