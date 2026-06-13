@@ -11,11 +11,19 @@ function getSessionOptions(): SessionOptions {
       'and add it to your .env.local file.'
     );
   }
+
+  // When running behind a reverse proxy (Nginx), Next.js sees HTTP internally
+  // even though the browser connects via HTTPS. Setting secure:true causes the
+  // browser to reject the cookie because it arrives over the internal HTTP
+  // connection. Use the COOKIE_SECURE env var to explicitly control this,
+  // or default to false so the cookie always sets correctly behind a proxy.
+  const secureCookie = process.env.COOKIE_SECURE === 'true';
+
   return {
     password: secret,
     cookieName: 'rims_session',
     cookieOptions: {
-      secure: process.env.NODE_ENV === 'production',
+      secure: secureCookie,
       httpOnly: true,
       sameSite: 'lax',
       maxAge: 60 * 60 * 8, // 8 hours
@@ -47,10 +55,6 @@ export interface RimsSessionData {
 }
 
 export async function getSession(): Promise<IronSession<RimsSessionData>> {
-  // In Next.js 15, cookies() returns a Promise — must be awaited so that
-  // iron-session receives the actual cookie store object (not a Promise).
-  // Without await, cookieStore.set() does not exist and the session is
-  // never written, causing the login loop.
   const cookieStore = await cookies();
   return getIronSession<RimsSessionData>(cookieStore as any, getSessionOptions());
 }
