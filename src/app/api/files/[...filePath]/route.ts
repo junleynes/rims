@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSession } from '@/lib/session';
-import { readFile, stat } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 
@@ -24,28 +24,23 @@ const MIME_TYPES: Record<string, string> = {
   zip:  'application/zip',
 };
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { filePath: string[] } }
-) {
-  // Require valid session to serve any file
+type RouteContext = { params: Promise<{ filePath: string[] }> };
+
+export async function GET(req: NextRequest, context: RouteContext) {
   try {
     await requireSession();
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const filePath = params.filePath;
-
-  // Prevent path traversal attacks
+  const { filePath } = await context.params;
   const relativePath = filePath.join('/');
+
   if (relativePath.includes('..') || relativePath.includes('~')) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
   }
 
   const absolutePath = path.join(UPLOAD_DIR, relativePath);
-
-  // Ensure resolved path is inside UPLOAD_DIR
   if (!absolutePath.startsWith(UPLOAD_DIR)) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
   }
@@ -59,12 +54,8 @@ export async function GET(
     const ext = path.extname(absolutePath).replace('.', '').toLowerCase();
     const mimeType = MIME_TYPES[ext] ?? 'application/octet-stream';
     const fileName = path.basename(absolutePath);
-
-    // Inline for images and PDFs, attachment for others
     const inline = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
-    const disposition = inline
-      ? `inline; filename="${fileName}"`
-      : `attachment; filename="${fileName}"`;
+    const disposition = inline ? `inline; filename="${fileName}"` : `attachment; filename="${fileName}"`;
 
     return new NextResponse(buffer, {
       headers: {
@@ -74,22 +65,21 @@ export async function GET(
         'Content-Length': buffer.length.toString(),
       },
     });
-  } catch (err: any) {
+  } catch {
     return NextResponse.json({ error: 'Failed to read file' }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { filePath: string[] } }
-) {
+export async function DELETE(req: NextRequest, context: RouteContext) {
   try {
     await requireSession();
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const relativePath = params.filePath.join('/');
+  const { filePath } = await context.params;
+  const relativePath = filePath.join('/');
+
   if (relativePath.includes('..') || relativePath.includes('~')) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
   }
