@@ -392,7 +392,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                   {isGeneratingDesc
                     ? <Loader2 className="h-3 w-3 animate-spin" />
                     : <Zap className="h-3 w-3" />}
-                  {isGeneratingDesc ? 'Generating...' : 'Generate from Title'}
+                  {isGeneratingDesc ? 'Generating...' : 'AI Autofill'}
                 </Button>
               </div>
               <Textarea 
