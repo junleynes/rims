@@ -57,3 +57,6 @@ data.db-wal
 
 # User uploaded files - stored locally, not in git
 /uploads/
+-e 
+# Temporary backup files
+.backup-tmp/

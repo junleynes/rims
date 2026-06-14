@@ -308,20 +308,31 @@ export default function SettingsPage() {
     }
   };
 
-  const handleExportData = () => {
-    const data = {
-      timestamp: new Date().toISOString(),
-      branding: brandingConfig,
-      system: systemConfig,
-      smtp: smtp,
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `rims-config-backup-${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
+  const [isBackingUp, setIsBackingUp] = useState(false);
+
+  const handleExportData = async () => {
+    setIsBackingUp(true);
+    try {
+      const res = await fetch('/api/backup');
+      if (!res.ok) {
+        const err = await res.json();
+        toast({ title: 'Backup Failed', description: err.error ?? 'Unknown error.', variant: 'destructive' });
+        return;
+      }
+      const blob = await res.blob();
+      const date = new Date().toISOString().split('T')[0];
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `rims-backup-${date}.zip`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast({ title: 'Backup Downloaded', description: 'Database, uploads and settings included in the zip.' });
+    } catch (err: any) {
+      toast({ title: 'Backup Failed', description: err.message ?? 'Could not download backup.', variant: 'destructive' });
+    } finally {
+      setIsBackingUp(false);
+    }
   };
 
   const handleToggleLock = async (year: string) => {
@@ -770,11 +781,11 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button variant="outline" onClick={handleExportData} className="h-20 gap-3 border-dashed">
-                  <Download className="h-5 w-5 text-blue-500" />
+                <Button variant="outline" onClick={handleExportData} disabled={isBackingUp} className="h-20 gap-3 border-dashed">
+                  {isBackingUp ? <Loader2 className="h-5 w-5 animate-spin text-blue-500" /> : <Download className="h-5 w-5 text-blue-500" />}
                   <div className="text-left">
-                    <p className="font-bold">Download Backup</p>
-                    <p className="text-xs text-muted-foreground">Export system settings to JSON</p>
+                    <p className="font-bold">{isBackingUp ? 'Creating Backup...' : 'Download Backup'}</p>
+                    <p className="text-xs text-muted-foreground">Database, uploads & settings as ZIP</p>
                   </div>
                 </Button>
                 <Button variant="outline" className="h-20 gap-3 border-dashed relative overflow-hidden">
