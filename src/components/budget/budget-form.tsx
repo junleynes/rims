@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save, X, Paperclip, ImageIcon, FileText, Plus, PlusCircle, Edit2, Zap } from 'lucide-react';
+import { Loader2, Save, X, Paperclip, ImageIcon, FileText, Plus, PlusCircle, Edit2, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -391,7 +391,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                 >
                   {isGeneratingDesc
                     ? <Loader2 className="h-3 w-3 animate-spin" />
-                    : <Zap className="h-3 w-3" />}
+                    : <Sparkles className="h-3 w-3" />}
                   {isGeneratingDesc ? 'Generating...' : 'AI Autofill'}
                 </Button>
               </div>
