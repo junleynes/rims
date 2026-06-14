@@ -48,86 +48,71 @@ export default function OrganizationPage() {
   const [editingName, setEditingName] = useState('');
   const [editingType, setEditingType] = useState<'division' | 'location' | 'status' | 'position' | null>(null);
 
-  // ── CSV Export ──────────────────────────────────────────────────────────
-  const handleExportCSV = () => {
-    const rows: string[] = ['Division,Section'];
-    for (const div of divisions) {
-      const divSections = sections.filter(s => s.divisionId === div.id);
-      if (divSections.length === 0) {
-        rows.push(`"${div.name}",""`);
-      } else {
-        for (const sec of divSections) {
-          rows.push(`"${div.name}","${sec.name}"`);
-        }
-      }
-    }
-    const csv = rows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+  // ── JSON Export ──────────────────────────────────────────────────────────
+  const handleExportJSON = () => {
+    const data = divisions.map(div => ({
+      division: div.name,
+      sections: sections
+        .filter(s => s.divisionId === div.id)
+        .map(s => s.name),
+    }));
+
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `rims-divisions-sections-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `rims-divisions-sections-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    toast({ title: 'Exported', description: 'Divisions and sections exported to CSV.' });
+    toast({ title: 'Exported', description: 'Divisions and sections exported as JSON.' });
   };
 
-  // ── CSV Import ──────────────────────────────────────────────────────────
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── JSON Import ──────────────────────────────────────────────────────────
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      try {
+        const parsed = JSON.parse(ev.target?.result as string);
 
-      // Skip header row if present
-      const dataLines = lines[0]?.toLowerCase().startsWith('division') ? lines.slice(1) : lines;
-
-      let divsAdded = 0;
-      let secsAdded = 0;
-      const errors: string[] = [];
-
-      for (const line of dataLines) {
-        // Parse CSV line (handle quoted values)
-        const cols = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g)?.map(c => c.replace(/^"|"$/g, '').trim()) ?? [];
-        const [divName, secName] = cols;
-
-        if (!divName) continue;
-
-        // Add division if it doesn't exist
-        let div = divisions.find(d => d.name.toLowerCase() === divName.toLowerCase());
-        if (!div) {
-          try {
-            addDivision(divName);
-            divsAdded++;
-            // Re-read from context — find the newly added one
-            div = divisions.find(d => d.name.toLowerCase() === divName.toLowerCase());
-          } catch (err) {
-            errors.push(`Division "${divName}": ${err}`);
-            continue;
-          }
+        if (!Array.isArray(parsed)) {
+          toast({ title: 'Invalid Format', description: 'JSON must be an array of { division, sections[] } objects.', variant: 'destructive' });
+          return;
         }
 
-        // Add section if provided and doesn't exist
-        if (secName && div) {
-          const exists = sections.some(s => s.divisionId === div!.id && s.name.toLowerCase() === secName.toLowerCase());
-          if (!exists) {
-            try {
-              addSection(secName, div.id);
-              secsAdded++;
-            } catch (err) {
-              errors.push(`Section "${secName}": ${err}`);
+        let divsAdded = 0;
+        let secsAdded = 0;
+
+        for (const item of parsed) {
+          const divName = item.division?.trim();
+          if (!divName) continue;
+
+          let div = divisions.find(d => d.name.toLowerCase() === divName.toLowerCase());
+          if (!div) {
+            addDivision(divName);
+            divsAdded++;
+            div = divisions.find(d => d.name.toLowerCase() === divName.toLowerCase());
+          }
+
+          if (Array.isArray(item.sections) && div) {
+            for (const secName of item.sections) {
+              const name = secName?.trim();
+              if (!name) continue;
+              const exists = sections.some(s => s.divisionId === div!.id && s.name.toLowerCase() === name.toLowerCase());
+              if (!exists) {
+                addSection(name, div.id);
+                secsAdded++;
+              }
             }
           }
         }
-      }
 
-      if (errors.length > 0) {
-        toast({ title: 'Import Partial', description: `Added ${divsAdded} divisions, ${secsAdded} sections. ${errors.length} error(s).`, variant: 'destructive' });
-      } else {
         toast({ title: 'Import Complete', description: `Added ${divsAdded} new divisions and ${secsAdded} new sections.` });
+      } catch {
+        toast({ title: 'Invalid JSON', description: 'Could not parse the file. Check the format and try again.', variant: 'destructive' });
       }
     };
     reader.readAsText(file);
@@ -216,17 +201,17 @@ export default function OrganizationPage() {
                   <CardDescription>Create or edit divisions and sections, or export/import via CSV.</CardDescription>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <input ref={csvImportRef} type="file" accept=".csv" className="hidden" onChange={handleImportCSV} />
-                  <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2 font-bold border-primary/20 text-primary hover:bg-primary/5">
-                    <Download className="h-4 w-4" /> Export CSV
+                  <input ref={csvImportRef} type="file" accept=".json" className="hidden" onChange={handleImportJSON} />
+                  <Button variant="outline" size="sm" onClick={handleExportJSON} className="gap-2 font-bold border-primary/20 text-primary hover:bg-primary/5">
+                    <Download className="h-4 w-4" /> Export JSON
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => csvImportRef.current?.click()} className="gap-2 font-bold border-emerald-300 text-emerald-700 hover:bg-emerald-50">
-                    <Upload className="h-4 w-4" /> Import CSV
+                    <Upload className="h-4 w-4" /> Import JSON
                   </Button>
                 </div>
               </div>
               <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 border border-dashed mt-1">
-                CSV format: <code className="font-mono">Division,Section</code> — one row per section. Division-only rows leave Section blank.
+                JSON format: <code className="font-mono">[{"{"}"division": "Name", "sections": ["Sec A", "Sec B"]{"}"}]</code>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
