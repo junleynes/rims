@@ -40,6 +40,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isAutofilling, setIsAutofilling] = useState(false);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
 
   const handleAutofill = async () => {
     setIsAutofilling(true);
@@ -48,7 +49,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
         category: formData.category,
         classification: formData.classification,
         account: formData.account,
-        projectTitle: formData.projectTitle || undefined,
+        projectTitle: undefined, // force full generation
       });
       if (result.error) {
         toast({ title: 'Autofill Failed', description: result.error, variant: 'destructive' });
@@ -61,6 +62,32 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
       toast({ title: 'Autofill Failed', description: 'Unexpected error. Try again.', variant: 'destructive' });
     } finally {
       setIsAutofilling(false);
+    }
+  };
+
+  const handleGenerateDescription = async () => {
+    if (!formData.projectTitle?.trim()) {
+      toast({ title: 'Enter a project name first', description: 'Type the item or project name, then click Generate Description.', variant: 'destructive' });
+      return;
+    }
+    setIsGeneratingDesc(true);
+    try {
+      const result = await autofillBudgetFields({
+        category: formData.category,
+        classification: formData.classification,
+        account: formData.account,
+        projectTitle: formData.projectTitle,
+      });
+      if (result.error) {
+        toast({ title: 'Generation Failed', description: result.error, variant: 'destructive' });
+      } else {
+        if (result.itemDescription) setFormData(prev => ({ ...prev, itemDescription: result.itemDescription! }));
+        toast({ title: 'Description Generated', description: 'AI description added. Review before saving.' });
+      }
+    } catch {
+      toast({ title: 'Generation Failed', description: 'Unexpected error. Try again.', variant: 'destructive' });
+    } finally {
+      setIsGeneratingDesc(false);
     }
   };
 
@@ -393,10 +420,25 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="itemDescription">Item Description</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="itemDescription">Item Description</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateDescription}
+                  disabled={isGeneratingDesc}
+                  className="gap-1.5 border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs h-7 px-2"
+                >
+                  {isGeneratingDesc
+                    ? <Loader2 className="h-3 w-3 animate-spin" />
+                    : <Zap className="h-3 w-3" />}
+                  {isGeneratingDesc ? 'Generating...' : 'Generate from Title'}
+                </Button>
+              </div>
               <Textarea 
                 id="itemDescription" 
-                placeholder="Detailed item specifications..."
+                placeholder="Detailed item specifications — or type a project title above and click Generate..."
                 className="min-h-[100px]"
                 value={formData.itemDescription}
                 onChange={(e) => setFormData(prev => ({ ...prev, itemDescription: e.target.value }))}
