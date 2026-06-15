@@ -364,33 +364,41 @@ export async function saveUsers(users: User[]) {
   const hashMap = new Map(currentRecords.map(r => [r.id, r.password_hash]));
   const secretMap = new Map(currentRecords.map(r => [r.id, r.twoFactorSecret]));
   const usernameMap = new Map(currentRecords.filter(r => r.username).map(r => [r.username, r.password_hash]));
-  
-  const adminRecord = currentRecords.find(r => r.username === 'admin');
-  const adminHash = adminRecord?.password_hash || DEFAULT_PASSWORD_HASH;
 
-  const deleteStmt = db.prepare('DELETE FROM users');
-  const insertStmt = db.prepare(`
+  const upsertStmt = db.prepare(`
     INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, section, division, twoFactorEnabled, twoFactorSecret, position, reportingTo, isStaffOnly, profilePicture)
     VALUES (@id, @username, @password_hash, @name, @email, @contactNumber, @role, @section, @division, @twoFactorEnabled, @twoFactorSecret, @position, @reportingTo, @isStaffOnly, @profilePicture)
+    ON CONFLICT(id) DO UPDATE SET
+      username=excluded.username, name=excluded.name, email=excluded.email,
+      contactNumber=excluded.contactNumber, role=excluded.role, section=excluded.section,
+      division=excluded.division, twoFactorEnabled=excluded.twoFactorEnabled,
+      position=excluded.position, reportingTo=excluded.reportingTo,
+      isStaffOnly=excluded.isStaffOnly, profilePicture=excluded.profilePicture
   `);
 
+  // Also delete users that are no longer in the payload (except admin)
+  const deleteStmt = db.prepare('DELETE FROM users WHERE id = ? AND username != ?');
+
   const transactionSafe = db.transaction((data: User[]) => {
-    deleteStmt.run();
-    let adminInPayload = false;
+    const incomingIds = new Set(data.map(u => u.username === 'admin@rims.local' ? 'admin-001' : u.id));
+
+    // Delete removed users
+    for (const record of currentRecords) {
+      if (!incomingIds.has(record.id) && record.username !== 'admin@rims.local') {
+        deleteStmt.run(record.id, 'admin@rims.local');
+      }
+    }
 
     for (const user of data) {
-      if (user.username === 'admin') adminInPayload = true;
-
       const existingHash = hashMap.get(user.id) || (user.username ? usernameMap.get(user.username) : null);
       const existingSecret = secretMap.get(user.id);
-      
+
       const payload = {
         ...user,
-        id: user.username === 'admin' ? 'admin-001' : user.id,
+        id: user.username === 'admin@rims.local' ? 'admin-001' : user.id,
         username: user.username || null,
-        password_hash: existingHash || (user.username === 'admin' ? adminHash : DEFAULT_PASSWORD_HASH),
+        password_hash: existingHash || DEFAULT_PASSWORD_HASH,
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
-        // Explicit null check to allow clearing the secret
         twoFactorSecret: user.twoFactorSecret === null ? null : (user.twoFactorSecret || existingSecret || null),
         isStaffOnly: user.isStaffOnly ? 1 : 0,
         profilePicture: user.profilePicture || null,
@@ -401,27 +409,7 @@ export async function saveUsers(users: User[]) {
         section: user.section || null,
         division: user.division || null
       };
-      insertStmt.run(payload);
-    }
-
-    if (!adminInPayload) {
-      insertStmt.run({
-        id: 'admin-001',
-        username: 'admin',
-        password_hash: adminHash,
-        name: 'System Administrator',
-        email: 'admin@rims.com',
-        contactNumber: 'N/A',
-        role: 'Admin',
-        section: null,
-        division: null,
-        twoFactorEnabled: 0,
-        twoFactorSecret: null,
-        position: 'Chief Technology Officer',
-        reportingTo: 'Board of Directors',
-        isStaffOnly: 0,
-        profilePicture: null
-      });
+      upsertStmt.run(payload);
     }
   });
   transactionSafe(users);

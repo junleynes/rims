@@ -56,6 +56,9 @@ import {
   Building2,
   Check,
   Eye,
+  EyeOff,
+  CheckCircle2,
+  XCircle,
   Mail,
   Phone,
   Upload,
@@ -98,6 +101,9 @@ export default function UserManagementPage() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [userToReset, setUserToReset] = useState<User | null>(null);
   const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [isDispatchingEmail, setIsDispatchingEmail] = useState<string | null>(null);
 
@@ -212,8 +218,28 @@ export default function UserManagementPage() {
 
   const confirmReset = async () => {
     if (userToReset && newPasswordInput) {
-      if (newPasswordInput.length < 4) {
-        toast({ title: "Security Warning", description: "Password should be at least 4 characters.", variant: "destructive" });
+      if (newPasswordInput.length < 12) {
+        toast({ title: "Password Too Short", description: "Password must be at least 12 characters.", variant: "destructive" });
+        return;
+      }
+      if (!/[A-Z]/.test(newPasswordInput)) {
+        toast({ title: "Password Too Weak", description: "Must include at least one uppercase letter.", variant: "destructive" });
+        return;
+      }
+      if (!/[a-z]/.test(newPasswordInput)) {
+        toast({ title: "Password Too Weak", description: "Must include at least one lowercase letter.", variant: "destructive" });
+        return;
+      }
+      if (!/[0-9]/.test(newPasswordInput)) {
+        toast({ title: "Password Too Weak", description: "Must include at least one number.", variant: "destructive" });
+        return;
+      }
+      if (!/[^A-Za-z0-9]/.test(newPasswordInput)) {
+        toast({ title: "Password Too Weak", description: "Must include at least one special character.", variant: "destructive" });
+        return;
+      }
+      if (newPasswordInput !== confirmPasswordInput) {
+        toast({ title: "Passwords Don't Match", description: "New password and confirmation do not match.", variant: "destructive" });
         return;
       }
 
@@ -227,6 +253,9 @@ export default function UserManagementPage() {
         setResetDialogOpen(false);
         setUserToReset(null);
         setNewPasswordInput('');
+        setConfirmPasswordInput('');
+        setShowNewPassword(false);
+        setShowConfirmPassword(false);
       } catch (e) {
         toast({ title: "Error", description: "Failed to update password.", variant: "destructive" });
       } finally {
@@ -758,35 +787,119 @@ export default function UserManagementPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+      <Dialog open={resetDialogOpen} onOpenChange={(open) => {
+        setResetDialogOpen(open);
+        if (!open) {
+          setNewPasswordInput('');
+          setConfirmPasswordInput('');
+          setShowNewPassword(false);
+          setShowConfirmPassword(false);
+        }
+      }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Update User Password</DialogTitle>
             <DialogDescription>
-              Enter a new password for <strong>{userToReset?.name}</strong>. 
+              Set a new password for <strong>{userToReset?.name}</strong>.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-2">
+            {/* New Password */}
             <div className="space-y-2">
               <Label htmlFor="new-password">New Password</Label>
-              <Input 
-                id="new-password"
-                type="text"
-                placeholder="Enter new password"
-                value={newPasswordInput}
-                onChange={(e) => setNewPasswordInput(e.target.value)}
-                autoFocus
-              />
-              <p className="text-[10px] text-muted-foreground">Minimum 4 characters recommended.</p>
+              <div className="relative">
+                <Input
+                  id="new-password"
+                  type={showNewPassword ? 'text' : 'password'}
+                  placeholder="Enter new password"
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  autoFocus
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Complexity meter */}
+            {newPasswordInput.length > 0 && (() => {
+              const checks = [
+                { label: 'At least 12 characters', ok: newPasswordInput.length >= 12 },
+                { label: 'Uppercase letter (A–Z)', ok: /[A-Z]/.test(newPasswordInput) },
+                { label: 'Lowercase letter (a–z)', ok: /[a-z]/.test(newPasswordInput) },
+                { label: 'Number (0–9)', ok: /[0-9]/.test(newPasswordInput) },
+                { label: 'Special character (!@#$…)', ok: /[^A-Za-z0-9]/.test(newPasswordInput) },
+              ];
+              const passed = checks.filter(c => c.ok).length;
+              const strength = passed <= 2 ? 'Weak' : passed <= 3 ? 'Fair' : passed === 4 ? 'Good' : 'Strong';
+              const colors = { Weak: 'bg-red-500', Fair: 'bg-amber-400', Good: 'bg-blue-500', Strong: 'bg-emerald-500' };
+              return (
+                <div className="space-y-2 p-3 bg-muted/30 rounded-lg border">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Strength</span>
+                    <span className={`text-xs font-black ${passed <= 2 ? 'text-red-500' : passed <= 3 ? 'text-amber-500' : passed === 4 ? 'text-blue-500' : 'text-emerald-500'}`}>{strength}</span>
+                  </div>
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map(i => (
+                      <div key={i} className={`h-1.5 flex-1 rounded-full transition-all ${i <= passed ? colors[strength] : 'bg-muted'}`} />
+                    ))}
+                  </div>
+                  <div className="space-y-1 mt-2">
+                    {checks.map((c, i) => (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        {c.ok
+                          ? <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                          : <XCircle className="h-3 w-3 text-muted-foreground/50 shrink-0" />}
+                        <span className={c.ok ? 'text-emerald-700' : 'text-muted-foreground'}>{c.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Confirm Password */}
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  id="confirm-password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Re-enter new password"
+                  value={confirmPasswordInput}
+                  onChange={(e) => setConfirmPasswordInput(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {confirmPasswordInput.length > 0 && (
+                <p className={`text-xs flex items-center gap-1 ${newPasswordInput === confirmPasswordInput ? 'text-emerald-600' : 'text-red-500'}`}>
+                  {newPasswordInput === confirmPasswordInput
+                    ? <><CheckCircle2 className="h-3 w-3" /> Passwords match</>
+                    : <><XCircle className="h-3 w-3" /> Passwords do not match</>}
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setResetDialogOpen(false)} disabled={isResetting}>
               Cancel
             </Button>
-            <Button 
-              onClick={confirmReset} 
-              disabled={isResetting || !newPasswordInput} 
+            <Button
+              onClick={confirmReset}
+              disabled={isResetting || !newPasswordInput || !confirmPasswordInput}
               className="bg-primary hover:bg-primary/90 font-bold"
             >
               {isResetting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <KeyRound className="h-4 w-4 mr-2" />}
