@@ -99,7 +99,7 @@ export function SidebarNav() {
     { name: 'System Settings', icon: Settings, href: '/admin/settings', color: 'bg-amber-500' },
   ];
 
-  const isManagement = user.role === 'Admin' || user.role === 'VP' || user.role === 'AVP' || user.role === 'Viewer';
+  const isManagement = user.role === 'Admin' || user.role === 'VP' || user.role === 'AVP' || user.role === 'Manager' || user.role === 'Viewer';
 
   const renderNavItems = (items: any[]) => {
     return items.map((item) => (
