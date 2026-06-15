@@ -45,6 +45,8 @@ export default function OrganizationPage() {
   const [newPosName, setNewPosName] = useState('');
   const csvImportRef = useRef<HTMLInputElement>(null);
 
+  const genId = () => Math.random().toString(36).substr(2, 9) + Math.random().toString(36).substr(2, 9);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   const [editingType, setEditingType] = useState<'division' | 'location' | 'status' | 'position' | null>(null);
@@ -103,7 +105,7 @@ export default function OrganizationPage() {
 
           let div = newDivisions.find(d => d.name.toLowerCase() === divName.toLowerCase());
           if (!div) {
-            div = { id: crypto.randomUUID(), name: divName };
+            div = { id: genId(), name: divName };
             newDivisions.push(div);
             divsAdded++;
           }
@@ -114,7 +116,7 @@ export default function OrganizationPage() {
               if (!name) continue;
               const exists = newSections.some(s => s.divisionId === div!.id && s.name.toLowerCase() === name.toLowerCase());
               if (!exists) {
-                newSections.push({ id: crypto.randomUUID(), name, divisionId: div!.id });
+                newSections.push({ id: genId(), name, divisionId: div!.id });
                 secsAdded++;
               }
             }
@@ -128,7 +130,7 @@ export default function OrganizationPage() {
           const n = name?.trim();
           if (!n) continue;
           if (!newLocations.some(l => l.name.toLowerCase() === n.toLowerCase())) {
-            newLocations.push({ id: crypto.randomUUID(), name: n });
+            newLocations.push({ id: genId(), name: n });
             locsAdded++;
           }
         }
@@ -140,7 +142,7 @@ export default function OrganizationPage() {
           const n = name?.trim();
           if (!n) continue;
           if (!newStatuses.some(s => s.name.toLowerCase() === n.toLowerCase())) {
-            newStatuses.push({ id: crypto.randomUUID(), name: n });
+            newStatuses.push({ id: genId(), name: n });
             statusAdded++;
           }
         }
@@ -152,7 +154,7 @@ export default function OrganizationPage() {
           const n = name?.trim();
           if (!n) continue;
           if (!newPositions.some(p => p.name.toLowerCase() === n.toLowerCase())) {
-            newPositions.push({ id: crypto.randomUUID(), name: n });
+            newPositions.push({ id: genId(), name: n });
             posAdded++;
           }
         }
