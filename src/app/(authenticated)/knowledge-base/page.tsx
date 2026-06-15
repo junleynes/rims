@@ -30,10 +30,12 @@ import {
   X,
   FileCode,
   Loader2,
+  Sparkles,
   FilePlus2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchKnowledgeBaseEntries, createKnowledgeBaseEntry, removeKnowledgeBaseEntry } from '@/app/actions/db-actions';
+import { generateContentFromTitle } from '@/app/actions/ai-autofill-action';
 import { KnowledgeBaseEntry } from '@/lib/types';
 import { uploadFile, deleteFile, getFileUrl } from '@/lib/file-upload';
 import { format } from 'date-fns';
@@ -48,6 +50,7 @@ export default function KnowledgeBasePage() {
   const [entries, setEntries] = useState<KnowledgeBaseEntry[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);
@@ -80,6 +83,21 @@ export default function KnowledgeBasePage() {
       setIsLoading(false);
     }
   }
+
+  const handleGenerateDescription = async () => {
+    setIsGenerating(true);
+    const result = await generateContentFromTitle({
+      title: formData.title,
+      context: 'knowledge-base',
+    });
+    setIsGenerating(false);
+    if (result.error) {
+      toast({ title: 'Generation Failed', description: result.error, variant: 'destructive' });
+    } else if (result.content) {
+      setFormData(prev => ({ ...prev, description: result.content! }));
+      toast({ title: 'Description Generated', description: 'AI description added. Review before saving.' });
+    }
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -242,7 +260,21 @@ export default function KnowledgeBasePage() {
                   </div>
                 </div>
                 <div className="md:col-span-2 space-y-2">
-                  <Label>Description</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Description</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateDescription}
+                      disabled={isGenerating}
+                      className="gap-1.5 border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs h-7 px-2"
+                    >
+                      {isGenerating
+                        ? <><Sparkles className="h-3 w-3 animate-pulse" /> Generating...</>
+                        : <><Sparkles className="h-3 w-3" /> AI Autofill</>}
+                    </Button>
+                  </div>
                   <Textarea 
                     placeholder="Brief overview of the document's purpose..." 
                     value={formData.description}

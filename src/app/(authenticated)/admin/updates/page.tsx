@@ -23,10 +23,11 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Edit2, X, Send, Megaphone, Info, AlertTriangle, Sparkles, User as UserIcon } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Send, Megaphone, Info, AlertTriangle, Sparkles, Loader2, User as UserIcon } from 'lucide-react';
 import { SystemUpdate, UpdateType } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { fetchSystemUpdates, saveSystemUpdates } from '@/app/actions/db-actions';
+import { generateContentFromTitle } from '@/app/actions/ai-autofill-action';
 import { format } from 'date-fns';
 
 export default function AdminUpdatesPage() {
@@ -35,6 +36,7 @@ export default function AdminUpdatesPage() {
   
   const [updates, setUpdates] = useState<SystemUpdate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -50,6 +52,22 @@ export default function AdminUpdatesPage() {
     }
     load();
   }, []);
+
+  const handleGenerateContent = async () => {
+    setIsGenerating(true);
+    const result = await generateContentFromTitle({
+      title: formData.title,
+      context: 'announcement',
+      type: formData.type,
+    });
+    setIsGenerating(false);
+    if (result.error) {
+      toast({ title: 'Generation Failed', description: result.error, variant: 'destructive' });
+    } else if (result.content) {
+      setFormData(p => ({ ...p, content: result.content! }));
+      toast({ title: 'Content Generated', description: 'AI content added. Review before publishing.' });
+    }
+  };
 
   const handleSaveUpdate = async () => {
     if (!formData.title || !formData.content) {
@@ -152,7 +170,21 @@ export default function AdminUpdatesPage() {
               </Select>
             </div>
             <div className="md:col-span-4 space-y-2">
-              <Label>Content</Label>
+              <div className="flex items-center justify-between">
+                <Label>Content</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleGenerateContent}
+                  disabled={isGenerating}
+                  className="gap-1.5 border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs h-7 px-2"
+                >
+                  {isGenerating
+                    ? <><Sparkles className="h-3 w-3 animate-pulse" /> Generating...</>
+                    : <><Sparkles className="h-3 w-3" /> AI Autofill</>}
+                </Button>
+              </div>
               <Textarea 
                 placeholder="Details of the announcement..." 
                 className="min-h-[120px]"

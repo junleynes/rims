@@ -52,3 +52,59 @@ No markdown, no preamble.`;
     return { error: err.message ?? 'AI generation failed. Try again.' };
   }
 }
+
+export async function generateContentFromTitle(params: {
+  title: string;
+  context: 'announcement' | 'knowledge-base';
+  type?: string; // e.g. "Info", "Alert", "Feature" for announcements
+}): Promise<{ content?: string; error?: string }> {
+  await requireSession();
+
+  const { title, context, type } = params;
+
+  if (!title?.trim()) {
+    return { error: 'Enter a title first.' };
+  }
+
+  const config = await db.getAiConfig();
+  if (!config.enabled) {
+    return { error: 'AI is not enabled. Go to Admin → Settings → AI to configure it.' };
+  }
+
+  let prompt = '';
+
+  if (context === 'announcement') {
+    prompt = `You are writing a system announcement for a broadcast/media organization's internal IT resource management system (R.I.M.S).
+
+Announcement title: "${title}"
+Announcement type: ${type ?? 'Info'}
+
+Write a concise, professional announcement body (2-4 sentences) that:
+- Elaborates on the headline with relevant details
+- Uses clear, direct language appropriate for internal IT communications
+- Includes any relevant action items or deadlines if implied by the title
+- Matches the tone: ${type === 'Alert' ? 'urgent and clear' : type === 'Feature' ? 'informative and positive' : 'neutral and professional'}
+
+Respond ONLY with JSON: {"content": "your announcement body here"}`;
+  } else {
+    prompt = `You are writing a document description for an internal knowledge base in a broadcast/media organization's IT resource management system (R.I.M.S).
+
+Document title: "${title}"
+
+Write a concise description (2-3 sentences) that:
+- Summarizes what this document covers
+- States who would find it useful (e.g. IT staff, section heads, etc.)
+- Mentions what type of document it likely is (SOP, manual, guide, policy, etc.)
+
+Respond ONLY with JSON: {"content": "your description here"}`;
+  }
+
+  try {
+    const response = await callAi(config, [{ role: 'user', content: prompt }]);
+    const clean = response.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    return { content: parsed.content ?? undefined };
+  } catch (err: any) {
+    return { error: err.message ?? 'AI generation failed.' };
+  }
+}
