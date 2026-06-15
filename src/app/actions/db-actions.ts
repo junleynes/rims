@@ -227,6 +227,7 @@ export async function updateSmtpConfig(config: SmtpConfig) {
 }
 
 export async function testSmtpConnection(config: SmtpConfig, targetEmail: string) {
+  await requireAdmin();
   const transporter = nodemailer.createTransport({
     host: config.host,
     port: config.port,
@@ -268,6 +269,7 @@ export async function testSmtpConnection(config: SmtpConfig, targetEmail: string
 }
 
 export async function emailUserCredentials(userId: string) {
+  await requireAdmin();
   const smtp = await db.getSmtpConfig();
   if (!smtp || !smtp.host) {
     return { success: false, message: "SMTP is not configured. Please go to System Settings." };
@@ -327,6 +329,7 @@ export async function emailUserCredentials(userId: string) {
 }
 
 export async function resetUserPassword(userId: string, newPassword: string) {
+  await requireAdmin();
   const hash = bcrypt.hashSync(newPassword, 10);
   await db.updateUserPassword(userId, hash);
   return { success: true };
