@@ -1,14 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/session';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { existsSync, mkdirSync, writeFileSync, unlinkSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
 import path from 'path';
+import AdmZip from 'adm-zip';
 import * as db from '@/lib/server-db';
 
-const execAsync = promisify(exec);
 const ROOT = process.cwd();
-const TMP_DIR = path.join(ROOT, '.backup-tmp');
+
+function addDirToZip(zip: AdmZip, dirPath: string, zipPrefix: string) {
+  if (!existsSync(dirPath)) return;
+  const entries = readdirSync(dirPath);
+  for (const entry of entries) {
+    const fullPath = path.join(dirPath, entry);
+    const stat = statSync(fullPath);
+    if (stat.isDirectory()) {
+      addDirToZip(zip, fullPath, `${zipPrefix}/${entry}`);
+    } else {
+      const content = readFileSync(fullPath);
+      zip.addFile(`${zipPrefix}/${entry}`, content);
+    }
+  }
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,15 +29,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const date = new Date().toISOString().split('T')[0];
-  const zipName = `rims-backup-${date}.zip`;
-  const zipPath = path.join(TMP_DIR, zipName);
-
   try {
-    // Ensure tmp dir exists
-    if (!existsSync(TMP_DIR)) mkdirSync(TMP_DIR, { recursive: true });
+    const zip = new AdmZip();
+    const date = new Date().toISOString().split('T')[0];
 
-    // Write settings JSON into tmp dir
+    // Add data.db
+    const dbPath = path.join(ROOT, 'data.db');
+    if (existsSync(dbPath)) {
+      zip.addFile('data.db', readFileSync(dbPath));
+    }
+
+    // Add uploads directory
+    const uploadsPath = path.join(ROOT, 'uploads');
+    addDirToZip(zip, uploadsPath, 'uploads');
+
+    // Add settings JSON (redact secrets)
     const [branding, systemConfig, smtp, aiConfig] = await Promise.all([
       db.getBranding(),
       db.getSystemConfig(),
@@ -38,43 +56,13 @@ export async function GET(req: NextRequest) {
       version: '1.0',
       branding,
       systemConfig,
-      smtp: { ...smtp, password: '[REDACTED]' }, // never backup plaintext SMTP password
-      aiConfig: { ...aiConfig, apiKey: '[REDACTED]' }, // never backup API keys
+      smtp: { ...smtp, password: '[REDACTED]' },
+      aiConfig: { ...aiConfig, apiKey: '[REDACTED]' },
     };
+    zip.addFile('settings.json', Buffer.from(JSON.stringify(settings, null, 2)));
 
-    const settingsPath = path.join(TMP_DIR, 'settings.json');
-    writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-
-    // Build zip — include DB, uploads, settings
-    const dbPath = path.join(ROOT, 'data.db');
-    const uploadsPath = path.join(ROOT, 'uploads');
-
-    const parts: string[] = [];
-
-    // Add settings.json from tmp
-    parts.push(`-j "${settingsPath}"`); // -j = junk paths (flat in zip)
-
-    // Add data.db if it exists
-    if (existsSync(dbPath)) {
-      parts.push(`-j "${dbPath}"`);
-    }
-
-    // Add uploads directory if it exists
-    if (existsSync(uploadsPath)) {
-      parts.push(`"${uploadsPath}"`);
-    }
-
-    const cmd = `zip -r "${zipPath}" ${parts.join(' ')}`;
-    await execAsync(cmd);
-
-    // Read the zip and stream it back
-    const zipBuffer = readFileSync(zipPath);
-
-    // Cleanup tmp files
-    try {
-      unlinkSync(settingsPath);
-      unlinkSync(zipPath);
-    } catch { /* best effort */ }
+    const zipBuffer = zip.toBuffer();
+    const zipName = `rims-backup-${date}.zip`;
 
     return new NextResponse(zipBuffer, {
       headers: {
@@ -84,10 +72,7 @@ export async function GET(req: NextRequest) {
         'Cache-Control': 'no-store',
       },
     });
-
   } catch (err: any) {
-    // Cleanup on error
-    try { if (existsSync(zipPath)) unlinkSync(zipPath); } catch { /* ignore */ }
     console.error('Backup error:', err);
     return NextResponse.json({ error: `Backup failed: ${err.message}` }, { status: 500 });
   }
