@@ -16,7 +16,7 @@ console.log(`Opening database at: ${DB_PATH}`);
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 
-const USERNAME = 'admin@rims.local';
+const USERNAME = 'admin';
 const PASSWORD = 'P@ssw0rd';
 const HASH = bcrypt.hashSync(PASSWORD, 12);
 const ID = crypto.randomUUID();
@@ -29,7 +29,7 @@ if (existing) {
 } else {
   db.prepare(`
     INSERT INTO users (id, name, username, password_hash, role, division, section, twoFactorEnabled, isStaffOnly, email, contactNumber, position, reportingTo)
-    VALUES (?, 'RIMS Administrator', ?, ?, 'Admin', '', '', 0, 0, 'admin@rims.local', 'N/A', 'System Administrator', 'N/A')
+    VALUES (?, 'RIMS Administrator', ?, ?, 'Admin', '', '', 0, 0, 'admin', 'N/A', 'System Administrator', 'N/A')
   `).run(ID, USERNAME, HASH);
   console.log(`✓ Created: ${USERNAME}`);
 }

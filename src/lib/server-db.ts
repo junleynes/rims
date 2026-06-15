@@ -238,11 +238,11 @@ seedIfEmpty('sections', `
 `);
 
 const adminPasswordHash = bcrypt.hashSync('P@ssw0rd', 12);
-const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin@rims.local') as any;
+const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('admin') as any;
 if (!existingAdmin) {
   db.prepare(`
     INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
-    VALUES ('admin-001', 'admin@rims.local', ?, 'RIMS Administrator', 'admin@rims.local', 'N/A', 'Admin', 'System Administrator', 'N/A', 0, 0)
+    VALUES ('admin-001', 'admin', ?, 'RIMS Administrator', 'admin', 'N/A', 'Admin', 'System Administrator', 'N/A', 0, 0)
   `).run(adminPasswordHash);
 }
 
@@ -380,12 +380,12 @@ export async function saveUsers(users: User[]) {
   const deleteStmt = db.prepare('DELETE FROM users WHERE id = ? AND username != ?');
 
   const transactionSafe = db.transaction((data: User[]) => {
-    const incomingIds = new Set(data.map(u => u.username === 'admin@rims.local' ? 'admin-001' : u.id));
+    const incomingIds = new Set(data.map(u => u.username === 'admin' ? 'admin-001' : u.id));
 
     // Delete removed users
     for (const record of currentRecords) {
-      if (!incomingIds.has(record.id) && record.username !== 'admin@rims.local') {
-        deleteStmt.run(record.id, 'admin@rims.local');
+      if (!incomingIds.has(record.id) && record.username !== 'admin') {
+        deleteStmt.run(record.id, 'admin');
       }
     }
 
@@ -395,7 +395,7 @@ export async function saveUsers(users: User[]) {
 
       const payload = {
         ...user,
-        id: user.username === 'admin@rims.local' ? 'admin-001' : user.id,
+        id: user.username === 'admin' ? 'admin-001' : user.id,
         username: user.username || null,
         password_hash: existingHash || DEFAULT_PASSWORD_HASH,
         twoFactorEnabled: user.twoFactorEnabled ? 1 : 0,
