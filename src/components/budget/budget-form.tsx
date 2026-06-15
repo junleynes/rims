@@ -368,7 +368,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="projectTitle">Project Title or Item Name</Label>
+              <Label htmlFor="projectTitle">Project Title or Description</Label>
               <Input 
                 id="projectTitle" 
                 placeholder="Brief title for the project or resource..."
