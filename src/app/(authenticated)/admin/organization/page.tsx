@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useSystemData } from '@/components/system-data-context';
+import { saveSystemData } from '@/app/actions/db-actions';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -74,7 +75,7 @@ export default function OrganizationPage() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const parsed = JSON.parse(ev.target?.result as string);
 
@@ -83,6 +84,11 @@ export default function OrganizationPage() {
           return;
         }
 
+        // Build the complete new divisions and sections arrays in memory
+        // so we can save everything in one shot — avoids the React state
+        // lag that causes sections to lose their divisionId
+        const newDivisions = [...divisions];
+        const newSections = [...sections];
         let divsAdded = 0;
         let secsAdded = 0;
 
@@ -90,29 +96,36 @@ export default function OrganizationPage() {
           const divName = item.division?.trim();
           if (!divName) continue;
 
-          let div = divisions.find(d => d.name.toLowerCase() === divName.toLowerCase());
+          // Find existing or create new division object
+          let div = newDivisions.find(d => d.name.toLowerCase() === divName.toLowerCase());
           if (!div) {
-            addDivision(divName);
+            div = { id: crypto.randomUUID(), name: divName };
+            newDivisions.push(div);
             divsAdded++;
-            div = divisions.find(d => d.name.toLowerCase() === divName.toLowerCase());
           }
 
-          if (Array.isArray(item.sections) && div) {
+          // Add sections linked to this division's id
+          if (Array.isArray(item.sections)) {
             for (const secName of item.sections) {
               const name = secName?.trim();
               if (!name) continue;
-              const exists = sections.some(s => s.divisionId === div!.id && s.name.toLowerCase() === name.toLowerCase());
+              const exists = newSections.some(
+                s => s.divisionId === div!.id && s.name.toLowerCase() === name.toLowerCase()
+              );
               if (!exists) {
-                addSection(name, div.id);
+                newSections.push({ id: crypto.randomUUID(), name, divisionId: div!.id });
                 secsAdded++;
               }
             }
           }
         }
 
+        // Save both in one call
+        await saveSystemData({ divisions: newDivisions, sections: newSections });
+
         toast({ title: 'Import Complete', description: `Added ${divsAdded} new divisions and ${secsAdded} new sections.` });
-      } catch {
-        toast({ title: 'Invalid JSON', description: 'Could not parse the file. Check the format and try again.', variant: 'destructive' });
+      } catch (err: any) {
+        toast({ title: 'Invalid JSON', description: err.message ?? 'Could not parse the file. Check the format and try again.', variant: 'destructive' });
       }
     };
     reader.readAsText(file);
