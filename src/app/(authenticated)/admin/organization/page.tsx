@@ -51,22 +51,28 @@ export default function OrganizationPage() {
 
   // ── JSON Export ──────────────────────────────────────────────────────────
   const handleExportJSON = () => {
-    const data = divisions.map(div => ({
-      division: div.name,
-      sections: sections
-        .filter(s => s.divisionId === div.id)
-        .map(s => s.name),
-    }));
+    const data = {
+      exportedAt: new Date().toISOString(),
+      divisions: divisions.map(div => ({
+        name: div.name,
+        sections: sections
+          .filter(s => s.divisionId === div.id)
+          .map(s => s.name),
+      })),
+      locations: locations.map(l => l.name),
+      statusOptions: statusOptions.map(s => s.name),
+      positions: positions.map(p => p.name),
+    };
 
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `rims-divisions-sections-${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `rims-org-structure-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    toast({ title: 'Exported', description: 'Divisions and sections exported as JSON.' });
+    toast({ title: 'Exported', description: 'Divisions, sections, locations, statuses and positions exported.' });
   };
 
   // ── JSON Import ──────────────────────────────────────────────────────────
@@ -79,24 +85,22 @@ export default function OrganizationPage() {
       try {
         const parsed = JSON.parse(ev.target?.result as string);
 
-        if (!Array.isArray(parsed)) {
-          toast({ title: 'Invalid Format', description: 'JSON must be an array of { division, sections[] } objects.', variant: 'destructive' });
-          return;
-        }
+        // Support both new format { divisions, locations, ... } and legacy array format
+        const isNewFormat = parsed && typeof parsed === 'object' && !Array.isArray(parsed);
+        const divisionItems: any[] = isNewFormat ? (parsed.divisions ?? []) : (Array.isArray(parsed) ? parsed.map((d: any) => ({ name: d.division, sections: d.sections })) : []);
+        const locationItems: string[] = isNewFormat ? (parsed.locations ?? []) : [];
+        const statusItems: string[] = isNewFormat ? (parsed.statusOptions ?? []) : [];
+        const positionItems: string[] = isNewFormat ? (parsed.positions ?? []) : [];
 
-        // Build the complete new divisions and sections arrays in memory
-        // so we can save everything in one shot — avoids the React state
-        // lag that causes sections to lose their divisionId
+        // Build divisions + sections in memory
         const newDivisions = [...divisions];
         const newSections = [...sections];
-        let divsAdded = 0;
-        let secsAdded = 0;
+        let divsAdded = 0, secsAdded = 0;
 
-        for (const item of parsed) {
-          const divName = item.division?.trim();
+        for (const item of divisionItems) {
+          const divName = (item.name ?? item.division)?.trim();
           if (!divName) continue;
 
-          // Find existing or create new division object
           let div = newDivisions.find(d => d.name.toLowerCase() === divName.toLowerCase());
           if (!div) {
             div = { id: crypto.randomUUID(), name: divName };
@@ -104,14 +108,11 @@ export default function OrganizationPage() {
             divsAdded++;
           }
 
-          // Add sections linked to this division's id
           if (Array.isArray(item.sections)) {
             for (const secName of item.sections) {
               const name = secName?.trim();
               if (!name) continue;
-              const exists = newSections.some(
-                s => s.divisionId === div!.id && s.name.toLowerCase() === name.toLowerCase()
-              );
+              const exists = newSections.some(s => s.divisionId === div!.id && s.name.toLowerCase() === name.toLowerCase());
               if (!exists) {
                 newSections.push({ id: crypto.randomUUID(), name, divisionId: div!.id });
                 secsAdded++;
@@ -120,12 +121,65 @@ export default function OrganizationPage() {
           }
         }
 
-        // Save both in one call
-        await saveSystemData({ divisions: newDivisions, sections: newSections });
+        // Build locations
+        const newLocations = [...locations];
+        let locsAdded = 0;
+        for (const name of locationItems) {
+          const n = name?.trim();
+          if (!n) continue;
+          if (!newLocations.some(l => l.name.toLowerCase() === n.toLowerCase())) {
+            newLocations.push({ id: crypto.randomUUID(), name: n });
+            locsAdded++;
+          }
+        }
 
-        toast({ title: 'Import Complete', description: `Added ${divsAdded} new divisions and ${secsAdded} new sections.` });
+        // Build status options
+        const newStatuses = [...statusOptions];
+        let statusAdded = 0;
+        for (const name of statusItems) {
+          const n = name?.trim();
+          if (!n) continue;
+          if (!newStatuses.some(s => s.name.toLowerCase() === n.toLowerCase())) {
+            newStatuses.push({ id: crypto.randomUUID(), name: n });
+            statusAdded++;
+          }
+        }
+
+        // Build positions
+        const newPositions = [...positions];
+        let posAdded = 0;
+        for (const name of positionItems) {
+          const n = name?.trim();
+          if (!n) continue;
+          if (!newPositions.some(p => p.name.toLowerCase() === n.toLowerCase())) {
+            newPositions.push({ id: crypto.randomUUID(), name: n });
+            posAdded++;
+          }
+        }
+
+        // Save everything in one shot
+        await saveSystemData({
+          divisions: newDivisions,
+          sections: newSections,
+          locations: newLocations,
+          statusOptions: newStatuses,
+          positions: newPositions,
+        });
+
+        const parts = [
+          divsAdded && `${divsAdded} divisions`,
+          secsAdded && `${secsAdded} sections`,
+          locsAdded && `${locsAdded} locations`,
+          statusAdded && `${statusAdded} statuses`,
+          posAdded && `${posAdded} positions`,
+        ].filter(Boolean);
+
+        toast({
+          title: 'Import Complete',
+          description: parts.length ? `Added: ${parts.join(', ')}.` : 'No new items found — all already exist.',
+        });
       } catch (err: any) {
-        toast({ title: 'Invalid JSON', description: err.message ?? 'Could not parse the file. Check the format and try again.', variant: 'destructive' });
+        toast({ title: 'Invalid JSON', description: err.message ?? 'Could not parse the file.', variant: 'destructive' });
       }
     };
     reader.readAsText(file);
@@ -224,7 +278,7 @@ export default function OrganizationPage() {
                 </div>
               </div>
               <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 border border-dashed mt-1">
-                JSON format: <code className="font-mono">[{"{"}"division": "Name", "sections": ["Sec A", "Sec B"]{"}"}]</code>
+                Exports divisions, sections, locations, statuses and positions as a single JSON file. Import merges with existing data — duplicates are skipped.
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
