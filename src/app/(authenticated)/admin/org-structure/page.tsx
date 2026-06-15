@@ -253,7 +253,7 @@ export default function OrgStructurePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-8 md:p-20 overflow-x-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px]">
-              <div className="min-w-[400px] max-w-4xl mx-auto space-y-12">
+              <div className="w-full space-y-12">
                 {/* Board of Directors / Top Level Marker */}
                 <div className="flex flex-col items-center mb-12">
                    <div className="px-8 py-3 bg-primary text-white font-black text-sm uppercase tracking-[0.3em] rounded-2xl shadow-xl shadow-primary/20">

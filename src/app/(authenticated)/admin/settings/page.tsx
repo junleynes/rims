@@ -345,7 +345,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+    <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="flex items-center gap-4">
         <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg">
           <SettingsIcon className="h-6 w-6" />

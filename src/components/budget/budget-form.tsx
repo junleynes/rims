@@ -216,7 +216,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
+    <div className="w-full py-8">
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card className="shadow-lg border-primary/10 overflow-hidden">
           <CardHeader className="bg-primary/5 border-b border-primary/10 flex flex-row items-center gap-4">
