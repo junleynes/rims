@@ -52,11 +52,12 @@ import {
   EyeOff,
   CheckCircle2,
   XCircle,
-  Zap
+  Zap,
+  AlertTriangle
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { fetchSmtpConfig, updateSmtpConfig, saveSystemData, testSmtpConnection, fetchAiConfig, updateAiConfig } from '@/app/actions/db-actions';
+import { fetchSmtpConfig, updateSmtpConfig, saveSystemData, testSmtpConnection, fetchAiConfig, updateAiConfig, setMaintenanceMode } from '@/app/actions/db-actions';
 import { SmtpConfig, BrandingConfig, SystemConfig, AiConfig, AiProvider } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 
@@ -86,6 +87,8 @@ export default function SettingsPage() {
   const [darkMode, setDarkMode] = useState(!!brandingConfig.darkMode);
   
   const [maxUploadSize, setMaxUploadSize] = useState(systemConfig.maxUploadSize || 20);
+  const [maintenanceMode, setMaintenanceModeState] = useState(systemConfig.maintenanceMode ?? false);
+  const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
   
   const [smtp, setSmtp] = useState<SmtpConfig>({
     host: '',
@@ -142,6 +145,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMaxUploadSize(systemConfig.maxUploadSize || 20);
+    setMaintenanceModeState(systemConfig.maintenanceMode ?? false);
   }, [systemConfig]);
 
   const availableYears = useMemo(() => {
@@ -150,6 +154,25 @@ export default function SettingsPage() {
     const dynamicYears = [currentYear - 1, currentYear, currentYear + 1].map(y => y.toString());
     return Array.from(new Set([...years, ...dynamicYears])).sort().reverse();
   }, [budgets]);
+
+  const handleToggleMaintenance = async (enabled: boolean) => {
+    setIsTogglingMaintenance(true);
+    try {
+      await setMaintenanceMode(enabled);
+      setMaintenanceModeState(enabled);
+      toast({
+        title: enabled ? 'Maintenance Mode Enabled' : 'Maintenance Mode Disabled',
+        description: enabled
+          ? 'Only Admin accounts can now log in. All other users will see a maintenance page.'
+          : 'The site is now accessible to all users.',
+        variant: enabled ? 'destructive' : 'default',
+      });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update maintenance mode.', variant: 'destructive' });
+    } finally {
+      setIsTogglingMaintenance(false);
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -470,6 +493,37 @@ export default function SettingsPage() {
               <CardDescription>Manage technical limits and global operational settings.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Maintenance Mode */}
+              <div className={`p-4 rounded-xl border space-y-3 ${maintenanceMode ? 'bg-red-50 border-red-300' : 'bg-muted/30 border-dashed'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${maintenanceMode ? 'bg-red-100 text-red-600' : 'bg-muted text-muted-foreground'}`}>
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-base font-bold">Maintenance Mode</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {maintenanceMode
+                        ? 'Site is in maintenance — only Admin accounts can log in.'
+                        : 'Toggle on to restrict access to Admin only during maintenance.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {isTogglingMaintenance && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                    <Switch
+                      checked={maintenanceMode}
+                      onCheckedChange={handleToggleMaintenance}
+                      disabled={isTogglingMaintenance}
+                    />
+                  </div>
+                </div>
+                {maintenanceMode && (
+                  <div className="bg-red-100 border border-red-200 rounded-lg p-3 flex gap-3 text-xs text-red-800">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <p>Maintenance mode is <strong>active</strong>. Non-admin users will see a maintenance page and cannot log in. Disable this when work is complete.</p>
+                  </div>
+                )}
+              </div>
+
               <div className="p-4 bg-muted/30 rounded-xl border border-dashed space-y-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-primary/10 rounded-lg text-primary">

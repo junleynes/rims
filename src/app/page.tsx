@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   TrendingUp, Lock, ShieldCheck, Loader2, ArrowLeft, ShieldAlert, QrCode, CheckCircle2,
-  BarChart3, Users, Table2, BookOpen, Network, Brain, Sparkles, AlertTriangle, Zap
+  BarChart3, Users, Table2, BookOpen, Network, Brain, Sparkles, AlertTriangle, Zap, Wrench
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { useToast } from '@/hooks/use-toast';
 import { useBranding } from '@/components/branding-context';
+import { getMaintenanceMode } from '@/app/actions/db-actions';
 import Image from 'next/image';
 
 const FEATURES = [
@@ -30,7 +31,7 @@ const FEATURES = [
 
 function LoginPage() {
   const router = useRouter();
-  const { login, verify2FA, confirmSetup2FA, cancelPending, user, pending, isLoading } = useAuth();
+  const { login, verify2FA, confirmSetup2FA, cancelPending, logout, user, pending, isLoading } = useAuth();
   const { config } = useBranding();
   const { toast } = useToast();
 
@@ -39,6 +40,11 @@ function LoginPage() {
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
+  const [maintenanceMode, setMaintenanceModeState] = useState(false);
+
+  useEffect(() => {
+    getMaintenanceMode().then(setMaintenanceModeState);
+  }, []);
 
   useEffect(() => {
     if (!isLoading && user) router.push('/dashboard');
@@ -63,6 +69,13 @@ function LoginPage() {
     } else if (result.status === 'invalid') {
       toast({ title: 'Authentication Failed', description: 'Invalid username or password.', variant: 'destructive' });
     } else if (result.status === 'ok') {
+      // Block non-admin users during maintenance mode
+      if (maintenanceMode && user?.role !== 'Admin') {
+        await logout();
+        setMaintenanceModeState(true);
+        toast({ title: 'Site Under Maintenance', description: 'Only administrators can log in at this time.', variant: 'destructive' });
+        return;
+      }
       toast({ title: 'Welcome back', description: 'Signed in successfully.' });
       window.location.href = '/dashboard';
     }
@@ -94,6 +107,42 @@ function LoginPage() {
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   );
+
+  // Maintenance mode screen — shown to non-admins when maintenance is active
+  // (Admins still see the login form to be able to log in and disable maintenance)
+  if (maintenanceMode && !pending) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#EBF3F5] p-6">
+        <div className="max-w-md w-full text-center space-y-8">
+          <div className="flex justify-center">
+            <div className="p-6 bg-amber-100 rounded-full">
+              <Wrench className="h-16 w-16 text-amber-600" />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <h1 className="text-3xl font-black text-primary">{config.appAcronym}</h1>
+            <h2 className="text-xl font-bold text-foreground">Under Maintenance</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              The <strong>{config.appName}</strong> is currently undergoing scheduled maintenance.
+              We'll be back shortly. We apologize for the inconvenience.
+            </p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 shadow-lg border space-y-4">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+              <span>Maintenance in progress — please check back later.</span>
+            </div>
+          </div>
+          <button
+            onClick={() => setMaintenanceModeState(false)}
+            className="text-xs text-muted-foreground/50 hover:text-muted-foreground underline transition-colors"
+          >
+            Administrator login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-[#EBF3F5]">

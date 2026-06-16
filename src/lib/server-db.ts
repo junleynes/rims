@@ -188,6 +188,7 @@ addColumnIfNotExists('resources', 'attachments', 'TEXT');
 addColumnIfNotExists('ai_config', 'ollamaBaseUrl', "TEXT DEFAULT 'http://localhost:11434'");
 addColumnIfNotExists('ai_config', 'enabled', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('knowledge_base', 'filePath', "TEXT NOT NULL DEFAULT ''");
+addColumnIfNotExists('system_config', 'maintenanceMode', 'INTEGER DEFAULT 0');
 
 // --- Seeding Logic ---
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
@@ -537,18 +538,30 @@ export async function saveBranding(branding: BrandingConfig) {
 
 export async function getSystemConfig(): Promise<SystemConfig> {
   const row = db.prepare('SELECT * FROM system_config WHERE id = 1').get() as any;
-  if (!row) return { maxUploadSize: 20 };
+  if (!row) return { maxUploadSize: 20, maintenanceMode: false };
   return {
-    maxUploadSize: row.maxUploadSize || 20
+    maxUploadSize: row.maxUploadSize || 20,
+    maintenanceMode: !!row.maintenanceMode,
   };
 }
 
 export async function saveSystemConfig(config: SystemConfig) {
   db.prepare(`
     UPDATE system_config SET
-      maxUploadSize = @maxUploadSize
+      maxUploadSize = @maxUploadSize,
+      maintenanceMode = @maintenanceMode
     WHERE id = 1
-  `).run(config);
+  `).run({ ...config, maintenanceMode: config.maintenanceMode ? 1 : 0 });
+}
+
+// Lightweight check — no auth required, used on login page
+export function getMaintenanceModeSync(): boolean {
+  try {
+    const row = db.prepare('SELECT maintenanceMode FROM system_config WHERE id = 1').get() as any;
+    return !!row?.maintenanceMode;
+  } catch {
+    return false;
+  }
 }
 
 export async function getSmtpConfig(): Promise<SmtpConfig | null> {

@@ -344,3 +344,15 @@ export async function updateAiConfig(config: import('@/lib/types').AiConfig) {
   await db.saveAiConfig(config);
   return { success: true };
 }
+
+export async function getMaintenanceMode(): Promise<boolean> {
+  const config = await db.getSystemConfig();
+  return !!config.maintenanceMode;
+}
+
+export async function setMaintenanceMode(enabled: boolean) {
+  await requireAdmin();
+  const config = await db.getSystemConfig();
+  await db.saveSystemConfig({ ...config, maintenanceMode: enabled });
+  return { success: true };
+}

@@ -85,6 +85,7 @@ export interface BrandingConfig {
 
 export interface SystemConfig {
   maxUploadSize: number;
+  maintenanceMode?: boolean;
 }
 
 export interface SmtpConfig {
