@@ -57,7 +57,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { fetchSmtpConfig, updateSmtpConfig, saveSystemData, testSmtpConnection, fetchAiConfig, updateAiConfig, setMaintenanceMode } from '@/app/actions/db-actions';
+import { fetchSmtpConfig, updateSmtpConfig, testSmtpConnection, fetchAiConfig, updateAiConfig, setMaintenanceMode } from '@/app/actions/db-actions';
 import { SmtpConfig, BrandingConfig, SystemConfig, AiConfig, AiProvider } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 
@@ -160,6 +160,12 @@ export default function SettingsPage() {
     try {
       await setMaintenanceMode(enabled);
       setMaintenanceModeState(enabled);
+      // setMaintenanceMode() above writes straight to the DB, but the shared
+      // SystemDataContext (data.systemConfig) is otherwise never told about
+      // it. Left unsynced, that stale cached value gets merged back in the
+      // next time *any* tab calls updateSystemConfig, silently reverting
+      // this toggle. Syncing it here keeps the context authoritative.
+      await updateSystemConfig({ maintenanceMode: enabled });
       toast({
         title: enabled ? 'Maintenance Mode Enabled' : 'Maintenance Mode Disabled',
         description: enabled
@@ -174,36 +180,73 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSaveBranding = async () => {
     setIsSaving(true);
     try {
-      const updatedBranding: BrandingConfig = { 
-        appName, 
-        appAcronym, 
-        loginDescription, 
-        copyright, 
-        logoUrl, 
-        theme, 
-        darkMode 
+      const updatedBranding: BrandingConfig = {
+        appName,
+        appAcronym,
+        loginDescription,
+        copyright,
+        logoUrl,
+        theme,
+        darkMode
       };
-
-      const updatedSystem: SystemConfig = {
-        maxUploadSize
-      };
-
       await updateBranding(updatedBranding);
-      await updateSystemConfig(updatedSystem);
-      await saveSystemData({ branding: updatedBranding, systemConfig: updatedSystem });
-      await updateSmtpConfig(smtp);
-      
       toast({
-        title: "Settings Saved",
-        description: "System and branding settings have been updated.",
+        title: "Branding Saved",
+        description: "Branding configuration has been updated.",
       });
     } catch (e) {
       toast({
         title: "Error Saving",
-        description: "An error occurred while saving configuration.",
+        description: "An error occurred while saving branding configuration.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveSystem = async () => {
+    setIsSaving(true);
+    try {
+      // Always carry the current maintenanceMode value explicitly — never
+      // omit it, since an incomplete payload here previously caused saving
+      // unrelated constraints (like max upload size) to silently reset or
+      // revert maintenance mode.
+      const updatedSystem: SystemConfig = {
+        maxUploadSize,
+        maintenanceMode
+      };
+      await updateSystemConfig(updatedSystem);
+      toast({
+        title: "Constraints Saved",
+        description: "System constraints have been updated.",
+      });
+    } catch (e) {
+      toast({
+        title: "Error Saving",
+        description: "An error occurred while saving system constraints.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveSmtp = async () => {
+    setIsSaving(true);
+    try {
+      await updateSmtpConfig(smtp);
+      toast({
+        title: "Email Settings Saved",
+        description: "SMTP configuration has been updated.",
+      });
+    } catch (e) {
+      toast({
+        title: "Error Saving",
+        description: "An error occurred while saving SMTP configuration.",
         variant: "destructive"
       });
     } finally {
@@ -478,7 +521,7 @@ export default function SettingsPage() {
             </CardContent>
             <CardFooter className="bg-muted/30 border-t flex justify-between p-6">
               <Button variant="outline" onClick={handleReset} className="font-bold"><RefreshCw className="h-4 w-4 mr-2" /> Restore Default</Button>
-              <Button onClick={handleSave} disabled={isSaving} className="min-w-[140px] font-bold">
+              <Button onClick={handleSaveBranding} disabled={isSaving} className="min-w-[140px] font-bold">
                 {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4" />}
                 Apply Changes
               </Button>
@@ -552,7 +595,7 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter className="bg-muted/30 border-t flex justify-end p-6">
-              <Button onClick={handleSave} disabled={isSaving} className="font-bold">
+              <Button onClick={handleSaveSystem} disabled={isSaving} className="font-bold">
                 {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Constraints
               </Button>
@@ -659,7 +702,7 @@ export default function SettingsPage() {
                 {isTestingSmtp ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Test Connection
               </Button>
-              <Button onClick={handleSave} disabled={isSaving} className="font-bold">
+              <Button onClick={handleSaveSmtp} disabled={isSaving} className="font-bold">
                 {isSaving ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Configuration
               </Button>
