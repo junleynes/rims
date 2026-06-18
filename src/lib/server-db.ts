@@ -243,8 +243,13 @@ const existingAdmin = db.prepare('SELECT * FROM users WHERE username = ?').get('
 if (!existingAdmin) {
   db.prepare(`
     INSERT INTO users (id, username, password_hash, name, email, contactNumber, role, position, reportingTo, twoFactorEnabled, isStaffOnly)
-    VALUES ('admin-001', 'admin', ?, 'RIMS Administrator', 'admin', 'N/A', 'Admin', 'System Administrator', 'N/A', 0, 0)
+    VALUES ('admin-001', 'admin', ?, 'RIMS Administrator', 'admin@rims.local', 'N/A', 'Admin', 'System Administrator', 'N/A', 0, 0)
   `).run(adminPasswordHash);
+} else if (existingAdmin.email === 'admin') {
+  // One-time repair: a prior version seeded an invalid email ('admin' instead of
+  // a real address), which fails UserSchema's z.string().email() check on every
+  // saveSystemData() call and silently blocks all user add/edit/delete operations.
+  db.prepare(`UPDATE users SET email = 'admin@rims.local' WHERE id = 'admin-001'`).run();
 }
 
 seedIfEmpty('locations', `
