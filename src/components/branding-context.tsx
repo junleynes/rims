@@ -3,11 +3,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BrandingConfig } from '@/lib/types';
-import { getSystemData } from '@/app/actions/db-actions';
+import { getSystemData, saveSystemData } from '@/app/actions/db-actions';
 
 interface BrandingContextType {
   config: BrandingConfig;
-  updateConfig: (newConfig: Partial<BrandingConfig>) => void;
+  updateConfig: (newConfig: Partial<BrandingConfig>) => Promise<void>;
 }
 
 const defaultBranding: BrandingConfig = {
@@ -69,11 +69,17 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateConfig = (newConfig: Partial<BrandingConfig>) => {
+  const updateConfig = async (newConfig: Partial<BrandingConfig>) => {
     const updated = { ...config, ...newConfig };
     setConfig(updated);
     localStorage.setItem('rims_branding', JSON.stringify(updated));
     applyBranding(updated);
+    // This used to only touch localStorage/React state — it never reached
+    // the database. The change looked like it saved (UI updated instantly,
+    // survived as long as the tab stayed open) but on the next reload the
+    // mount effect's getSystemData() fetch would pull the old DB value back
+    // and overwrite both state and localStorage with it.
+    await saveSystemData({ branding: updated });
   };
 
   return (
