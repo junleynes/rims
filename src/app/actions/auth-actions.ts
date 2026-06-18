@@ -165,8 +165,8 @@ export async function actionChangePassword(
 ): Promise<{ success: boolean; error?: string }> {
   const sessionUser = await requireSession();
 
-  if (newPassword.length < 12) {
-    return { success: false, error: 'Password must be at least 12 characters.' };
+  if (newPassword.length < 8) {
+    return { success: false, error: 'Password must be at least 8 characters.' };
   }
 
   const record = await db.getUserById(sessionUser.id);

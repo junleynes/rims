@@ -218,8 +218,8 @@ export default function UserManagementPage() {
 
   const confirmReset = async () => {
     if (userToReset && newPasswordInput) {
-      if (newPasswordInput.length < 12) {
-        toast({ title: "Password Too Short", description: "Password must be at least 12 characters.", variant: "destructive" });
+      if (newPasswordInput.length < 8) {
+        toast({ title: "Password Too Short", description: "Password must be at least 8 characters.", variant: "destructive" });
         return;
       }
       if (!/[A-Z]/.test(newPasswordInput)) {
@@ -830,7 +830,7 @@ export default function UserManagementPage() {
             {/* Complexity meter */}
             {newPasswordInput.length > 0 && (() => {
               const checks = [
-                { label: 'At least 12 characters', ok: newPasswordInput.length >= 12 },
+                { label: 'At least 8 characters', ok: newPasswordInput.length >= 8 },
                 { label: 'Uppercase letter (A–Z)', ok: /[A-Z]/.test(newPasswordInput) },
                 { label: 'Lowercase letter (a–z)', ok: /[a-z]/.test(newPasswordInput) },
                 { label: 'Number (0–9)', ok: /[0-9]/.test(newPasswordInput) },

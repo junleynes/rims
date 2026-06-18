@@ -98,8 +98,8 @@ export default function ProfilePage() {
       toast({ title: "Validation Error", description: "New passwords do not match.", variant: "destructive" });
       return;
     }
-    if (passwords.new.length < 12) {
-      toast({ title: "Validation Error", description: "Password must be at least 12 characters.", variant: "destructive" });
+    if (passwords.new.length < 8) {
+      toast({ title: "Validation Error", description: "Password must be at least 8 characters.", variant: "destructive" });
       return;
     }
 
