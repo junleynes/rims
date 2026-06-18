@@ -57,7 +57,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { fetchSmtpConfig, updateSmtpConfig, testSmtpConnection, fetchAiConfig, updateAiConfig, setMaintenanceMode } from '@/app/actions/db-actions';
+import { fetchSmtpConfig, updateSmtpConfig, testSmtpConnection, fetchAiConfig, updateAiConfig } from '@/app/actions/db-actions';
 import { SmtpConfig, BrandingConfig, SystemConfig, AiConfig, AiProvider } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 
@@ -88,7 +88,6 @@ export default function SettingsPage() {
   
   const [maxUploadSize, setMaxUploadSize] = useState(systemConfig.maxUploadSize || 20);
   const [maintenanceMode, setMaintenanceModeState] = useState(systemConfig.maintenanceMode ?? false);
-  const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false);
   
   const [smtp, setSmtp] = useState<SmtpConfig>({
     host: '',
@@ -155,29 +154,12 @@ export default function SettingsPage() {
     return Array.from(new Set([...years, ...dynamicYears])).sort().reverse();
   }, [budgets]);
 
-  const handleToggleMaintenance = async (enabled: boolean) => {
-    setIsTogglingMaintenance(true);
-    try {
-      await setMaintenanceMode(enabled);
-      setMaintenanceModeState(enabled);
-      // setMaintenanceMode() above writes straight to the DB, but the shared
-      // SystemDataContext (data.systemConfig) is otherwise never told about
-      // it. Left unsynced, that stale cached value gets merged back in the
-      // next time *any* tab calls updateSystemConfig, silently reverting
-      // this toggle. Syncing it here keeps the context authoritative.
-      await updateSystemConfig({ maintenanceMode: enabled });
-      toast({
-        title: enabled ? 'Maintenance Mode Enabled' : 'Maintenance Mode Disabled',
-        description: enabled
-          ? 'Only Admin accounts can now log in. All other users will see a maintenance page.'
-          : 'The site is now accessible to all users.',
-        variant: enabled ? 'destructive' : 'default',
-      });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to update maintenance mode.', variant: 'destructive' });
-    } finally {
-      setIsTogglingMaintenance(false);
-    }
+  // Mirrors the AI Integration tab's enable switch: flipping this only
+  // updates local state immediately (so the warning panel below reacts
+  // right away). It doesn't take effect until "Save Constraints" is
+  // pressed, which is what actually persists it via handleSaveSystem.
+  const handleToggleMaintenance = (enabled: boolean) => {
+    setMaintenanceModeState(enabled);
   };
 
   const handleSaveBranding = async () => {
@@ -222,7 +204,10 @@ export default function SettingsPage() {
       await updateSystemConfig(updatedSystem);
       toast({
         title: "Constraints Saved",
-        description: "System constraints have been updated.",
+        description: maintenanceMode
+          ? "System constraints updated. Maintenance mode is now ON — only Admin accounts can log in."
+          : "System constraints updated. Maintenance mode is OFF — the site is accessible to all users.",
+        variant: maintenanceMode ? "destructive" : "default",
       });
     } catch (e) {
       toast({
@@ -551,11 +536,9 @@ export default function SettingsPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    {isTogglingMaintenance && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
                     <Switch
                       checked={maintenanceMode}
                       onCheckedChange={handleToggleMaintenance}
-                      disabled={isTogglingMaintenance}
                     />
                   </div>
                 </div>
