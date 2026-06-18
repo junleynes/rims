@@ -20,6 +20,13 @@ db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
 
+// Flushes any transactions still sitting in data.db-wal into the main
+// data.db file. Used before backing up the database file directly, since
+// WAL mode means data.db alone isn't always a complete, up-to-date copy.
+export function checkpointWal() {
+  db.pragma('wal_checkpoint(TRUNCATE)');
+}
+
 // Global pre-calculated hash to optimize user persistence
 const DEFAULT_PASSWORD_HASH = bcrypt.hashSync('password', 10);
 

@@ -21,6 +21,16 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Save, 
   RefreshCw, 
@@ -354,6 +364,10 @@ export default function SettingsPage() {
   };
 
   const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [pendingRestoreFile, setPendingRestoreFile] = useState<File | null>(null);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
 
   const handleExportData = async () => {
     setIsBackingUp(true);
@@ -377,6 +391,39 @@ export default function SettingsPage() {
       toast({ title: 'Backup Failed', description: err.message ?? 'Could not download backup.', variant: 'destructive' });
     } finally {
       setIsBackingUp(false);
+    }
+  };
+
+  const handleRestoreFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPendingRestoreFile(file);
+    setRestoreDialogOpen(true);
+  };
+
+  const confirmRestore = async () => {
+    if (!pendingRestoreFile) return;
+    setIsRestoring(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', pendingRestoreFile);
+      const res = await fetch('/api/restore', { method: 'POST', body: formData });
+      const result = await res.json();
+      if (!res.ok) {
+        toast({ title: 'Restore Failed', description: result.error ?? 'Unknown error.', variant: 'destructive' });
+        return;
+      }
+      toast({
+        title: 'Backup Restored',
+        description: `Database and ${result.uploadsRestored ?? 0} uploaded file(s) restored. Restart the application now for the changes to take effect.`,
+      });
+      setRestoreDialogOpen(false);
+    } catch (err: any) {
+      toast({ title: 'Restore Failed', description: err.message ?? 'Could not restore backup.', variant: 'destructive' });
+    } finally {
+      setIsRestoring(false);
+      setPendingRestoreFile(null);
+      if (restoreInputRef.current) restoreInputRef.current.value = '';
     }
   };
 
@@ -851,13 +898,20 @@ export default function SettingsPage() {
                     <p className="text-xs text-muted-foreground">Database, uploads & settings as ZIP</p>
                   </div>
                 </Button>
-                <Button variant="outline" className="h-20 gap-3 border-dashed relative overflow-hidden">
-                  <Upload className="h-5 w-5 text-emerald-500" />
+                <Button variant="outline" disabled={isRestoring} className="h-20 gap-3 border-dashed relative overflow-hidden">
+                  {isRestoring ? <Loader2 className="h-5 w-5 animate-spin text-emerald-500" /> : <Upload className="h-5 w-5 text-emerald-500" />}
                   <div className="text-left">
-                    <p className="font-bold">Restore Backup</p>
-                    <p className="text-xs text-muted-foreground">Import settings from file</p>
+                    <p className="font-bold">{isRestoring ? 'Restoring...' : 'Restore Backup'}</p>
+                    <p className="text-xs text-muted-foreground">Upload a backup .zip (database, uploads & settings)</p>
                   </div>
-                  <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" accept=".json" />
+                  <input
+                    ref={restoreInputRef}
+                    type="file"
+                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                    accept=".zip"
+                    disabled={isRestoring}
+                    onChange={handleRestoreFileSelected}
+                  />
                 </Button>
               </div>
             </CardContent>
@@ -893,6 +947,39 @@ export default function SettingsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={restoreDialogOpen} onOpenChange={(open) => {
+        setRestoreDialogOpen(open);
+        if (!open) {
+          setPendingRestoreFile(null);
+          if (restoreInputRef.current) restoreInputRef.current.value = '';
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-amber-600" />
+              Restore from Backup
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will replace your current database{pendingRestoreFile ? <> with the contents of <strong>{pendingRestoreFile.name}</strong></> : ''}, including all personnel, budgets, and settings, plus any uploaded files included in the backup. A safety copy of the current database is kept on the server in case you need to undo this.
+              <br /><br />
+              The application needs to be restarted after this completes for the restored database to take effect. This cannot be undone from the UI — proceed only if you're sure this is the backup you want.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRestoring}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmRestore(); }}
+              disabled={isRestoring}
+              className="bg-amber-600 hover:bg-amber-700 text-white font-bold"
+            >
+              {isRestoring ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+              Restore Now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

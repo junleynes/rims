@@ -33,6 +33,11 @@ export async function GET(req: NextRequest) {
     const zip = new AdmZip();
     const date = new Date().toISOString().split('T')[0];
 
+    // The connection runs in WAL mode, so recently committed transactions
+    // may still be sitting in data.db-wal rather than data.db itself.
+    // Checkpoint first so the file we're about to zip is self-contained.
+    db.checkpointWal();
+
     // Add data.db
     const dbPath = path.join(ROOT, 'data.db');
     if (existsSync(dbPath)) {
