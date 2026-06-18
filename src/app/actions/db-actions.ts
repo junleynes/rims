@@ -228,6 +228,7 @@ export async function updateSmtpConfig(config: SmtpConfig) {
 
 export async function testSmtpConnection(config: SmtpConfig, targetEmail: string) {
   await requireAdmin();
+  const branding = await db.getBranding();
   const transporter = nodemailer.createTransport({
     host: config.host,
     port: config.port,
@@ -242,16 +243,16 @@ export async function testSmtpConnection(config: SmtpConfig, targetEmail: string
     await transporter.verify();
     await transporter.sendMail({
       from: {
-        name: config.fromName || 'R.I.M.S. Notifications',
+        name: config.fromName || `${branding.appAcronym} Notifications`,
         address: config.fromEmail,
       },
       to: targetEmail,
-      subject: 'R.I.M.S SMTP Connection Test',
+      subject: `${branding.appAcronym} SMTP Connection Test`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #2E86AB;">SMTP Connection Test</h2>
           <p>Hello,</p>
-          <p>This is a test email confirming that your SMTP configuration for the <strong>Resource Inventory Management System (R.I.M.S)</strong> is working correctly.</p>
+          <p>This is a test email confirming that your SMTP configuration for the <strong>${branding.appName} (${branding.appAcronym})</strong> is working correctly.</p>
           <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <p style="margin: 0;"><strong>Sent To:</strong> ${targetEmail}</p>
             <p style="margin: 5px 0 0 0;"><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
@@ -280,6 +281,8 @@ export async function emailUserCredentials(userId: string) {
     return { success: false, message: "User email not found or user does not exist." };
   }
 
+  const branding = await db.getBranding();
+
   // Generate random temporary password
   const tempPassword = Math.random().toString(36).substring(2, 10);
   const hash = bcrypt.hashSync(tempPassword, 10);
@@ -300,16 +303,16 @@ export async function emailUserCredentials(userId: string) {
   try {
     await transporter.sendMail({
       from: {
-        name: smtp.fromName || 'R.I.M.S. Notifications',
+        name: smtp.fromName || `${branding.appAcronym} Notifications`,
         address: smtp.fromEmail,
       },
       to: user.email,
-      subject: 'R.I.M.S Account Credentials - Password Reset',
+      subject: `${branding.appAcronym} Account Credentials - Password Reset`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #2E86AB;">Account Access Information</h2>
           <p>Hello <strong>${user.name}</strong>,</p>
-          <p>Your password for the <strong>Resource Inventory Management System (R.I.M.S)</strong> has been reset by an administrator.</p>
+          <p>Your password for the <strong>${branding.appName} (${branding.appAcronym})</strong> has been reset by an administrator.</p>
           <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px dashed #2E86AB; text-align: center;">
             <p style="margin: 0; color: #64748b; font-size: 14px;">Username:</p>
             <p style="margin: 5px 0 15px 0; font-weight: bold; font-size: 18px;">${user.username}</p>

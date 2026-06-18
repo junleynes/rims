@@ -3,11 +3,15 @@ import type {Metadata} from 'next';
 import './globals.css';
 import {Toaster} from '@/components/ui/toaster';
 import { BrandingProvider } from '@/components/branding-context';
+import * as db from '@/lib/server-db';
 
-export const metadata: Metadata = {
-  title: 'R.I.M.S - Resource Inventory Management System',
-  description: 'Secure and efficient budget and resource tracking system.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await db.getBranding();
+  return {
+    title: `${branding.appAcronym} - ${branding.appName}`,
+    description: 'Secure and efficient budget and resource tracking system.',
+  };
+}
 
 export default function RootLayout({
   children,

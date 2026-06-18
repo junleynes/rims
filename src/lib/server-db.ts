@@ -202,8 +202,21 @@ seedIfEmpty('branding', `
   INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
   VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
   'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
-  '© 2025 Resource Inventory Management System. All rights reserved.', 'oceanic', 0)
+  '© 2026 Resource Inventory Management System. All rights reserved.', 'oceanic', 0)
 `);
+
+// One-time repair for installs that already seeded the previous default
+// copyright text (with the old year baked in). Only touches the row if the
+// copyright text still matches that exact untouched old default — if an
+// admin has since edited it in Settings, this is skipped.
+(() => {
+  const OLD_DEFAULT_COPYRIGHT = '© 2025 Resource Inventory Management System. All rights reserved.';
+  const row = db.prepare('SELECT copyright FROM branding WHERE id = 1').get() as { copyright: string } | undefined;
+  if (row && row.copyright === OLD_DEFAULT_COPYRIGHT) {
+    db.prepare('UPDATE branding SET copyright = ? WHERE id = 1')
+      .run('© 2026 Resource Inventory Management System. All rights reserved.');
+  }
+})();
 
 seedIfEmpty('system_config', `
   INSERT INTO system_config (id, maxUploadSize)
@@ -272,11 +285,42 @@ seedIfEmpty('positions', `
   INSERT INTO positions (id, name) VALUES 
   ('vp', 'VP'),
   ('avp', 'AVP'),
-  ('section-head', 'Section Head'),
-  ('unit-head', 'Unit Head'),
+  ('senior-manager', 'Senior Manager'),
+  ('manager', 'Manager'),
   ('assistant-manager', 'Assistant Manager'),
-  ('senior-engineer', 'Senior Media Engineer')
+  ('budget-officer', 'Budget Officer')
 `);
+
+// One-time repair for installs that already seeded the *previous* default
+// position list before it changed. Only replaces the rows if the table
+// still contains exactly the old default set untouched — if an admin has
+// since added, removed, or renamed any position, this is skipped so their
+// customizations are left alone.
+(() => {
+  const OLD_DEFAULT_IDS = ['assistant-manager', 'avp', 'section-head', 'senior-engineer', 'unit-head', 'vp'];
+  const existingIds = (db.prepare('SELECT id FROM positions').all() as { id: string }[])
+    .map(r => r.id)
+    .sort();
+  const isUntouchedOldDefault =
+    existingIds.length === OLD_DEFAULT_IDS.length &&
+    existingIds.every((id, i) => id === OLD_DEFAULT_IDS[i]);
+
+  if (isUntouchedOldDefault) {
+    const replace = db.transaction(() => {
+      db.prepare('DELETE FROM positions').run();
+      const insert = db.prepare('INSERT INTO positions (id, name) VALUES (@id, @name)');
+      [
+        { id: 'vp', name: 'VP' },
+        { id: 'avp', name: 'AVP' },
+        { id: 'senior-manager', name: 'Senior Manager' },
+        { id: 'manager', name: 'Manager' },
+        { id: 'assistant-manager', name: 'Assistant Manager' },
+        { id: 'budget-officer', name: 'Budget Officer' },
+      ].forEach(p => insert.run(p));
+    });
+    replace();
+  }
+})();
 
 // --- Resource Logic ---
 export async function getAllResources(): Promise<BudgetEntry[]> {
@@ -513,7 +557,7 @@ export async function getBranding(): Promise<BrandingConfig> {
       appName: 'Resource Inventory Management System',
       appAcronym: 'R.I.M.S',
       loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
-      copyright: '© 2025 Resource Inventory Management System. All rights reserved.',
+      copyright: '© 2026 Resource Inventory Management System. All rights reserved.',
       theme: 'oceanic',
       darkMode: false
     };

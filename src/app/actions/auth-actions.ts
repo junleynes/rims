@@ -75,8 +75,9 @@ export async function actionLogin(
 
   // If 2FA forced setup required → generate QR, store pending
   if (needs2FASetup) {
+    const branding = await db.getBranding();
     const secret = authenticator.generateSecret();
-    const otpauth = authenticator.keyuri(record.username || record.name, 'R.I.M.S', secret);
+    const otpauth = authenticator.keyuri(record.username || record.name, branding.appAcronym, secret);
     const qrCodeUrl = await QRCode.toDataURL(otpauth);
     session.pendingUserId = record.id;
     // Store temp secret in session until confirmed
@@ -197,8 +198,9 @@ export async function actionSetupTwoFactor(): Promise<{ secret: string; qrCodeUr
   const record = await db.getUserById(sessionUser.id);
   if (!record) throw new Error('User not found');
 
+  const branding = await db.getBranding();
   const secret = authenticator.generateSecret();
-  const otpauth = authenticator.keyuri(record.username || record.name, 'R.I.M.S', secret);
+  const otpauth = authenticator.keyuri(record.username || record.name, branding.appAcronym, secret);
   const qrCodeUrl = await QRCode.toDataURL(otpauth);
   return { secret, qrCodeUrl };
 }
