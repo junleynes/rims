@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useAuth } from '@/components/auth-context';
 import { useBudgets } from '@/components/budget-context';
 import { useSystemData } from '@/components/system-data-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -36,11 +37,29 @@ type SortConfig = {
 } | null;
 
 export default function ReportsPage() {
+  const { user } = useAuth();
   const { budgets } = useBudgets();
   const { divisions } = useSystemData();
   const [yearFilter, setYearFilter] = useState('2026');
   const [divisionFilter, setDivisionFilter] = useState('All');
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+
+  // Manager and AVP can only ever see their own division's figures here;
+  // VP and Admin (and Viewer, per the same convention used on the
+  // Dashboard) can filter across all divisions.
+  const isDivisionLocked = user?.role === 'Manager' || user?.role === 'AVP';
+
+  useEffect(() => {
+    if (isDivisionLocked && user?.division) {
+      setDivisionFilter(user.division);
+    }
+  }, [isDivisionLocked, user?.division]);
+
+  // Authoritative division value for every filter/computation below — for
+  // locked roles this always wins over whatever divisionFilter happens to
+  // hold, so a stale or tampered dropdown value can't leak another
+  // division's figures.
+  const effectiveDivisionFilter = isDivisionLocked ? (user?.division || 'All') : divisionFilter;
 
   const [anomalies, setAnomalies] = useState<AnomalyFlag[]>([]);
   const [isDetecting, setIsDetecting] = useState(false);
@@ -57,7 +76,7 @@ export default function ReportsPage() {
     try {
       const filtered = budgets.filter(b => {
         if (b.year.toString() !== yearFilter) return false;
-        if (divisionFilter !== 'All' && b.division !== divisionFilter) return false;
+        if (effectiveDivisionFilter !== 'All' && b.division !== effectiveDivisionFilter) return false;
         return true;
       });
       const result = await detectAnomalies(filtered);
@@ -68,14 +87,14 @@ export default function ReportsPage() {
     } finally {
       setIsDetecting(false);
     }
-  }, [budgets, yearFilter, divisionFilter]);
+  }, [budgets, yearFilter, effectiveDivisionFilter]);
 
   const handleGenerateNarrative = useCallback(async () => {
     setIsGenerating(true);
     setNarrativeError('');
     setNarrative('');
     try {
-      const result = await generateNarrativeReport(budgets, yearFilter, divisionFilter);
+      const result = await generateNarrativeReport(budgets, yearFilter, effectiveDivisionFilter);
       if (result.error) setNarrativeError(result.error);
       else setNarrative(result.narrative);
     } catch (e: any) {
@@ -83,7 +102,7 @@ export default function ReportsPage() {
     } finally {
       setIsGenerating(false);
     }
-  }, [budgets, yearFilter, divisionFilter]);
+  }, [budgets, yearFilter, effectiveDivisionFilter]);
 
   const handleSort = (key: keyof BudgetEntry | 'variance') => {
     setSortConfig(current => {
@@ -102,8 +121,8 @@ export default function ReportsPage() {
 
   const reportData = useMemo(() => {
     let filtered = budgets.filter(b => b.year.toString() === yearFilter);
-    if (divisionFilter !== 'All') {
-      filtered = filtered.filter(b => b.division === divisionFilter);
+    if (effectiveDivisionFilter !== 'All') {
+      filtered = filtered.filter(b => b.division === effectiveDivisionFilter);
     }
 
     const summary = filtered.reduce((acc, b) => {
@@ -146,7 +165,7 @@ export default function ReportsPage() {
     }
 
     return { summary, chartData, filtered };
-  }, [budgets, yearFilter, divisionFilter, sortConfig]);
+  }, [budgets, yearFilter, effectiveDivisionFilter, sortConfig]);
 
   const handlePrint = () => {
     window.print();
@@ -209,17 +228,24 @@ export default function ReportsPage() {
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Filter by Division</label>
-              <Select value={divisionFilter} onValueChange={setDivisionFilter}>
+              <Select value={effectiveDivisionFilter} onValueChange={setDivisionFilter} disabled={isDivisionLocked}>
                 <SelectTrigger className="h-12">
                   <SelectValue placeholder="All Divisions" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="All">All Divisions</SelectItem>
-                  {divisions.map(d => (
-                    <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
-                  ))}
+                  {!isDivisionLocked && <SelectItem value="All">All Divisions</SelectItem>}
+                  {divisions
+                    .filter(d => isDivisionLocked ? d.name === user?.division : true)
+                    .map(d => (
+                      <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
+              {isDivisionLocked && (
+                <p className="text-xs text-muted-foreground italic">
+                  Your role is restricted to viewing {user?.division || 'your division'} only.
+                </p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -365,7 +391,7 @@ export default function ReportsPage() {
                 <XCircle className="h-4 w-4" />
               </Button>
             </div>
-            <CardDescription>FY {yearFilter} · {divisionFilter} · Generated by AI — review before use.</CardDescription>
+            <CardDescription>FY {yearFilter} · {effectiveDivisionFilter} · Generated by AI — review before use.</CardDescription>
           </CardHeader>
           <CardContent>
             {isGenerating ? (
@@ -400,7 +426,7 @@ export default function ReportsPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
             <CardTitle>Resource Summary Table</CardTitle>
-            <CardDescription>Fiscal Year {yearFilter} - {divisionFilter}</CardDescription>
+            <CardDescription>Fiscal Year {yearFilter} - {effectiveDivisionFilter}</CardDescription>
           </div>
           <FileBarChart className="h-6 w-6 text-muted-foreground/50" />
         </CardHeader>
