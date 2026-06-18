@@ -286,24 +286,27 @@ seedIfEmpty('positions', `
   ('senior-manager', 'Senior Manager'),
   ('manager', 'Manager'),
   ('assistant-manager', 'Assistant Manager'),
-  ('budget-officer', 'Budget Officer')
+  ('budget-officer', 'Budget Officer'),
+  ('secretary', 'Secretary'),
+  ('staff', 'Staff')
 `);
 
-// One-time repair for installs that already seeded the *previous* default
-// position list before it changed. Only replaces the rows if the table
-// still contains exactly the old default set untouched — if an admin has
-// since added, removed, or renamed any position, this is skipped so their
-// customizations are left alone.
+// One-time repair for installs that already seeded an *earlier* default
+// position list before it changed. Only touches rows if the table still
+// contains exactly one of the previously-shipped default sets, untouched —
+// if an admin has since added, removed, or renamed any position, both
+// checks are skipped so their customizations are left alone.
 (() => {
-  const OLD_DEFAULT_IDS = ['assistant-manager', 'avp', 'section-head', 'senior-engineer', 'unit-head', 'vp'];
+  const VERY_OLD_DEFAULT_IDS = ['assistant-manager', 'avp', 'section-head', 'senior-engineer', 'unit-head', 'vp'];
+  const PREVIOUS_DEFAULT_IDS = ['assistant-manager', 'avp', 'budget-officer', 'manager', 'senior-manager', 'vp'];
   const existingIds = (db.prepare('SELECT id FROM positions').all() as { id: string }[])
     .map(r => r.id)
     .sort();
-  const isUntouchedOldDefault =
-    existingIds.length === OLD_DEFAULT_IDS.length &&
-    existingIds.every((id, i) => id === OLD_DEFAULT_IDS[i]);
+  const matchesSet = (set: string[]) =>
+    existingIds.length === set.length && existingIds.every((id, i) => id === set[i]);
 
-  if (isUntouchedOldDefault) {
+  if (matchesSet(VERY_OLD_DEFAULT_IDS)) {
+    // Jump straight from the very old set to the current full default set.
     const replace = db.transaction(() => {
       db.prepare('DELETE FROM positions').run();
       const insert = db.prepare('INSERT INTO positions (id, name) VALUES (@id, @name)');
@@ -314,9 +317,16 @@ seedIfEmpty('positions', `
         { id: 'manager', name: 'Manager' },
         { id: 'assistant-manager', name: 'Assistant Manager' },
         { id: 'budget-officer', name: 'Budget Officer' },
+        { id: 'secretary', name: 'Secretary' },
+        { id: 'staff', name: 'Staff' },
       ].forEach(p => insert.run(p));
     });
     replace();
+  } else if (matchesSet(PREVIOUS_DEFAULT_IDS)) {
+    // Already on the intermediate default set — just add the two new ones.
+    const insert = db.prepare('INSERT INTO positions (id, name) VALUES (@id, @name)');
+    insert.run({ id: 'secretary', name: 'Secretary' });
+    insert.run({ id: 'staff', name: 'Staff' });
   }
 })();
 
