@@ -79,7 +79,6 @@ export interface BrandingConfig {
   copyright: string;
   logoUrl?: string;
   theme?: string;
-  darkMode?: boolean;
   financialYear?: string;
 }
 

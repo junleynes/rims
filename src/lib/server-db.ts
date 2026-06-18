@@ -124,8 +124,7 @@ db.exec(`
     loginDescription TEXT,
     copyright TEXT,
     logoUrl TEXT,
-    theme TEXT,
-    darkMode INTEGER DEFAULT 0
+    theme TEXT
   );
 
   CREATE TABLE IF NOT EXISTS system_config (
@@ -182,7 +181,6 @@ addColumnIfNotExists('users', 'twoFactorSecret', 'TEXT');
 addColumnIfNotExists('smtp_settings', 'secure', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('smtp_settings', 'fromName', 'TEXT');
 addColumnIfNotExists('branding', 'theme', 'TEXT');
-addColumnIfNotExists('branding', 'darkMode', 'INTEGER DEFAULT 0');
 addColumnIfNotExists('resources', 'locationDetails', 'TEXT');
 addColumnIfNotExists('resources', 'attachments', 'TEXT');
 addColumnIfNotExists('ai_config', 'ollamaBaseUrl', "TEXT DEFAULT 'http://localhost:11434'");
@@ -199,10 +197,10 @@ const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
 };
 
 seedIfEmpty('branding', `
-  INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme, darkMode)
+  INSERT INTO branding (id, appName, appAcronym, loginDescription, copyright, theme)
   VALUES (1, 'Resource Inventory Management System', 'R.I.M.S', 
   'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
-  '© 2026 Resource Inventory Management System. All rights reserved.', 'oceanic', 0)
+  '© 2026 Resource Inventory Management System. All rights reserved.', 'oceanic')
 `);
 
 // One-time repair for installs that already seeded the previous default
@@ -559,13 +557,10 @@ export async function getBranding(): Promise<BrandingConfig> {
       loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
       copyright: '© 2026 Resource Inventory Management System. All rights reserved.',
       theme: 'oceanic',
-      darkMode: false
     };
   }
-  return {
-    ...row,
-    darkMode: !!row.darkMode,
-  };
+  const { darkMode, ...rest } = row;
+  return rest;
 }
 
 export async function saveBranding(branding: BrandingConfig) {
@@ -576,13 +571,9 @@ export async function saveBranding(branding: BrandingConfig) {
       loginDescription = @loginDescription,
       copyright = @copyright,
       logoUrl = @logoUrl,
-      theme = @theme,
-      darkMode = @darkMode
+      theme = @theme
     WHERE id = 1
-  `).run({
-    ...branding,
-    darkMode: branding.darkMode ? 1 : 0
-  });
+  `).run(branding);
 }
 
 export async function getSystemConfig(): Promise<SystemConfig> {

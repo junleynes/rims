@@ -31,8 +31,6 @@ import {
   X, 
   TrendingUp, 
   Palette, 
-  Moon, 
-  Sun, 
   Mail, 
   Server, 
   Key, 
@@ -84,7 +82,6 @@ export default function SettingsPage() {
   const [copyright, setCopyright] = useState(brandingConfig.copyright);
   const [logoUrl, setLogoUrl] = useState(brandingConfig.logoUrl || '');
   const [theme, setTheme] = useState(brandingConfig.theme || 'oceanic');
-  const [darkMode, setDarkMode] = useState(!!brandingConfig.darkMode);
   
   const [maxUploadSize, setMaxUploadSize] = useState(systemConfig.maxUploadSize || 20);
   const [maintenanceMode, setMaintenanceModeState] = useState(systemConfig.maintenanceMode ?? false);
@@ -139,7 +136,6 @@ export default function SettingsPage() {
     setCopyright(brandingConfig.copyright);
     setLogoUrl(brandingConfig.logoUrl || '');
     setTheme(brandingConfig.theme || 'oceanic');
-    setDarkMode(!!brandingConfig.darkMode);
   }, [brandingConfig]);
 
   useEffect(() => {
@@ -171,8 +167,7 @@ export default function SettingsPage() {
         loginDescription,
         copyright,
         logoUrl,
-        theme,
-        darkMode
+        theme
       };
       await updateBranding(updatedBranding);
       toast({
@@ -292,7 +287,6 @@ export default function SettingsPage() {
     setCopyright(`© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`);
     setLogoUrl('');
     setTheme('oceanic');
-    setDarkMode(false);
     setMaxUploadSize(20);
   };
 
@@ -453,17 +447,6 @@ export default function SettingsPage() {
               </div>
 
               <div className="pt-4 border-t space-y-4">
-                <div className="flex items-center justify-between p-4 bg-muted/30 rounded-xl border border-dashed">
-                  <div className="space-y-1">
-                    <Label className="flex items-center gap-2">
-                      {darkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                      Dark Mode Enablement
-                    </Label>
-                    <p className="text-xs text-muted-foreground">Toggle application-wide theme mode.</p>
-                  </div>
-                  <Switch checked={darkMode} onCheckedChange={setDarkMode} />
-                </div>
-
                 <div className="space-y-3 pt-2">
                   <Label className="text-sm font-semibold flex items-center gap-2"><Palette className="h-4 w-4" /> System Color Theme</Label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

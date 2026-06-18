@@ -16,8 +16,7 @@ const defaultBranding: BrandingConfig = {
   loginDescription: 'A specialized system for broadcast, media, and engineering departments to manage expenditures and resources with precision.',
   copyright: `© ${new Date().getFullYear()} Resource Inventory Management System. All rights reserved.`,
   logoUrl: '',
-  theme: 'oceanic',
-  darkMode: false
+  theme: 'oceanic'
 };
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);
@@ -59,13 +58,6 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       document.documentElement.setAttribute('data-theme', branding.theme);
     } else {
       document.documentElement.removeAttribute('data-theme');
-    }
-
-    // Apply Dark Mode
-    if (branding.darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
     }
   };
 
