@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useSystemData } from '@/components/system-data-context';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -68,7 +68,9 @@ import {
   ShieldCheck,
   ShieldAlert,
   ShieldOff,
-  Send
+  Send,
+  Search,
+  Filter
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -98,6 +100,9 @@ export default function UserManagementPage() {
   });
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [registrySearch, setRegistrySearch] = useState('');
+  const [registryRoleFilter, setRegistryRoleFilter] = useState<'All' | Role | 'StaffOnly'>('All');
+  const [registryDivisionFilter, setRegistryDivisionFilter] = useState('All');
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [userToReset, setUserToReset] = useState<User | null>(null);
   const [newPasswordInput, setNewPasswordInput] = useState('');
@@ -425,6 +430,34 @@ export default function UserManagementPage() {
     }
   };
 
+  const filteredUsers = useMemo(() => {
+    const term = registrySearch.trim().toLowerCase();
+    return users.filter(u => {
+      const matchesSearch = !term ||
+        u.name.toLowerCase().includes(term) ||
+        (u.username || '').toLowerCase().includes(term) ||
+        (u.email || '').toLowerCase().includes(term) ||
+        (u.position || '').toLowerCase().includes(term) ||
+        (u.contactNumber || '').toLowerCase().includes(term);
+
+      const matchesRole =
+        registryRoleFilter === 'All' ||
+        (registryRoleFilter === 'StaffOnly' ? u.isStaffOnly : (!u.isStaffOnly && u.role === registryRoleFilter));
+
+      const matchesDivision = registryDivisionFilter === 'All' || u.division === registryDivisionFilter;
+
+      return matchesSearch && matchesRole && matchesDivision;
+    });
+  }, [users, registrySearch, registryRoleFilter, registryDivisionFilter]);
+
+  const hasActiveRegistryFilters = !!registrySearch || registryRoleFilter !== 'All' || registryDivisionFilter !== 'All';
+
+  const clearRegistryFilters = () => {
+    setRegistrySearch('');
+    setRegistryRoleFilter('All');
+    setRegistryDivisionFilter('All');
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
       <div className="flex items-center justify-between">
@@ -655,8 +688,54 @@ export default function UserManagementPage() {
       <Card className="border-none shadow-sm">
         <CardHeader>
           <CardTitle>Personnel & Account Registry</CardTitle>
+          <CardDescription>
+            Showing {filteredUsers.length} of {users.length} {users.length === 1 ? 'entry' : 'entries'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
+            <div className="relative flex-1 md:max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search name, username, email, position..."
+                className="pl-9"
+                value={registrySearch}
+                onChange={(e) => setRegistrySearch(e.target.value)}
+              />
+            </div>
+            <Select value={registryRoleFilter} onValueChange={(v) => setRegistryRoleFilter(v as typeof registryRoleFilter)}>
+              <SelectTrigger className="w-full md:w-[160px] gap-2">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Roles</SelectItem>
+                <SelectItem value="Admin">Admin</SelectItem>
+                <SelectItem value="VP">VP</SelectItem>
+                <SelectItem value="AVP">AVP</SelectItem>
+                <SelectItem value="Manager">Manager</SelectItem>
+                <SelectItem value="Viewer">Viewer</SelectItem>
+                <SelectItem value="StaffOnly">Staff Only</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={registryDivisionFilter} onValueChange={setRegistryDivisionFilter}>
+              <SelectTrigger className="w-full md:w-[180px] gap-2">
+                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder="Division" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All Divisions</SelectItem>
+                {divisions.map(d => (
+                  <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {hasActiveRegistryFilters && (
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={clearRegistryFilters}>
+                <X className="h-3.5 w-3.5" /> Clear
+              </Button>
+            )}
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -669,7 +748,14 @@ export default function UserManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.map((u) => (
+              {filteredUsers.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-10">
+                    No personnel match your search or filters.
+                  </TableCell>
+                </TableRow>
+              )}
+              {filteredUsers.map((u) => (
                 <TableRow key={u.id} className={editingUserId === u.id ? "bg-primary/5" : ""}>
                   <TableCell>
                     <div className="flex items-center gap-3">
