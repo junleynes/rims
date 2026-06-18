@@ -31,7 +31,7 @@ const FEATURES = [
 
 function LoginPage() {
   const router = useRouter();
-  const { login, verify2FA, confirmSetup2FA, cancelPending, logout, user, pending, isLoading } = useAuth();
+  const { login, verify2FA, confirmSetup2FA, cancelPending, user, pending, isLoading } = useAuth();
   const { config } = useBranding();
   const { toast } = useToast();
 
@@ -68,14 +68,12 @@ function LoginPage() {
       toast({ title: 'Account Locked', description: `Too many failed attempts. Try again in ${Math.ceil(result.remainingSeconds / 60)} min.`, variant: 'destructive' });
     } else if (result.status === 'invalid') {
       toast({ title: 'Authentication Failed', description: 'Invalid username or password.', variant: 'destructive' });
+    } else if (result.status === 'maintenance') {
+      // Server confirmed this account isn't an Admin while maintenance mode is
+      // active — no session was created, so there's nothing to undo here.
+      setMaintenanceModeState(true);
+      toast({ title: 'Site Under Maintenance', description: 'Only administrators can log in at this time.', variant: 'destructive' });
     } else if (result.status === 'ok') {
-      // Block non-admin users during maintenance mode
-      if (maintenanceMode && user?.role !== 'Admin') {
-        await logout();
-        setMaintenanceModeState(true);
-        toast({ title: 'Site Under Maintenance', description: 'Only administrators can log in at this time.', variant: 'destructive' });
-        return;
-      }
       toast({ title: 'Welcome back', description: 'Signed in successfully.' });
       window.location.href = '/dashboard';
     }

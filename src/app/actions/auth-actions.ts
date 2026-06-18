@@ -23,6 +23,7 @@ export async function actionLogin(
 ): Promise<
   | { status: 'locked'; remainingSeconds: number }
   | { status: 'invalid' }
+  | { status: 'maintenance' }
   | { status: 'needs_2fa_setup'; qrCodeUrl: string; secret: string }
   | { status: 'needs_2fa_verify' }
   | { status: 'ok'; user: SessionUser }
@@ -48,6 +49,15 @@ export async function actionLogin(
     session.lastFailedAt = Date.now();
     await session.save();
     return { status: 'invalid' };
+  }
+
+  // Enforce maintenance mode here, server-side, before any session or 2FA
+  // pending state is created. This must not rely on the client (the login
+  // page previously only checked this after the session was already
+  // established, using a stale value of `user` that never reflected the
+  // freshly-logged-in account — so the block silently never fired).
+  if (db.getMaintenanceModeSync() && record.role !== 'Admin') {
+    return { status: 'maintenance' };
   }
 
   // Reset failed attempts on success

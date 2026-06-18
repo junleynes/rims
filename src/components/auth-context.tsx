@@ -22,6 +22,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<
     | { status: 'locked'; remainingSeconds: number }
     | { status: 'invalid' }
+    | { status: 'maintenance' }
     | { status: 'needs_2fa_setup'; qrCodeUrl: string; secret: string }
     | { status: 'needs_2fa_verify' }
     | { status: 'ok' }
