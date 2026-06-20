@@ -32,6 +32,12 @@ export async function actionLogin(
 
   // Rate limiting
   if (isLockedOut(session)) {
+    db.logAudit({
+      username,
+      action: 'login_blocked_lockout',
+      details: `Attempted login while locked out`,
+      success: false,
+    });
     return { status: 'locked', remainingSeconds: lockoutRemainingSeconds(session) };
   }
 
@@ -48,6 +54,13 @@ export async function actionLogin(
     session.loginAttempts = (session.loginAttempts ?? 0) + 1;
     session.lastFailedAt = Date.now();
     await session.save();
+    db.logAudit({
+      userId: record?.id ?? null,
+      username,
+      action: 'login_failed',
+      details: record ? 'Incorrect password' : 'Unknown username',
+      success: false,
+    });
     return { status: 'invalid' };
   }
 
@@ -57,6 +70,13 @@ export async function actionLogin(
   // established, using a stale value of `user` that never reflected the
   // freshly-logged-in account — so the block silently never fired).
   if (db.getMaintenanceModeSync() && record.role !== 'Admin') {
+    db.logAudit({
+      userId: record.id,
+      username: record.username,
+      action: 'login_blocked_maintenance',
+      details: `Login blocked — maintenance mode active, role: ${record.role ?? 'Staff'}`,
+      success: false,
+    });
     return { status: 'maintenance' };
   }
 
@@ -91,6 +111,7 @@ export async function actionLogin(
   session.user = { ...sessionUser, twoFactorVerified: true };
   session.pendingUserId = undefined;
   await session.save();
+  db.logAudit({ userId: record.id, username: record.username, action: 'login_success' });
   return { status: 'ok', user: session.user };
 }
 
@@ -107,12 +128,16 @@ export async function actionVerify2FA(
   if (!record || !record.twoFactorSecret) return { success: false, error: 'User not found.' };
 
   const valid = authenticator.verify({ token: code, secret: record.twoFactorSecret });
-  if (!valid) return { success: false, error: 'Invalid code.' };
+  if (!valid) {
+    db.logAudit({ userId: record.id, username: record.username, action: 'login_2fa_failed', success: false });
+    return { success: false, error: 'Invalid code.' };
+  }
 
   const sessionUser = buildSessionUser(record);
   session.user = { ...sessionUser, twoFactorVerified: true };
   session.pendingUserId = undefined;
   await session.save();
+  db.logAudit({ userId: record.id, username: record.username, action: 'login_success' });
   return { success: true, user: session.user };
 }
 
@@ -137,6 +162,8 @@ export async function actionConfirmSetup2FA(
   session.user = { ...sessionUser, twoFactorVerified: true };
   session.pendingUserId = undefined;
   await session.save();
+  db.logAudit({ userId: record.id, username: record.username, action: '2fa_enabled', details: 'Enabled during forced setup at login' });
+  db.logAudit({ userId: record.id, username: record.username, action: 'login_success' });
   return { success: true, user: session.user };
 }
 
@@ -144,6 +171,9 @@ export async function actionConfirmSetup2FA(
 
 export async function actionLogout(): Promise<void> {
   const session = await getSession();
+  if (session.user) {
+    db.logAudit({ userId: session.user.id, username: session.user.username, action: 'logout' });
+  }
   session.destroy();
 }
 
@@ -174,10 +204,14 @@ export async function actionChangePassword(
   if (!record?.password_hash) return { success: false, error: 'User not found.' };
 
   const match = bcrypt.compareSync(currentPassword, record.password_hash);
-  if (!match) return { success: false, error: 'Current password is incorrect.' };
+  if (!match) {
+    db.logAudit({ userId: sessionUser.id, username: sessionUser.username, action: 'password_change_failed', details: 'Incorrect current password', success: false });
+    return { success: false, error: 'Current password is incorrect.' };
+  }
 
   const hash = bcrypt.hashSync(newPassword, 12);
   await db.updateUserPassword(sessionUser.id, hash);
+  db.logAudit({ userId: sessionUser.id, username: sessionUser.username, action: 'password_changed' });
   return { success: true };
 }
 
@@ -186,8 +220,15 @@ export async function actionChangePassword(
 export async function actionAdminDisable2FA(
   userId: string
 ): Promise<{ success: boolean }> {
-  await requireAdmin();
+  const admin = await requireAdmin();
   await db.updateTwoFactor(userId, false, null);
+  const target = await db.getUserById(userId);
+  db.logAudit({
+    userId: admin.id,
+    username: admin.username,
+    action: '2fa_disabled_by_admin',
+    details: `Disabled 2FA for ${target?.username ?? userId}`,
+  });
   return { success: true };
 }
 
@@ -213,12 +254,14 @@ export async function actionConfirmTwoFactor(
   const valid = authenticator.verify({ token: code, secret });
   if (!valid) return { success: false, error: 'Invalid code.' };
   await db.updateTwoFactor(sessionUser.id, true, secret);
+  db.logAudit({ userId: sessionUser.id, username: sessionUser.username, action: '2fa_enabled' });
   return { success: true };
 }
 
 export async function actionDisableTwoFactor(): Promise<{ success: boolean }> {
   const sessionUser = await requireSession();
   await db.updateTwoFactor(sessionUser.id, false, null);
+  db.logAudit({ userId: sessionUser.id, username: sessionUser.username, action: '2fa_disabled' });
   return { success: true };
 }
 

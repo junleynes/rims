@@ -65,9 +65,18 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
-import { fetchSmtpConfig, updateSmtpConfig, testSmtpConnection, fetchAiConfig, updateAiConfig } from '@/app/actions/db-actions';
+import { fetchSmtpConfig, updateSmtpConfig, testSmtpConnection, fetchAiConfig, updateAiConfig, fetchAuditLog } from '@/app/actions/db-actions';
+import type { AuditLogEntry } from '@/lib/server-db';
 import { SmtpConfig, BrandingConfig, SystemConfig, AiConfig, AiProvider } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table';
 
 const THEMES = [
   { id: 'sunset', name: 'Sunset', primary: 'bg-[#E03E1A]', accent: 'bg-[#D6B51E]' },
@@ -137,6 +146,23 @@ export default function SettingsPage() {
       if (saved) setAiConfig(saved);
     }
     loadAi();
+  }, []);
+
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [isLoadingAuditLog, setIsLoadingAuditLog] = useState(true);
+
+  const loadAuditLog = async () => {
+    setIsLoadingAuditLog(true);
+    try {
+      const entries = await fetchAuditLog(200);
+      setAuditLog(entries);
+    } finally {
+      setIsLoadingAuditLog(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAuditLog();
   }, []);
 
   useEffect(() => {
@@ -413,11 +439,23 @@ export default function SettingsPage() {
         toast({ title: 'Restore Failed', description: result.error ?? 'Unknown error.', variant: 'destructive' });
         return;
       }
-      toast({
-        title: 'Backup Restored',
-        description: `Database and ${result.uploadsRestored ?? 0} uploaded file(s) restored. Restart the application now for the changes to take effect.`,
-      });
+
+      if (result.databaseRestored) {
+        const uploadsNote = result.uploadsRestored ? ` and ${result.uploadsRestored} uploaded file(s)` : '';
+        toast({
+          title: 'Database Restored',
+          description: `Database${uploadsNote} restored. Restart the application now for the changes to take effect.`,
+        });
+      } else if (result.settingsRestored?.length) {
+        toast({
+          title: 'Settings Restored',
+          description: `Updated: ${result.settingsRestored.join(', ')}. These changes are already live — no restart needed.`,
+        });
+      } else {
+        toast({ title: 'Restore Complete', description: 'No recognizable data was found to restore.' });
+      }
       setRestoreDialogOpen(false);
+      loadAuditLog();
     } catch (err: any) {
       toast({ title: 'Restore Failed', description: err.message ?? 'Could not restore backup.', variant: 'destructive' });
     } finally {
@@ -435,6 +473,31 @@ export default function SettingsPage() {
       description: `Modifications for FY ${year} are now ${isLocked ? 'restricted' : 'allowed'}.`,
     });
   };
+
+  const AUDIT_ACTION_LABELS: Record<string, string> = {
+    login_success: 'Login',
+    login_failed: 'Login failed',
+    login_blocked_lockout: 'Login blocked (lockout)',
+    login_blocked_maintenance: 'Login blocked (maintenance mode)',
+    login_2fa_failed: '2FA code rejected',
+    logout: 'Logout',
+    password_changed: 'Password changed (self-service)',
+    password_change_failed: 'Password change failed',
+    password_reset_by_admin: 'Password reset by admin',
+    '2fa_enabled': '2FA enabled',
+    '2fa_disabled': '2FA disabled (self-service)',
+    '2fa_disabled_by_admin': '2FA disabled by admin',
+    user_created: 'Personnel account created',
+    user_deleted: 'Personnel account deleted',
+    user_role_changed: 'Role changed',
+    maintenance_enabled: 'Maintenance mode enabled',
+    maintenance_disabled: 'Maintenance mode disabled',
+    backup_downloaded: 'Backup downloaded',
+    restore_performed: 'Backup restored',
+  };
+
+  const isDestructiveAuditAction = (action: string) =>
+    ['user_deleted', 'restore_performed', 'maintenance_enabled', '2fa_disabled_by_admin'].includes(action);
 
   return (
     <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -464,6 +527,9 @@ export default function SettingsPage() {
           </TabsTrigger>
           <TabsTrigger value="database" className="rounded-lg px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
             <Database className="h-4 w-4" /> Maintenance
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="rounded-lg px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+            <ShieldCheck className="h-4 w-4" /> Audit Log
           </TabsTrigger>
         </TabsList>
 
@@ -902,18 +968,84 @@ export default function SettingsPage() {
                   {isRestoring ? <Loader2 className="h-5 w-5 animate-spin text-emerald-500" /> : <Upload className="h-5 w-5 text-emerald-500" />}
                   <div className="text-left">
                     <p className="font-bold">{isRestoring ? 'Restoring...' : 'Restore Backup'}</p>
-                    <p className="text-xs text-muted-foreground">Upload a backup .zip (database, uploads & settings)</p>
+                    <p className="text-xs text-muted-foreground">Upload a backup .zip, settings .json, or database .db file</p>
                   </div>
                   <input
                     ref={restoreInputRef}
                     type="file"
                     className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
-                    accept=".zip"
+                    accept=".zip,.json,.db"
                     disabled={isRestoring}
                     onChange={handleRestoreFileSelected}
                   />
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="audit" className="animate-in slide-in-from-bottom-2">
+          <Card className="border-none shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" /> Audit Log</CardTitle>
+                <CardDescription>Security-relevant events: logins, password and 2FA changes, personnel changes, maintenance mode, backups and restores.</CardDescription>
+              </div>
+              <Button variant="outline" size="sm" onClick={loadAuditLog} disabled={isLoadingAuditLog} className="gap-2">
+                <RefreshCw className={cn("h-4 w-4", isLoadingAuditLog && "animate-spin")} /> Refresh
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Actor</TableHead>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Details</TableHead>
+                    <TableHead className="text-right">Result</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!isLoadingAuditLog && auditLog.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-10">
+                        No audit events recorded yet.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {auditLog.map((entry) => (
+                    <TableRow key={entry.id}>
+                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                        {new Date(entry.timestamp).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-sm font-medium">
+                        {entry.username || <span className="text-muted-foreground italic">unknown</span>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "text-xs",
+                            !entry.success && "bg-destructive/10 text-destructive",
+                            entry.success && isDestructiveAuditAction(entry.action) && "bg-amber-100 text-amber-700"
+                          )}
+                        >
+                          {AUDIT_ACTION_LABELS[entry.action] || entry.action}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{entry.details || '—'}</TableCell>
+                      <TableCell className="text-right">
+                        {entry.success ? (
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 inline-block" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-destructive inline-block" />
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
@@ -962,9 +1094,18 @@ export default function SettingsPage() {
               Restore from Backup
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will replace your current database{pendingRestoreFile ? <> with the contents of <strong>{pendingRestoreFile.name}</strong></> : ''}, including all personnel, budgets, and settings, plus any uploaded files included in the backup. A safety copy of the current database is kept on the server in case you need to undo this.
-              <br /><br />
-              The application needs to be restarted after this completes for the restored database to take effect. This cannot be undone from the UI — proceed only if you're sure this is the backup you want.
+              {pendingRestoreFile?.name.toLowerCase().endsWith('.json') ? (
+                <>
+                  This will update branding, system constraints, SMTP, and/or AI settings from <strong>{pendingRestoreFile.name}</strong>, overwriting your current values for whichever of those sections the file contains. This takes effect immediately — no restart needed.
+                </>
+              ) : (
+                <>
+                  This will replace your current database{pendingRestoreFile ? <> with <strong>{pendingRestoreFile.name}</strong></> : ''} — personnel, budgets, and all settings — plus any uploaded files included in a full backup zip. A safety copy of the current database is kept on the server in case you need to undo this.
+                  <br /><br />
+                  The application needs to be restarted after this completes for the restored database to take effect.
+                </>
+              )}
+              {' '}This cannot be undone from the UI — proceed only if you're sure this is the right file.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

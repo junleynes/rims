@@ -4,6 +4,7 @@ import * as db from '@/lib/server-db';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
+import { randomBytes } from 'crypto';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry, LockedYear } from '@/lib/types';
 import { requireSession, requireAdmin } from '@/lib/session';
 
@@ -161,7 +162,7 @@ export async function saveSystemData(update: {  divisions?: Division[],
   systemConfig?: SystemConfig,
   lockedYears?: LockedYear[]
 }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   if (update.divisions) await db.saveDivisions(update.divisions);
   if (update.sections) await db.saveSections(update.sections);
   if (update.locations) await db.saveLocations(update.locations);
@@ -169,12 +170,48 @@ export async function saveSystemData(update: {  divisions?: Division[],
   
   if (update.users) {
     const validatedUsers = update.users.map(u => UserSchema.parse(u));
+
+    // Diff against the actual DB state (not whatever the client claims
+    // happened) so create/delete/role-change events in the audit log
+    // reflect what really changed.
+    const previousUsers = await db.getAllUsers();
+    const previousById = new Map(previousUsers.map(u => [u.id, u]));
+    const nextById = new Map(validatedUsers.map(u => [u.id, u]));
+
+    for (const u of validatedUsers) {
+      if (!previousById.has(u.id)) {
+        db.logAudit({ userId: admin.id, username: admin.username, action: 'user_created', details: `Created account for ${u.username ?? u.name}` });
+      } else {
+        const prev = previousById.get(u.id)!;
+        if (prev.role !== u.role) {
+          db.logAudit({ userId: admin.id, username: admin.username, action: 'user_role_changed', details: `${u.username ?? u.name}: ${prev.role ?? 'none'} → ${u.role ?? 'none'}` });
+        }
+      }
+    }
+    for (const prev of previousUsers) {
+      if (!nextById.has(prev.id)) {
+        db.logAudit({ userId: admin.id, username: admin.username, action: 'user_deleted', details: `Deleted account for ${prev.username ?? prev.name}` });
+      }
+    }
+
     await db.saveUsers(validatedUsers);
   }
   
   if (update.branding) await db.saveBranding(update.branding);
   if (update.positions) await db.savePositions(update.positions);
-  if (update.systemConfig) await db.saveSystemConfig(update.systemConfig);
+
+  if (update.systemConfig) {
+    const previousConfig = await db.getSystemConfig();
+    if (!!previousConfig.maintenanceMode !== !!update.systemConfig.maintenanceMode) {
+      db.logAudit({
+        userId: admin.id,
+        username: admin.username,
+        action: update.systemConfig.maintenanceMode ? 'maintenance_enabled' : 'maintenance_disabled',
+      });
+    }
+    await db.saveSystemConfig(update.systemConfig);
+  }
+
   if (update.lockedYears) await db.saveLockedYears(update.lockedYears);
   
   return true;
@@ -270,7 +307,7 @@ export async function testSmtpConnection(config: SmtpConfig, targetEmail: string
 }
 
 export async function emailUserCredentials(userId: string) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const smtp = await db.getSmtpConfig();
   if (!smtp || !smtp.host) {
     return { success: false, message: "SMTP is not configured. Please go to System Settings." };
@@ -283,8 +320,9 @@ export async function emailUserCredentials(userId: string) {
 
   const branding = await db.getBranding();
 
-  // Generate random temporary password
-  const tempPassword = Math.random().toString(36).substring(2, 10);
+  // Math.random() is not a CSPRNG and shouldn't be used for anything
+  // resembling a credential, even a temporary one — use randomBytes instead.
+  const tempPassword = randomBytes(9).toString('base64url');
   const hash = bcrypt.hashSync(tempPassword, 10);
 
   // Update password in DB
@@ -324,18 +362,43 @@ export async function emailUserCredentials(userId: string) {
         </div>
       `,
     });
+    db.logAudit({
+      userId: admin.id,
+      username: admin.username,
+      action: 'password_reset_by_admin',
+      details: `Reset password and emailed credentials to ${user.username}`,
+    });
     return { success: true };
   } catch (error: any) {
     console.error('Email Dispatch Error:', error);
-    return { success: false, message: error.message || 'Failed to dispatch email.' };
+    db.logAudit({
+      userId: admin.id,
+      username: admin.username,
+      action: 'password_reset_by_admin',
+      details: `Failed to email credentials to ${user.username}`,
+      success: false,
+    });
+    return { success: false, message: 'Failed to dispatch email. Check your SMTP configuration in System Settings.' };
   }
 }
 
 export async function resetUserPassword(userId: string, newPassword: string) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const hash = bcrypt.hashSync(newPassword, 10);
   await db.updateUserPassword(userId, hash);
+  const target = await db.getUserById(userId);
+  db.logAudit({
+    userId: admin.id,
+    username: admin.username,
+    action: 'password_reset_by_admin',
+    details: `Reset password for ${target?.username ?? userId}`,
+  });
   return { success: true };
+}
+
+export async function fetchAuditLog(limit?: number) {
+  await requireAdmin();
+  return db.getAuditLog(limit);
 }
 
 export async function fetchAiConfig() {

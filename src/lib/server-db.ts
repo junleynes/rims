@@ -2,6 +2,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { mkdirSync, existsSync } from 'fs';
+import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
 import { BudgetEntry, User, Division, Section, Location, StatusOption, BrandingConfig, SystemConfig, Position, SmtpConfig, SystemUpdate, KnowledgeBaseEntry, LockedYear } from './types';
 
@@ -161,6 +162,16 @@ db.exec(`
     model TEXT DEFAULT 'claude-sonnet-4-20250514',
     ollamaBaseUrl TEXT DEFAULT 'http://localhost:11434',
     enabled INTEGER DEFAULT 0
+  );
+
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id TEXT PRIMARY KEY,
+    timestamp TEXT NOT NULL,
+    userId TEXT,
+    username TEXT,
+    action TEXT NOT NULL,
+    details TEXT,
+    success INTEGER DEFAULT 1
   );
 `);
 
@@ -619,6 +630,52 @@ export function getMaintenanceModeSync(): boolean {
   } catch {
     return false;
   }
+}
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  userId: string | null;
+  username: string | null;
+  action: string;
+  details: string | null;
+  success: boolean;
+}
+
+// Records a security-relevant event. Actor identity (userId/username) should
+// always come from the server-validated session, never from client-supplied
+// data, so a request can't claim to be someone it isn't in the log.
+export function logAudit(entry: {
+  userId?: string | null;
+  username?: string | null;
+  action: string;
+  details?: string | null;
+  success?: boolean;
+}) {
+  try {
+    db.prepare(`
+      INSERT INTO audit_log (id, timestamp, userId, username, action, details, success)
+      VALUES (@id, @timestamp, @userId, @username, @action, @details, @success)
+    `).run({
+      id: randomUUID(),
+      timestamp: new Date().toISOString(),
+      userId: entry.userId ?? null,
+      username: entry.username ?? null,
+      action: entry.action,
+      details: entry.details ?? null,
+      success: entry.success === false ? 0 : 1,
+    });
+  } catch (err) {
+    // Audit logging must never block or crash the action it's logging.
+    console.error('Failed to write audit log entry:', err);
+  }
+}
+
+export async function getAuditLog(limit = 200): Promise<AuditLogEntry[]> {
+  const rows = db.prepare(`
+    SELECT * FROM audit_log ORDER BY timestamp DESC LIMIT @limit
+  `).all({ limit }) as any[];
+  return rows.map(r => ({ ...r, success: !!r.success }));
 }
 
 export async function getSmtpConfig(): Promise<SmtpConfig | null> {

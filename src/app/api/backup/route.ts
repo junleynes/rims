@@ -23,8 +23,9 @@ function addDirToZip(zip: AdmZip, dirPath: string, zipPrefix: string) {
 }
 
 export async function GET(req: NextRequest) {
+  let admin;
   try {
-    await requireAdmin();
+    admin = await requireAdmin();
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -61,13 +62,15 @@ export async function GET(req: NextRequest) {
       version: '1.0',
       branding,
       systemConfig,
-      smtp: { ...smtp, password: '[REDACTED]' },
+      smtp: smtp ? { ...smtp, pass: '[REDACTED]' } : null,
       aiConfig: { ...aiConfig, apiKey: '[REDACTED]' },
     };
     zip.addFile('settings.json', Buffer.from(JSON.stringify(settings, null, 2)));
 
     const zipBuffer = zip.toBuffer();
     const zipName = `rims-backup-${date}.zip`;
+
+    db.logAudit({ userId: admin.id, username: admin.username, action: 'backup_downloaded' });
 
     return new NextResponse(zipBuffer, {
       headers: {
@@ -79,6 +82,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('Backup error:', err);
-    return NextResponse.json({ error: `Backup failed: ${err.message}` }, { status: 500 });
+    db.logAudit({ userId: admin.id, username: admin.username, action: 'backup_downloaded', success: false });
+    return NextResponse.json({ error: 'Backup failed. Check server logs for details.' }, { status: 500 });
   }
 }

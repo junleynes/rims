@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/session';
+import { checkRateLimit } from '@/lib/rate-limit';
 import { existsSync, writeFileSync, mkdirSync, copyFileSync, rmSync } from 'fs';
 import path from 'path';
 import AdmZip from 'adm-zip';
@@ -10,6 +11,13 @@ const ROOT = process.cwd();
 const DB_PATH = path.join(ROOT, 'data.db');
 const UPLOADS_PATH = path.join(ROOT, 'uploads');
 const SQLITE_MAGIC = Buffer.from('SQLite format 3\0', 'utf8');
+
+// A restore upload is a full database + uploads bundle, not a single
+// attachment — the admin-configured maxUploadSize (meant for things like
+// budget attachments) doesn't apply here. This is a separate, generous
+// hardcoded ceiling just to stop something absurd (or malicious) from
+// being read fully into memory before any validation happens.
+const MAX_RESTORE_BYTES = 500 * 1024 * 1024; // 500MB
 
 // Replaces the live data.db on disk. Unlinks the old path before writing
 // rather than truncating it in place — the running process still has the
@@ -96,10 +104,22 @@ async function restoreSettingsFromJson(parsed: any): Promise<string[]> {
 }
 
 export async function POST(req: NextRequest) {
+  let admin;
   try {
-    await requireAdmin();
+    admin = await requireAdmin();
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Restoring is rare and deliberate — a tight limit here mainly guards
+  // against a compromised admin session being used to repeatedly hammer
+  // the database with replacements.
+  const rateLimit = checkRateLimit(`restore:${admin.id}`, 5, 15 * 60 * 1000);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: `Too many restore attempts. Try again in ${Math.ceil(rateLimit.retryAfterSeconds / 60)} minute(s).` },
+      { status: 429 }
+    );
   }
 
   try {
@@ -108,6 +128,13 @@ export async function POST(req: NextRequest) {
 
     if (!file || !(file instanceof Blob)) {
       return NextResponse.json({ error: 'No backup file was uploaded.' }, { status: 400 });
+    }
+
+    if (file.size > MAX_RESTORE_BYTES) {
+      return NextResponse.json(
+        { error: `File is too large (max ${MAX_RESTORE_BYTES / (1024 * 1024)}MB for a restore upload).` },
+        { status: 413 }
+      );
     }
 
     const filename = (file as File).name || '';
@@ -120,6 +147,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "That file doesn't look like a valid SQLite database." }, { status: 400 });
       }
       replaceDatabaseFile(buffer);
+      db.logAudit({
+        userId: admin.id,
+        username: admin.username,
+        action: 'restore_performed',
+        details: `Restored database from .db file: ${filename}`,
+      });
       return NextResponse.json({ success: true, kind: 'database', databaseRestored: true });
     }
 
@@ -136,6 +169,12 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "This doesn't look like a R.I.M.S settings export." }, { status: 400 });
       }
       const settingsRestored = await restoreSettingsFromJson(parsed);
+      db.logAudit({
+        userId: admin.id,
+        username: admin.username,
+        action: 'restore_performed',
+        details: `Restored settings from .json file: ${settingsRestored.join(', ') || 'nothing recognized'}`,
+      });
       return NextResponse.json({ success: true, kind: 'settings', settingsRestored, databaseRestored: false });
     }
 
@@ -173,6 +212,15 @@ export async function POST(req: NextRequest) {
         settingsRestored = await restoreSettingsFromJson(parsed);
       }
 
+      db.logAudit({
+        userId: admin.id,
+        username: admin.username,
+        action: 'restore_performed',
+        details: dbEntry
+          ? `Restored full backup from .zip (database + ${uploadsRestored} uploaded file(s))`
+          : `Restored settings-only .zip: ${settingsRestored.join(', ') || 'nothing recognized'}`,
+      });
+
       return NextResponse.json({
         success: true,
         kind: 'zip',
@@ -188,6 +236,13 @@ export async function POST(req: NextRequest) {
     );
   } catch (err: any) {
     console.error('Restore error:', err);
-    return NextResponse.json({ error: `Restore failed: ${err.message}` }, { status: 500 });
+    db.logAudit({
+      userId: admin.id,
+      username: admin.username,
+      action: 'restore_performed',
+      details: 'Restore failed — see server logs',
+      success: false,
+    });
+    return NextResponse.json({ error: 'Restore failed. Check server logs for details.' }, { status: 500 });
   }
 }

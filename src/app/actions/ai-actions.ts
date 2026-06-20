@@ -3,6 +3,7 @@
 import * as db from '@/lib/server-db';
 import { callAi } from '@/lib/ai-provider';
 import { requireSession } from '@/lib/session';
+import { checkRateLimit } from '@/lib/rate-limit';
 import type { BudgetEntry } from '@/lib/types';
 
 export interface AnomalyFlag {
@@ -17,7 +18,7 @@ export interface AnomalyFlag {
 }
 
 export async function detectAnomalies(budgets: BudgetEntry[]): Promise<{ flags: AnomalyFlag[]; error?: string }> {
-  await requireSession();
+  const user = await requireSession();
   const config = await db.getAiConfig();
 
   // Run rule-based detection first (works even without AI)
@@ -81,6 +82,12 @@ export async function detectAnomalies(budgets: BudgetEntry[]): Promise<{ flags: 
 
   // If AI is enabled, enrich the top flags with narrative context
   if (config.enabled && ruleFlags.length > 0) {
+    const rateLimit = checkRateLimit(`ai:${user.id}`, 15, 5 * 60 * 1000);
+    if (!rateLimit.allowed) {
+      // Rate-limited — fall back to rule-based flags rather than failing
+      // the request outright.
+      return { flags: ruleFlags };
+    }
     try {
       const topFlags = ruleFlags.slice(0, 10);
       const flagSummary = topFlags
@@ -114,11 +121,16 @@ export async function generateNarrativeReport(
   year: string,
   division: string
 ): Promise<{ narrative: string; error?: string }> {
-  await requireSession();
+  const user = await requireSession();
   const config = await db.getAiConfig();
 
   if (!config.enabled) {
     return { narrative: '', error: 'AI is not enabled. Go to Settings > AI to configure it.' };
+  }
+
+  const rateLimit = checkRateLimit(`ai:${user.id}`, 15, 5 * 60 * 1000);
+  if (!rateLimit.allowed) {
+    return { narrative: '', error: `Too many AI requests. Try again in ${rateLimit.retryAfterSeconds}s.` };
   }
 
   const filtered = budgets.filter(b => {

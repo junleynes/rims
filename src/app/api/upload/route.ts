@@ -4,6 +4,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import * as db from '@/lib/server-db';
 
 // Files stored outside public/ so they are NOT directly accessible via URL
 // They are served through /api/files/[...path] which checks session first
@@ -23,6 +24,18 @@ export async function POST(req: NextRequest) {
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // The size limit shown in the UI was only ever checked in the browser —
+    // trivially bypassable by anyone calling this endpoint directly.
+    // Enforce it server-side too.
+    const { maxUploadSize } = await db.getSystemConfig();
+    const maxBytes = (maxUploadSize || 20) * 1024 * 1024;
+    if (file.size > maxBytes) {
+      return NextResponse.json(
+        { error: `File exceeds the ${maxUploadSize || 20}MB limit set by the administrator.` },
+        { status: 413 }
+      );
     }
 
     // Sanitize folder name
@@ -58,6 +71,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('Upload error:', err);
-    return NextResponse.json({ error: err.message ?? 'Upload failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Upload failed. Please try again.' }, { status: 500 });
   }
 }
