@@ -84,12 +84,40 @@ const KnowledgeBaseEntrySchema = z.object({
 });
 
 export async function getBudgets() {
+  await requireSession();
   return db.getAllResources();
 }
 
 export async function saveBudgets(budgets: BudgetEntry[]) {
-  await requireSession();
+  const user = await requireSession();
   const validated = budgets.map(b => BudgetEntrySchema.parse(b));
+
+  // Enforce year locking server-side. The UI already prevents edits on
+  // locked years, but saveBudgets previously had no server-side check so
+  // a client bypassing the UI could still write to a locked year.
+  const lockedYears = await db.getAllLockedYears();
+  const lockedYearSet = new Set(lockedYears.map(ly => ly.year));
+  const isAdminOrVP = user.role === 'Admin' || user.role === 'VP';
+
+  for (const entry of validated) {
+    if (lockedYearSet.has(entry.year) && !isAdminOrVP) {
+      throw new Error(`FY ${entry.year} is locked. Only Admin or VP can modify locked years.`);
+    }
+  }
+
+  // Enforce division/section scoping for Manager and AVP — same rule the
+  // UI applies, now enforced server-side so it can't be bypassed.
+  if (!isAdminOrVP) {
+    for (const entry of validated) {
+      if (user.role === 'Manager' && entry.section !== user.section) {
+        throw new Error(`Access denied: you can only modify entries within your own section.`);
+      }
+      if (user.role === 'AVP' && entry.division !== user.division) {
+        throw new Error(`Access denied: you can only modify entries within your own division.`);
+      }
+    }
+  }
+
   await db.saveResources(validated);
 }
 
@@ -100,6 +128,7 @@ export async function clearYearData(year: number) {
 }
 
 export async function fetchSystemUpdates() {
+  await requireSession();
   return db.getAllSystemUpdates();
 }
 
@@ -110,6 +139,7 @@ export async function saveSystemUpdates(updates: SystemUpdate[]) {
 }
 
 export async function fetchKnowledgeBaseEntries() {
+  await requireSession();
   return db.getAllKnowledgeBaseEntries();
 }
 
@@ -121,12 +151,15 @@ export async function createKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
 }
 
 export async function removeKnowledgeBaseEntry(id: string) {
-  await requireSession();
+  // KB entries are org-level content — restrict delete to Admin-only,
+  // matching saveSystemUpdates and other org-content write actions.
+  await requireAdmin();
   await db.deleteKnowledgeBaseEntry(id);
   return true;
 }
 
 export async function getSystemData() {
+  await requireSession();
   const [divisions, sections, locations, statusOptions, users, branding, positions, systemConfig, lockedYears] = await Promise.all([
     db.getAllDivisions(),
     db.getAllSections(),
@@ -215,42 +248,6 @@ export async function saveSystemData(update: {  divisions?: Division[],
   if (update.lockedYears) await db.saveLockedYears(update.lockedYears);
   
   return true;
-}
-
-export async function verifyUserCredentials(username: string, password?: string) {
-  if (!username || !password) return null;
-
-  try {
-    const userRecord = await db.getUserByUsername(username);
-    if (!userRecord || userRecord.isStaffOnly || !userRecord.password_hash) return null;
-
-    const isPasswordValid = bcrypt.compareSync(password, userRecord.password_hash);
-    
-    if (isPasswordValid) {
-      const needs2FASetup = !!userRecord.twoFactorEnabled && !userRecord.twoFactorSecret;
-      
-      return {
-        id: userRecord.id,
-        username: userRecord.username,
-        name: userRecord.name,
-        email: userRecord.email,
-        contactNumber: userRecord.contactNumber,
-        role: userRecord.role as any,
-        section: userRecord.section,
-        division: userRecord.division,
-        twoFactorEnabled: !!userRecord.twoFactorEnabled,
-        twoFactorSecret: userRecord.twoFactorSecret || undefined,
-        position: userRecord.position,
-        reportingTo: userRecord.reportingTo,
-        profilePicture: userRecord.profilePicture,
-        needs2FASetup: needs2FASetup
-      } as User;
-    }
-  } catch (err) {
-    console.error('Credential verification error:', err);
-  }
-
-  return null;
 }
 
 export async function fetchSmtpConfig() {
