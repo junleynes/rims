@@ -138,12 +138,25 @@ export default function KnowledgeBasePage() {
       return;
     }
 
+    if (!formData.fileName) {
+      toast({ title: "Validation Error", description: "Please wait for the file to finish uploading before publishing.", variant: "destructive" });
+      return;
+    }
+
     setIsUploading(true);
+
+    // Explicitly construct only the fields the server expects — avoids
+    // accidentally spreading stale state fields (like fileData) that
+    // would cause a Zod or DB binding error server-side.
     const newEntry: KnowledgeBaseEntry = {
       id: crypto.randomUUID(),
-      ...formData,
+      title: formData.title,
+      description: formData.description,
+      fileName: formData.fileName,
+      fileType: formData.fileType,
+      filePath: formData.filePath,
       uploadedBy: user?.name || 'Admin',
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     };
 
     try {
@@ -152,8 +165,13 @@ export default function KnowledgeBasePage() {
       setFormData({ title: '', description: '', fileName: '', fileType: '', filePath: '', fileData: '' });
       setShowUploadForm(false);
       await loadEntries();
-    } catch (error) {
-      toast({ title: "Upload Failed", description: "An error occurred while saving the document.", variant: "destructive" });
+    } catch (error: any) {
+      console.error('Knowledge base publish error:', error);
+      toast({
+        title: "Upload Failed",
+        description: error?.message || "An error occurred while saving the document.",
+        variant: "destructive",
+      });
     } finally {
       setIsUploading(false);
     }
