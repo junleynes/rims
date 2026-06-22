@@ -78,7 +78,7 @@ import {
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { resetUserPassword, emailUserCredentials, saveSystemData } from '@/app/actions/db-actions';
+import { resetUserPassword, emailUserCredentials } from '@/app/actions/db-actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
@@ -560,16 +560,12 @@ export default function UserManagementPage() {
   };
 
   const handleBulkDelete = async () => {
-    const count = selectedUserIds.size;
-    const updated = users.filter(u => !selectedUserIds.has(u.id));
-    try {
-      await saveSystemData({ users: updated });
-      setSelectedUserIds(new Set());
-      setBulkDeleteDialogOpen(false);
-      toast({ title: "Deleted", description: `${count} personnel record(s) removed.`, variant: "destructive" });
-    } catch (err: any) {
-      toast({ title: "Delete Failed", description: err?.message || "Could not delete selected records.", variant: "destructive" });
+    for (const id of selectedUserIds) {
+      await deleteUser(id);
     }
+    setSelectedUserIds(new Set());
+    setBulkDeleteDialogOpen(false);
+    toast({ title: "Deleted", description: `${selectedUserIds.size} personnel record(s) removed.`, variant: "destructive" });
   };
 
   const hasActiveRegistryFilters = !!registrySearch || registryRoleFilter !== 'All' || registryDivisionFilter !== 'All';
