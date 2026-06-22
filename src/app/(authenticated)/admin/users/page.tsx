@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Table, 
   TableBody, 
@@ -70,7 +71,10 @@ import {
   ShieldOff,
   Send,
   Search,
-  Filter
+  Filter,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { Role, User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -103,6 +107,10 @@ export default function UserManagementPage() {
   const [registrySearch, setRegistrySearch] = useState('');
   const [registryRoleFilter, setRegistryRoleFilter] = useState<'All' | Role | 'StaffOnly'>('All');
   const [registryDivisionFilter, setRegistryDivisionFilter] = useState('All');
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<'name' | 'role' | 'division' | 'position' | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [userToReset, setUserToReset] = useState<User | null>(null);
   const [newPasswordInput, setNewPasswordInput] = useState('');
@@ -136,6 +144,17 @@ export default function UserManagementPage() {
       
       if (usernameExists) {
         toast({ title: "Validation Error", description: "This username is already in use.", variant: "destructive" });
+        return;
+      }
+    }
+
+    if (formData.email) {
+      const emailExists = users.some(u =>
+        u.email?.toLowerCase() === formData.email.toLowerCase() &&
+        u.id !== editingUserId
+      );
+      if (emailExists) {
+        toast({ title: "Validation Error", description: "This email address is already registered to another account.", variant: "destructive" });
         return;
       }
     }
@@ -338,10 +357,38 @@ export default function UserManagementPage() {
             };
           });
 
-        importUsers(importedData);
+        const allImported: Omit<User, 'id'>[] = importedData;
+        const existingUsernames = new Set(users.map(u => (u.username || '').toLowerCase()).filter(Boolean));
+        const existingEmails = new Set(users.map(u => (u.email || '').toLowerCase()).filter(Boolean));
+
+        const seenUsernamesInImport = new Set<string>();
+        const seenEmailsInImport = new Set<string>();
+        const skipped: string[] = [];
+
+        const dedupedImport = allImported.filter(entry => {
+          const uname = (entry.username || '').toLowerCase();
+          const email = (entry.email || '').toLowerCase();
+
+          if (uname && (existingUsernames.has(uname) || seenUsernamesInImport.has(uname))) {
+            skipped.push(entry.name + ' (duplicate username)');
+            return false;
+          }
+          if (email && (existingEmails.has(email) || seenEmailsInImport.has(email))) {
+            skipped.push(entry.name + ' (duplicate email)');
+            return false;
+          }
+          if (uname) seenUsernamesInImport.add(uname);
+          if (email) seenEmailsInImport.add(email);
+          return true;
+        });
+
+        importUsers(dedupedImport);
         toast({
-          title: "Import Successful",
-          description: `${importedData.length} personnel records have been added to the registry.`,
+          title: "Import Complete",
+          description: skipped.length
+            ? `${dedupedImport.length} imported. ${skipped.length} skipped (duplicate username or email): ${skipped.slice(0, 3).join(', ')}${skipped.length > 3 ? `…and ${skipped.length - 3} more` : ''}.`
+            : `${dedupedImport.length} personnel records have been added to the registry.`,
+          duration: skipped.length ? 8000 : 4000,
         });
         
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -430,9 +477,11 @@ export default function UserManagementPage() {
     }
   };
 
+  const ROLE_SORT_ORDER: Record<string, number> = { Admin: 0, VP: 1, AVP: 2, Manager: 3, Viewer: 4 };
+
   const filteredUsers = useMemo(() => {
     const term = registrySearch.trim().toLowerCase();
-    return users.filter(u => {
+    let result = users.filter(u => {
       const matchesSearch = !term ||
         u.name.toLowerCase().includes(term) ||
         (u.username || '').toLowerCase().includes(term) ||
@@ -448,7 +497,76 @@ export default function UserManagementPage() {
 
       return matchesSearch && matchesRole && matchesDivision;
     });
-  }, [users, registrySearch, registryRoleFilter, registryDivisionFilter]);
+
+    if (sortKey) {
+      result = [...result].sort((a, b) => {
+        let valA: string | number = '';
+        let valB: string | number = '';
+        if (sortKey === 'name') { valA = a.name.toLowerCase(); valB = b.name.toLowerCase(); }
+        else if (sortKey === 'role') { valA = ROLE_SORT_ORDER[a.role ?? ''] ?? 99; valB = ROLE_SORT_ORDER[b.role ?? ''] ?? 99; }
+        else if (sortKey === 'division') { valA = (a.division || '').toLowerCase(); valB = (b.division || '').toLowerCase(); }
+        else if (sortKey === 'position') { valA = (a.position || '').toLowerCase(); valB = (b.position || '').toLowerCase(); }
+        if (valA < valB) return sortDir === 'asc' ? -1 : 1;
+        if (valA > valB) return sortDir === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [users, registrySearch, registryRoleFilter, registryDivisionFilter, sortKey, sortDir]);
+
+  const handleSort = (key: typeof sortKey) => {
+    if (sortKey === key) {
+      if (sortDir === 'asc') setSortDir('desc');
+      else { setSortKey(null); setSortDir('asc'); }
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const SortIcon = ({ col }: { col: typeof sortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 opacity-30 ml-1 inline-block" />;
+    return sortDir === 'asc'
+      ? <ArrowUp className="h-3 w-3 ml-1 inline-block text-primary" />
+      : <ArrowDown className="h-3 w-3 ml-1 inline-block text-primary" />;
+  };
+
+  const selectableIds = filteredUsers
+    .filter(u => u.username !== 'admin')
+    .map(u => u.id);
+
+  const allVisibleSelected = selectableIds.length > 0 && selectableIds.every(id => selectedUserIds.has(id));
+  const someVisibleSelected = selectableIds.some(id => selectedUserIds.has(id));
+
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) {
+      setSelectedUserIds(prev => {
+        const next = new Set(prev);
+        selectableIds.forEach(id => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedUserIds(prev => new Set([...prev, ...selectableIds]));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    setSelectedUserIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    for (const id of selectedUserIds) {
+      await deleteUser(id);
+    }
+    setSelectedUserIds(new Set());
+    setBulkDeleteDialogOpen(false);
+    toast({ title: "Deleted", description: `${selectedUserIds.size} personnel record(s) removed.`, variant: "destructive" });
+  };
 
   const hasActiveRegistryFilters = !!registrySearch || registryRoleFilter !== 'All' || registryDivisionFilter !== 'All';
 
@@ -736,27 +854,66 @@ export default function UserManagementPage() {
               </Button>
             )}
           </div>
+          {selectedUserIds.size > 0 && (
+            <div className="flex items-center gap-3 mb-3 px-3 py-2 bg-destructive/5 border border-destructive/20 rounded-xl">
+              <span className="text-sm font-medium text-destructive">{selectedUserIds.size} selected</span>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="gap-2 font-bold"
+                onClick={() => setBulkDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete Selected
+              </Button>
+              <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => setSelectedUserIds(new Set())}>
+                <X className="h-3.5 w-3.5 mr-1" /> Clear Selection
+              </Button>
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Identity</TableHead>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={allVisibleSelected}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all visible"
+                    className={someVisibleSelected && !allVisibleSelected ? "opacity-50" : ""}
+                  />
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('name')}>
+                  Identity <SortIcon col="name" />
+                </TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Security</TableHead>
-                <TableHead>Position</TableHead>
-                <TableHead>Org Scope</TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('position')}>
+                  Position <SortIcon col="position" />
+                </TableHead>
+                <TableHead className="cursor-pointer select-none" onClick={() => handleSort('division')}>
+                  Org Scope <SortIcon col="division" />
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredUsers.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-10">
+                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-10">
                     No personnel match your search or filters.
                   </TableCell>
                 </TableRow>
               )}
               {filteredUsers.map((u) => (
-                <TableRow key={u.id} className={editingUserId === u.id ? "bg-primary/5" : ""}>
+                <TableRow key={u.id} className={`${editingUserId === u.id ? "bg-primary/5" : ""} ${selectedUserIds.has(u.id) ? "bg-destructive/5" : ""}`}>
+                  <TableCell>
+                    {u.username !== 'admin' && (
+                      <Checkbox
+                        checked={selectedUserIds.has(u.id)}
+                        onCheckedChange={() => toggleSelectOne(u.id)}
+                        aria-label={`Select ${u.name}`}
+                      />
+                    )}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9 border shadow-sm">
@@ -1016,6 +1173,28 @@ export default function UserManagementPage() {
             >
               {isResetting2FA ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldOff className="h-4 w-4 mr-2" />}
               Reset 2FA Now
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" /> Delete {selectedUserIds.size} Personnel Record{selectedUserIds.size !== 1 ? 's' : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently remove {selectedUserIds.size} selected personnel record{selectedUserIds.size !== 1 ? 's' : ''} from the registry. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleBulkDelete(); }}
+              className="bg-destructive hover:bg-destructive/90 text-white font-bold"
+            >
+              <Trash2 className="h-4 w-4 mr-2" /> Delete {selectedUserIds.size} Record{selectedUserIds.size !== 1 ? 's' : ''}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
