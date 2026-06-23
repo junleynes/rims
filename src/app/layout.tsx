@@ -5,6 +5,10 @@ import {Toaster} from '@/components/ui/toaster';
 import { BrandingProvider } from '@/components/branding-context';
 import * as db from '@/lib/server-db';
 
+// generateMetadata reads live branding from the database, so this layout
+// must not be statically rendered at build time.
+export const dynamic = 'force-dynamic';
+
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await db.getBranding();
   return {

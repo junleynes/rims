@@ -7,6 +7,12 @@ import AdmZip from 'adm-zip';
 import * as db from '@/lib/server-db';
 import type { BrandingConfig, SystemConfig, SmtpConfig, AiConfig } from '@/lib/types';
 
+// Prevent Next.js from attempting static pre-rendering at build time.
+// This route is runtime-only — pre-rendering would trigger server-db.ts
+// initialization in parallel build workers, causing UNIQUE constraint
+// failures when multiple workers race to seed the same rows.
+export const dynamic = 'force-dynamic';
+
 const ROOT = process.cwd();
 const DB_PATH = path.join(ROOT, 'data.db');
 const UPLOADS_PATH = path.join(ROOT, 'uploads');

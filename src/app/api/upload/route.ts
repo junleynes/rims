@@ -6,6 +6,8 @@ import path from 'path';
 import crypto from 'crypto';
 import * as db from '@/lib/server-db';
 
+export const dynamic = 'force-dynamic';
+
 // Files stored outside public/ so they are NOT directly accessible via URL
 // They are served through /api/files/[...path] which checks session first
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');

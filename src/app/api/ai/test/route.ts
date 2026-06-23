@@ -4,6 +4,8 @@ import { requireAdmin } from '@/lib/session';
 import { checkRateLimit } from '@/lib/rate-limit';
 import type { AiConfig } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   let admin;
   try {

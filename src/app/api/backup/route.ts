@@ -5,6 +5,8 @@ import path from 'path';
 import AdmZip from 'adm-zip';
 import * as db from '@/lib/server-db';
 
+export const dynamic = 'force-dynamic';
+
 const ROOT = process.cwd();
 
 function addDirToZip(zip: AdmZip, dirPath: string, zipPrefix: string) {

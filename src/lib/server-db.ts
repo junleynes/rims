@@ -207,10 +207,16 @@ addColumnIfNotExists('knowledge_base', 'filePath', "TEXT NOT NULL DEFAULT ''");
 addColumnIfNotExists('system_config', 'maintenanceMode', 'INTEGER DEFAULT 0');
 
 // --- Seeding Logic ---
+// Uses INSERT OR IGNORE so that concurrent build workers (Next.js runs
+// multiple in parallel) can both try to seed without hitting a UNIQUE
+// constraint failure — the second one just silently skips the existing rows.
 const seedIfEmpty = (tableName: string, query: string, params: any[] = []) => {
   const countRes = db.prepare(`SELECT COUNT(*) as count FROM ${tableName}`).get() as any;
   if (countRes.count === 0) {
-    db.prepare(query).run(...params);
+    // Rewrite INSERT to INSERT OR IGNORE so a concurrent worker that also
+    // passed the count check can't cause a constraint error.
+    const safeQuery = query.replace(/^\s*INSERT\s+INTO\s/im, 'INSERT OR IGNORE INTO ');
+    db.prepare(safeQuery).run(...params);
   }
 };
 
