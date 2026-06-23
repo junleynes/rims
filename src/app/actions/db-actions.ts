@@ -121,6 +121,73 @@ export async function saveBudgets(budgets: BudgetEntry[]) {
   await db.saveResources(validated);
 }
 
+// --- Granular budget actions with audit logging ---
+
+export async function addBudgetEntry(entry: Omit<BudgetEntry, 'id' | 'createdAt'>) {
+  const user = await requireSession();
+  const newEntry: BudgetEntry = {
+    ...(entry as BudgetEntry),
+    id: Math.random().toString(36).substr(2, 9),
+    createdAt: new Date().toISOString(),
+  };
+  const validated = BudgetEntrySchema.parse(newEntry);
+  const all = await db.getAllResources();
+  await db.saveResources([validated, ...all]);
+  db.logAudit({
+    userId: user.id,
+    username: user.username,
+    action: 'budget_entry_added',
+    details: `Added "${entry.projectTitle || entry.itemDescription || 'entry'}" (${entry.classification}, FY${entry.year})`,
+  });
+  return validated;
+}
+
+export async function updateBudgetEntry(id: string, patch: Partial<BudgetEntry>) {
+  const user = await requireSession();
+  const all = await db.getAllResources();
+  const updated = all.map(b => (b.id === id ? { ...b, ...patch } : b));
+  await db.saveResources(updated);
+  db.logAudit({
+    userId: user.id,
+    username: user.username,
+    action: 'budget_entry_updated',
+    details: `Updated entry ID ${id}${patch.projectTitle ? ` — "${patch.projectTitle}"` : ''}`,
+  });
+}
+
+export async function deleteBudgetEntry(id: string) {
+  const user = await requireSession();
+  const all = await db.getAllResources();
+  const target = all.find(b => b.id === id);
+  const updated = all.filter(b => b.id !== id);
+  await db.saveResources(updated);
+  db.logAudit({
+    userId: user.id,
+    username: user.username,
+    action: 'budget_entry_deleted',
+    details: `Deleted "${target?.projectTitle || target?.itemDescription || id}" (${target?.classification ?? ''}, FY${target?.year ?? ''})`,
+  });
+}
+
+export async function importBudgetEntries(entries: Omit<BudgetEntry, 'id' | 'createdAt'>[]) {
+  const user = await requireSession();
+  const newEntries: BudgetEntry[] = entries.map(e => ({
+    ...(e as BudgetEntry),
+    id: Math.random().toString(36).substr(2, 9),
+    createdAt: new Date().toISOString(),
+  }));
+  const validated = newEntries.map(e => BudgetEntrySchema.parse(e));
+  const all = await db.getAllResources();
+  await db.saveResources([...validated, ...all]);
+  db.logAudit({
+    userId: user.id,
+    username: user.username,
+    action: 'budget_imported',
+    details: `Imported ${entries.length} budget entr${entries.length === 1 ? 'y' : 'ies'}`,
+  });
+  return validated;
+}
+
 export async function clearYearData(year: number) {
   await requireAdmin();
   await db.deleteResourcesByYear(year);
@@ -144,17 +211,30 @@ export async function fetchKnowledgeBaseEntries() {
 }
 
 export async function createKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
-  await requireSession();
+  const user = await requireSession();
   const validated = KnowledgeBaseEntrySchema.parse(entry);
   await db.saveKnowledgeBaseEntry(validated);
+  db.logAudit({
+    userId: user.id,
+    username: user.username,
+    action: 'kb_document_uploaded',
+    details: `Uploaded "${entry.title}" (${entry.fileType.toUpperCase()}, ${entry.fileName})`,
+  });
   return true;
 }
 
 export async function removeKnowledgeBaseEntry(id: string) {
   // KB entries are org-level content — restrict delete to Admin-only,
   // matching saveSystemUpdates and other org-content write actions.
-  await requireAdmin();
+  const admin = await requireAdmin();
+  const existing = (await db.getAllKnowledgeBaseEntries()).find(e => e.id === id);
   await db.deleteKnowledgeBaseEntry(id);
+  db.logAudit({
+    userId: admin.id,
+    username: admin.username,
+    action: 'kb_document_deleted',
+    details: `Deleted "${existing?.title ?? id}" (${existing?.fileName ?? ''})`,
+  });
   return true;
 }
 

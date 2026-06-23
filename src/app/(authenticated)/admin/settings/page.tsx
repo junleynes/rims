@@ -61,7 +61,11 @@ import {
   CheckCircle2,
   XCircle,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  Search,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -69,6 +73,7 @@ import { fetchSmtpConfig, updateSmtpConfig, testSmtpConnection, fetchAiConfig, u
 import type { AuditLogEntry } from '@/lib/server-db';
 import { SmtpConfig, BrandingConfig, SystemConfig, AiConfig, AiProvider } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table,
   TableHeader,
@@ -494,10 +499,73 @@ export default function SettingsPage() {
     maintenance_disabled: 'Maintenance mode disabled',
     backup_downloaded: 'Backup downloaded',
     restore_performed: 'Backup restored',
+    budget_entry_added: 'Budget entry added',
+    budget_entry_updated: 'Budget entry updated',
+    budget_entry_deleted: 'Budget entry deleted',
+    budget_imported: 'Budget imported',
+    kb_document_uploaded: 'KB document uploaded',
+    kb_document_deleted: 'KB document deleted',
+  };
+
+  const AUDIT_ACTION_CATEGORIES: Record<string, string> = {
+    login_success: 'Auth',
+    login_failed: 'Auth',
+    login_blocked_lockout: 'Auth',
+    login_blocked_maintenance: 'Auth',
+    login_2fa_failed: 'Auth',
+    logout: 'Auth',
+    password_changed: 'Auth',
+    password_change_failed: 'Auth',
+    password_reset_by_admin: 'Auth',
+    '2fa_enabled': 'Auth',
+    '2fa_disabled': 'Auth',
+    '2fa_disabled_by_admin': 'Auth',
+    user_created: 'Personnel',
+    user_deleted: 'Personnel',
+    user_role_changed: 'Personnel',
+    maintenance_enabled: 'System',
+    maintenance_disabled: 'System',
+    backup_downloaded: 'System',
+    restore_performed: 'System',
+    budget_entry_added: 'Budget',
+    budget_entry_updated: 'Budget',
+    budget_entry_deleted: 'Budget',
+    budget_imported: 'Budget',
+    kb_document_uploaded: 'Knowledge Base',
+    kb_document_deleted: 'Knowledge Base',
   };
 
   const isDestructiveAuditAction = (action: string) =>
-    ['user_deleted', 'restore_performed', 'maintenance_enabled', '2fa_disabled_by_admin'].includes(action);
+    ['user_deleted', 'restore_performed', 'maintenance_enabled', '2fa_disabled_by_admin', 'budget_entry_deleted', 'kb_document_deleted'].includes(action);
+
+  // --- Audit log filter/sort/search state ---
+  const [auditSearch, setAuditSearch] = useState('');
+  const [auditCategoryFilter, setAuditCategoryFilter] = useState('All');
+  const [auditResultFilter, setAuditResultFilter] = useState('All');
+  const [auditSortDir, setAuditSortDir] = useState<'desc' | 'asc'>('desc');
+
+  const AUDIT_CATEGORIES = ['All', 'Auth', 'Personnel', 'Budget', 'Knowledge Base', 'System'];
+
+  const filteredAuditLog = auditLog
+    .filter(entry => {
+      const label = AUDIT_ACTION_LABELS[entry.action] || entry.action;
+      const cat = AUDIT_ACTION_CATEGORIES[entry.action] || '';
+      const matchesSearch =
+        !auditSearch ||
+        label.toLowerCase().includes(auditSearch.toLowerCase()) ||
+        (entry.username || '').toLowerCase().includes(auditSearch.toLowerCase()) ||
+        (entry.details || '').toLowerCase().includes(auditSearch.toLowerCase());
+      const matchesCat = auditCategoryFilter === 'All' || cat === auditCategoryFilter;
+      const matchesResult =
+        auditResultFilter === 'All' ||
+        (auditResultFilter === 'Success' && entry.success) ||
+        (auditResultFilter === 'Failed' && !entry.success);
+      return matchesSearch && matchesCat && matchesResult;
+    })
+    .sort((a, b) => {
+      const diff = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      return auditSortDir === 'desc' ? -diff : diff;
+    });
 
   return (
     <div className="w-full space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -989,61 +1057,129 @@ export default function SettingsPage() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" /> Audit Log</CardTitle>
-                <CardDescription>Security-relevant events: logins, password and 2FA changes, personnel changes, maintenance mode, backups and restores.</CardDescription>
+                <CardDescription>All system events: logins, personnel changes, budget entries, knowledge base uploads, maintenance, and backups.</CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={loadAuditLog} disabled={isLoadingAuditLog} className="gap-2">
                 <RefreshCw className={cn("h-4 w-4", isLoadingAuditLog && "animate-spin")} /> Refresh
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* Search + Filter + Sort bar */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by user, event, or details…"
+                    value={auditSearch}
+                    onChange={e => setAuditSearch(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                <Select value={auditCategoryFilter} onValueChange={setAuditCategoryFilter}>
+                  <SelectTrigger className="h-9 w-[160px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {AUDIT_CATEGORIES.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={auditResultFilter} onValueChange={setAuditResultFilter}>
+                  <SelectTrigger className="h-9 w-[130px]">
+                    <SelectValue placeholder="Result" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All results</SelectItem>
+                    <SelectItem value="Success">Success</SelectItem>
+                    <SelectItem value="Failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5 px-3 shrink-0"
+                  onClick={() => setAuditSortDir(d => d === 'desc' ? 'asc' : 'desc')}
+                  title={auditSortDir === 'desc' ? 'Newest first' : 'Oldest first'}
+                >
+                  {auditSortDir === 'desc' ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                  {auditSortDir === 'desc' ? 'Newest' : 'Oldest'}
+                </Button>
+              </div>
+
+              {/* Result count */}
+              {!isLoadingAuditLog && auditLog.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Showing {filteredAuditLog.length} of {auditLog.length} events
+                </p>
+              )}
+
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>When</TableHead>
                     <TableHead>Actor</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead>Event</TableHead>
                     <TableHead>Details</TableHead>
                     <TableHead className="text-right">Result</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {!isLoadingAuditLog && auditLog.length === 0 && (
+                  {isLoadingAuditLog && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-10">
-                        No audit events recorded yet.
+                      <TableCell colSpan={6} className="text-center py-10">
+                        <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
                       </TableCell>
                     </TableRow>
                   )}
-                  {auditLog.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(entry.timestamp).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-sm font-medium">
-                        {entry.username || <span className="text-muted-foreground italic">unknown</span>}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "text-xs",
-                            !entry.success && "bg-destructive/10 text-destructive",
-                            entry.success && isDestructiveAuditAction(entry.action) && "bg-amber-100 text-amber-700"
-                          )}
-                        >
-                          {AUDIT_ACTION_LABELS[entry.action] || entry.action}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{entry.details || '—'}</TableCell>
-                      <TableCell className="text-right">
-                        {entry.success ? (
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500 inline-block" />
-                        ) : (
-                          <XCircle className="h-4 w-4 text-destructive inline-block" />
-                        )}
+                  {!isLoadingAuditLog && filteredAuditLog.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-10">
+                        {auditLog.length === 0 ? 'No audit events recorded yet.' : 'No events match your filters.'}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )}
+                  {filteredAuditLog.map((entry) => {
+                    const cat = AUDIT_ACTION_CATEGORIES[entry.action];
+                    return (
+                      <TableRow key={entry.id}>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(entry.timestamp).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-sm font-medium">
+                          {entry.username || <span className="text-muted-foreground italic">unknown</span>}
+                        </TableCell>
+                        <TableCell>
+                          {cat && (
+                            <Badge variant="outline" className="text-[10px] font-semibold uppercase tracking-wide">
+                              {cat}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "text-xs",
+                              !entry.success && "bg-destructive/10 text-destructive",
+                              entry.success && isDestructiveAuditAction(entry.action) && "bg-amber-100 text-amber-700"
+                            )}
+                          >
+                            {AUDIT_ACTION_LABELS[entry.action] || entry.action}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{entry.details || '—'}</TableCell>
+                        <TableCell className="text-right">
+                          {entry.success ? (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500 inline-block" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-destructive inline-block" />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>

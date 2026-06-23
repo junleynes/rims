@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BudgetEntry } from '@/lib/types';
-import { getBudgets, saveBudgets, clearYearData } from '@/app/actions/db-actions';
+import { getBudgets, saveBudgets, addBudgetEntry, updateBudgetEntry, deleteBudgetEntry, importBudgetEntries, clearYearData } from '@/app/actions/db-actions';
 
 interface BudgetContextType {
   budgets: BudgetEntry[];
@@ -31,37 +31,23 @@ export function BudgetProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addBudget = async (entry: Omit<BudgetEntry, 'id' | 'createdAt'>) => {
-    const newEntry: BudgetEntry = {
-      ...entry,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [newEntry, ...budgets];
-    setBudgets(updated);
-    await saveBudgets(updated);
+    const newEntry = await addBudgetEntry(entry);
+    setBudgets(prev => [newEntry, ...prev]);
   };
 
   const importBudgets = async (entries: Omit<BudgetEntry, 'id' | 'createdAt'>[]) => {
-    const newEntries: BudgetEntry[] = entries.map(entry => ({
-      ...entry,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-    }));
-    const updated = [...newEntries, ...budgets];
-    setBudgets(updated);
-    await saveBudgets(updated);
+    const newEntries = await importBudgetEntries(entries);
+    setBudgets(prev => [...newEntries, ...prev]);
   };
 
   const updateBudget = async (id: string, entry: Partial<BudgetEntry>) => {
-    const updated = budgets.map(b => b.id === id ? { ...b, ...entry } : b);
-    setBudgets(updated);
-    await saveBudgets(updated);
+    setBudgets(prev => prev.map(b => b.id === id ? { ...b, ...entry } : b));
+    await updateBudgetEntry(id, entry);
   };
 
   const deleteBudget = async (id: string) => {
-    const updated = budgets.filter(b => b.id !== id);
-    setBudgets(updated);
-    await saveBudgets(updated);
+    setBudgets(prev => prev.filter(b => b.id !== id));
+    await deleteBudgetEntry(id);
   };
 
   const clearYearResources = async (year: number) => {
