@@ -41,28 +41,39 @@ import { uploadFile, deleteFile, getFileUrl } from '@/lib/file-upload';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+// Holds the result of the most recent file upload so handleUpload always
+// reads fresh values instead of a potentially-stale React closure snapshot.
+interface UploadedFileRef {
+  fileName: string;
+  fileType: string;
+  filePath: string;
+}
+
 export default function KnowledgeBasePage() {
   const { user } = useAuth();
   const { systemConfig } = useSystemData();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Ref stores the latest upload result — always current, no closure lag.
+  const uploadedFileRef = useRef<UploadedFileRef | null>(null);
   
   const [entries, setEntries] = useState<KnowledgeBaseEntry[]>([]);
   const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 
+  // fileReady tracks whether a file has been successfully staged for publish.
+  const [fileReady, setFileReady] = useState(false);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    fileName: '',
-    fileType: '',
-    fileData: '',
-    filePath: ''
   });
 
   const isAdmin = user?.role === 'Admin';
@@ -101,60 +112,65 @@ export default function KnowledgeBasePage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > MAX_FILE_SIZE) {
-        toast({ 
-          title: "File too large", 
-          description: `Maximum file size allowed by administrator is ${systemConfig.maxUploadSize || 20}MB.`, 
-          variant: "destructive" 
-        });
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        return;
-      }
+    if (!file) return;
 
-      // Upload immediately to server, store path
-      setIsUploading(true);
-      try {
-        const result = await uploadFile(file, 'knowledge-base');
-        setFormData(prev => ({
-          ...prev,
-          fileName: result.fileName,
-          fileType: result.fileType,
-          filePath: result.filePath,
-        }));
-        toast({ title: 'File ready', description: `${file.name} uploaded successfully.` });
-      } catch (err: any) {
-        toast({ title: 'Upload Failed', description: err.message, variant: 'destructive' });
-      } finally {
-        setIsUploading(false);
-      }
+    if (file.size > MAX_FILE_SIZE) {
+      toast({ 
+        title: "File too large", 
+        description: `Maximum file size allowed by administrator is ${systemConfig.maxUploadSize || 20}MB.`, 
+        variant: "destructive" 
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    setIsUploading(true);
+    setFileReady(false);
+    uploadedFileRef.current = null;
+
+    try {
+      const result = await uploadFile(file, 'knowledge-base');
+      // Store in ref — always readable by handleUpload without closure lag.
+      uploadedFileRef.current = {
+        fileName: result.fileName,
+        fileType: result.fileType,
+        filePath: result.filePath,
+      };
+      setFileReady(true);
+      toast({ title: 'File ready', description: `${file.name} uploaded successfully.` });
+    } catch (err: any) {
+      toast({ title: 'Upload Failed', description: err.message, variant: 'destructive' });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.filePath) {
-      toast({ title: "Validation Error", description: "Title and file are required.", variant: "destructive" });
+
+    // Read from ref — guaranteed to be the latest upload result.
+    const staged = uploadedFileRef.current;
+
+    if (!formData.title) {
+      toast({ title: "Validation Error", description: "Please enter a document title.", variant: "destructive" });
       return;
     }
 
-    if (!formData.fileName) {
-      toast({ title: "Validation Error", description: "Please wait for the file to finish uploading before publishing.", variant: "destructive" });
+    if (!staged || !staged.filePath) {
+      toast({ title: "Validation Error", description: "Please select and wait for a file to finish uploading.", variant: "destructive" });
       return;
     }
 
-    setIsUploading(true);
+    setIsPublishing(true);
 
-    // Explicitly construct only the fields the server expects — avoids
-    // accidentally spreading stale state fields (like fileData) that
-    // would cause a Zod or DB binding error server-side.
     const newEntry: KnowledgeBaseEntry = {
       id: crypto.randomUUID(),
       title: formData.title,
       description: formData.description,
-      fileName: formData.fileName,
-      fileType: formData.fileType,
-      filePath: formData.filePath,
+      fileName: staged.fileName,
+      fileType: staged.fileType,
+      filePath: staged.filePath,
       uploadedBy: user?.name || 'Admin',
       createdAt: new Date().toISOString(),
     };
@@ -162,7 +178,10 @@ export default function KnowledgeBasePage() {
     try {
       await createKnowledgeBaseEntry(newEntry);
       toast({ title: "Document Uploaded", description: "The procedural document is now available to all users." });
-      setFormData({ title: '', description: '', fileName: '', fileType: '', filePath: '', fileData: '' });
+      setFormData({ title: '', description: '' });
+      uploadedFileRef.current = null;
+      setFileReady(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       setShowUploadForm(false);
       await loadEntries();
     } catch (error: any) {
@@ -173,8 +192,16 @@ export default function KnowledgeBasePage() {
         variant: "destructive",
       });
     } finally {
-      setIsUploading(false);
+      setIsPublishing(false);
     }
+  };
+
+  const handleCancelUpload = () => {
+    setShowUploadForm(false);
+    setFormData({ title: '', description: '' });
+    uploadedFileRef.current = null;
+    setFileReady(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleDelete = async () => {
@@ -182,12 +209,9 @@ export default function KnowledgeBasePage() {
     
     setIsDeleting(true);
     try {
-      // Delete file from disk first
-      if (entryToDelete) {
-        const entry = entries.find(e => e.id === entryToDelete);
-        if (entry?.filePath && !entry.filePath.startsWith('data:')) {
-          await deleteFile(entry.filePath);
-        }
+      const entry = entries.find(e => e.id === entryToDelete);
+      if (entry?.filePath && !entry.filePath.startsWith('data:')) {
+        await deleteFile(entry.filePath);
       }
       await removeKnowledgeBaseEntry(entryToDelete);
       toast({ title: "Document Removed", description: "The document has been permanently deleted." });
@@ -240,7 +264,7 @@ export default function KnowledgeBasePage() {
           </div>
         </div>
         {isAdmin && (
-          <Button onClick={() => setShowUploadForm(!showUploadForm)} className="gap-2">
+          <Button onClick={() => showUploadForm ? handleCancelUpload() : setShowUploadForm(true)} className="gap-2">
             {showUploadForm ? <X className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
             {showUploadForm ? 'Cancel' : 'Upload Manual'}
           </Button>
@@ -267,14 +291,19 @@ export default function KnowledgeBasePage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Select File</Label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
                     <Input 
                       type="file" 
                       ref={fileInputRef} 
                       onChange={handleFileChange}
                       accept=".pdf,.doc,.docx,.ppt,.pptx"
                       className="cursor-pointer"
+                      disabled={isUploading}
                     />
+                    {isUploading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />}
+                    {fileReady && !isUploading && (
+                      <span className="text-xs text-green-600 font-semibold shrink-0">Ready</span>
+                    )}
                   </div>
                 </div>
                 <div className="md:col-span-2 space-y-2">
@@ -301,9 +330,17 @@ export default function KnowledgeBasePage() {
                 </div>
               </div>
               <div className="flex justify-end">
-                <Button type="submit" disabled={isUploading} className="min-w-[140px]">
-                  {isUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                  Publish to Repository
+                <Button 
+                  type="submit" 
+                  disabled={isPublishing || isUploading || !fileReady} 
+                  className="min-w-[160px]"
+                >
+                  {isPublishing 
+                    ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Publishing...</>
+                    : isUploading
+                      ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Uploading...</>
+                      : <><Plus className="h-4 w-4 mr-2" /> Publish to Repository</>
+                  }
                 </Button>
               </div>
             </form>
