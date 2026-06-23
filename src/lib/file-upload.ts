@@ -25,20 +25,21 @@ export async function uploadFile(
 
 /**
  * Delete a file from local server storage.
+ * Uses /api/files-serve?path=... (query string) to avoid bracket folder names.
  */
 export async function deleteFile(filePath: string): Promise<void> {
-  await fetch(`/api/files/${filePath}`, { method: 'DELETE' });
+  await fetch(`/api/files-serve?path=${encodeURIComponent(filePath)}`, { method: 'DELETE' });
 }
 
 /**
  * Get the URL to view/download a stored file.
- * All files go through /api/files/... which verifies session first.
+ * All files go through /api/files-serve?path=... which verifies session first.
  */
 export function getFileUrl(filePath: string): string {
   if (!filePath) return '';
   // Already a full URL or base64 data URI (legacy) — return as-is
   if (filePath.startsWith('http') || filePath.startsWith('data:')) return filePath;
-  return `/api/files/${filePath}`;
+  return `/api/files-serve?path=${encodeURIComponent(filePath)}`;
 }
 
 /**
