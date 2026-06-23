@@ -137,7 +137,8 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS system_config (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    maxUploadSize INTEGER DEFAULT 20
+    maxUploadSize INTEGER DEFAULT 20,
+    maintenanceMode INTEGER DEFAULT 0
   );
 
   CREATE TABLE IF NOT EXISTS smtp_settings (
@@ -179,12 +180,14 @@ db.exec(`
 function addColumnIfNotExists(table: string, column: string, type: string) {
   try {
     const info = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
-    const exists = info.some(col => col.name === column);
-    if (!exists) {
-      db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
-    }
-  } catch (e) {
-    console.warn(`Migration failed for ${table}.${column}:`, e);
+    const exists = info.some((col: any) => col.name === column);
+    if (exists) return;
+    db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
+  } catch (e: any) {
+    // "duplicate column name" means another process already ran this migration
+    // or the PRAGMA check raced against an ALTER. Treat it as a no-op.
+    if (e?.message?.includes('duplicate column')) return;
+    console.warn(`Migration warning for ${table}.${column}:`, e);
   }
 }
 
