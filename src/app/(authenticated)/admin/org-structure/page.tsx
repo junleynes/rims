@@ -152,11 +152,13 @@ function OrgNode({ node }: { node: TreeNode }) {
             {u.name}
           </div>
           <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
-            {u.position || u.role}
+            {u.position || '—'}
           </div>
-          <div style={{ marginTop: 5, display: 'inline-block', background: `${color}18`, color, fontWeight: 800, fontSize: 9, padding: '2px 7px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            {u.role}
-          </div>
+          {u.section && u.section !== 'None' && (
+            <div style={{ marginTop: 5, display: 'inline-block', background: `${color}18`, color, fontWeight: 800, fontSize: 9, padding: '2px 7px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '100%' }}>
+              {u.section}
+            </div>
+          )}
         </div>
       </div>
     </foreignObject>
