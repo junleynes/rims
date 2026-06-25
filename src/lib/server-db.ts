@@ -411,6 +411,21 @@ export async function getAllKnowledgeBaseEntries(): Promise<KnowledgeBaseEntry[]
   return db.prepare('SELECT * FROM knowledge_base ORDER BY createdAt DESC').all() as KnowledgeBaseEntry[];
 }
 
+export function updateKnowledgeBaseEntry(entry: { id: string; title: string; description: string; fileName: string; fileType: string; filePath: string }) {
+  db.prepare(`
+    UPDATE knowledge_base
+    SET title = @title, description = @description, fileName = @fileName, fileType = @fileType, filePath = @filePath
+    WHERE id = @id
+  `).run({
+    id:          entry.id,
+    title:       entry.title,
+    description: entry.description || '',
+    fileName:    entry.fileName,
+    fileType:    entry.fileType,
+    filePath:    entry.filePath,
+  });
+}
+
 export function saveKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
   db.prepare(`
     INSERT INTO knowledge_base (id, title, description, fileName, fileType, filePath, uploadedBy, createdAt)

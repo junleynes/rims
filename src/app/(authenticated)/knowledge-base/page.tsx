@@ -13,8 +13,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
   FileText, Search, Upload, Download, Trash2, File,
-  BookOpen, Plus, X, FileCode, Loader2, Sparkles, FilePlus2, CheckCircle2,
+  BookOpen, Plus, X, FileCode, Loader2, Sparkles, FilePlus2,
+  CheckCircle2, Pencil, RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchKnowledgeBaseEntries } from '@/app/actions/db-actions';
@@ -35,123 +39,115 @@ export default function KnowledgeBasePage() {
   const { user } = useAuth();
   const { systemConfig } = useSystemData();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef    = useRef<HTMLInputElement>(null);
+  const editFileRef     = useRef<HTMLInputElement>(null);
 
-  const [entries, setEntries]           = useState<KnowledgeBaseEntry[]>([]);
-  const [search, setSearch]             = useState('');
-  const [isLoading, setIsLoading]       = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isUploading, setIsUploading]   = useState(false);  // file → server
-  const [isPublishing, setIsPublishing] = useState(false);  // entry → DB
-  const [isDeleting, setIsDeleting]     = useState(false);
-  const [showForm, setShowForm]         = useState(false);
+  const [entries, setEntries]             = useState<KnowledgeBaseEntry[]>([]);
+  const [search, setSearch]               = useState('');
+  const [isLoading, setIsLoading]         = useState(true);
+  const [isGenerating, setIsGenerating]   = useState(false);
+  const [isPublishing, setIsPublishing]   = useState(false);
+  const [isDeleting, setIsDeleting]       = useState(false);
+  const [isSaving, setIsSaving]           = useState(false);
+  const [showForm, setShowForm]           = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 
-  // Form fields
+  // New entry form
   const [title, setTitle]             = useState('');
   const [description, setDescription] = useState('');
+  const [pickedFile, setPickedFile]   = useState<File | null>(null);   // held locally, NOT uploaded yet
 
-  // Staged file — set after successful upload, cleared on reset
-  const [stagedFile, setStagedFile] = useState<{
-    fileName: string;
-    fileType: string;
-    filePath: string;
-  } | null>(null);
+  // Edit modal
+  const [editEntry, setEditEntry]           = useState<KnowledgeBaseEntry | null>(null);
+  const [editTitle, setEditTitle]           = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editPickedFile, setEditPickedFile] = useState<File | null>(null);  // optional replacement file
+  const [isEditGenerating, setIsEditGenerating] = useState(false);
 
-  const isAdmin = user?.role === 'Admin';
+  const isAdmin   = user?.role === 'Admin';
   const MAX_BYTES = (systemConfig.maxUploadSize || 20) * 1024 * 1024;
 
   useEffect(() => { loadEntries(); }, []);
 
   async function loadEntries() {
     setIsLoading(true);
-    try {
-      setEntries(await fetchKnowledgeBaseEntries());
-    } catch {
-      toast({ title: 'Load Error', description: 'Failed to load entries.', variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
+    try { setEntries(await fetchKnowledgeBaseEntries()); }
+    catch { toast({ title: 'Load Error', description: 'Failed to load entries.', variant: 'destructive' }); }
+    finally { setIsLoading(false); }
   }
 
   function resetForm() {
-    setTitle('');
-    setDescription('');
-    setStagedFile(null);
-    setIsUploading(false);
-    setIsPublishing(false);
+    setTitle(''); setDescription(''); setPickedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  // ── Step 1: upload file to disk when user picks it ──────────────────────
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > MAX_BYTES) {
-      toast({ title: 'File too large', description: `Max size is ${systemConfig.maxUploadSize || 20} MB.`, variant: 'destructive' });
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    setStagedFile(null);
-    setIsUploading(true);
-
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('folder', 'knowledge-base');
-
-      const res = await fetch('/api/upload', { method: 'POST', body: fd, credentials: 'include' });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data?.error || `Upload failed (${res.status})`);
-
-      setStagedFile({
-        fileName: data.fileName,
-        fileType: data.fileType,
-        filePath: data.filePath,
-      });
-      toast({ title: 'File ready', description: `${file.name} uploaded. Fill in the title and press Publish.` });
-    } catch (err: any) {
-      toast({ title: 'Upload Failed', description: err.message, variant: 'destructive' });
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    } finally {
-      setIsUploading(false);
-    }
+  // ── Upload helper — called only at publish/save time ─────────────────────
+  async function uploadFileToDisk(file: File, folder: string) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', folder);
+    const res  = await fetch('/api/upload', { method: 'POST', body: fd, credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || `Upload failed (${res.status})`);
+    return data as { fileName: string; fileType: string; filePath: string };
   }
 
-  // ── Step 2: save entry to DB when user presses Publish ──────────────────
-  async function handlePublish() {
+  // ── Pick file (just hold in state, no upload yet) ─────────────────────────
+  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_BYTES) {
+      toast({ title: 'File too large', description: `Max size is ${systemConfig.maxUploadSize || 20} MB.`, variant: 'destructive' });
+      e.target.value = '';
+      return;
+    }
+    setPickedFile(file);
+    toast({ title: 'File selected', description: `${file.name} — press Publish to upload and save.` });
+  }
 
+  function handleEditFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > MAX_BYTES) {
+      toast({ title: 'File too large', description: `Max size is ${systemConfig.maxUploadSize || 20} MB.`, variant: 'destructive' });
+      e.target.value = '';
+      return;
+    }
+    setEditPickedFile(file);
+    toast({ title: 'Replacement file selected', description: `${file.name} — press Save to apply.` });
+  }
+
+  // ── Publish: upload file then save entry to DB ────────────────────────────
+  async function handlePublish() {
     if (!title.trim()) {
       toast({ title: 'Title required', description: 'Please enter a document title.', variant: 'destructive' });
       return;
     }
-    if (!stagedFile) {
-      toast({ title: 'No file', description: 'Please select a file first.', variant: 'destructive' });
+    if (!pickedFile) {
+      toast({ title: 'No file selected', description: 'Please select a file to upload.', variant: 'destructive' });
       return;
     }
 
     setIsPublishing(true);
-
-    const payload: KnowledgeBaseEntry = {
-      id:          generateId(),
-      title:       title.trim(),
-      description: description.trim(),
-      fileName:    stagedFile.fileName,
-      fileType:    stagedFile.fileType,
-      filePath:    stagedFile.filePath,
-      uploadedBy:  user?.name || 'Admin',
-      createdAt:   new Date().toISOString(),
-    };
-
     try {
-      const res = await fetch('/api/knowledge-base', {
-        method:      'POST',
-        headers:     { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body:        JSON.stringify(payload),
+      // Upload file NOW (only when user presses Publish)
+      const uploaded = await uploadFileToDisk(pickedFile, 'knowledge-base');
+
+      const payload: KnowledgeBaseEntry = {
+        id:          generateId(),
+        title:       title.trim(),
+        description: description.trim(),
+        fileName:    uploaded.fileName,
+        fileType:    uploaded.fileType,
+        filePath:    uploaded.filePath,
+        uploadedBy:  user?.name || 'Admin',
+        createdAt:   new Date().toISOString(),
+      };
+
+      const res  = await fetch('/api/knowledge-base', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
@@ -168,7 +164,67 @@ export default function KnowledgeBasePage() {
     }
   }
 
-  // ── Delete ───────────────────────────────────────────────────────────────
+  // ── Open edit modal ───────────────────────────────────────────────────────
+  function openEdit(entry: KnowledgeBaseEntry) {
+    setEditEntry(entry);
+    setEditTitle(entry.title);
+    setEditDescription(entry.description || '');
+    setEditPickedFile(null);
+    if (editFileRef.current) editFileRef.current.value = '';
+  }
+
+  // ── Save edit: optionally upload new file, then PATCH entry ──────────────
+  async function handleSaveEdit() {
+    if (!editEntry) return;
+    if (!editTitle.trim()) {
+      toast({ title: 'Title required', variant: 'destructive' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      let fileName = editEntry.fileName;
+      let fileType = editEntry.fileType;
+      let filePath = editEntry.filePath;
+
+      // If user picked a replacement file, upload it now
+      if (editPickedFile) {
+        const uploaded = await uploadFileToDisk(editPickedFile, 'knowledge-base');
+        // Delete old file from disk (best effort)
+        if (editEntry.filePath && !editEntry.filePath.startsWith('data:')) {
+          await deleteFile(editEntry.filePath).catch(() => {});
+        }
+        fileName = uploaded.fileName;
+        fileType = uploaded.fileType;
+        filePath = uploaded.filePath;
+      }
+
+      const updated: KnowledgeBaseEntry = {
+        ...editEntry,
+        title:       editTitle.trim(),
+        description: editDescription.trim(),
+        fileName, fileType, filePath,
+      };
+
+      const res  = await fetch('/api/knowledge-base', {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
+
+      toast({ title: 'Updated', description: 'Document details saved.' });
+      setEditEntry(null);
+      await loadEntries();
+    } catch (err: any) {
+      toast({ title: 'Save Failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  // ── Delete ────────────────────────────────────────────────────────────────
   async function handleDelete() {
     if (!entryToDelete) return;
     setIsDeleting(true);
@@ -177,15 +233,14 @@ export default function KnowledgeBasePage() {
       if (entry?.filePath && !entry.filePath.startsWith('data:')) {
         await deleteFile(entry.filePath).catch(() => {});
       }
-      const res = await fetch('/api/knowledge-base', {
-        method:      'DELETE',
-        headers:     { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body:        JSON.stringify({ id: entryToDelete }),
+      const res  = await fetch('/api/knowledge-base', {
+        method: 'DELETE', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: entryToDelete }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
-      toast({ title: 'Deleted', description: 'Document removed from repository.' });
+      toast({ title: 'Deleted', description: 'Document removed.' });
       await loadEntries();
     } catch (err: any) {
       toast({ title: 'Delete Failed', description: err.message, variant: 'destructive' });
@@ -195,17 +250,15 @@ export default function KnowledgeBasePage() {
     }
   }
 
-  // ── AI description ───────────────────────────────────────────────────────
-  async function handleGenerate() {
-    if (!title.trim()) {
-      toast({ title: 'Add a title first', variant: 'destructive' });
-      return;
-    }
-    setIsGenerating(true);
-    const result = await generateContentFromTitle({ title, context: 'knowledge-base' });
-    setIsGenerating(false);
+  // ── AI description ────────────────────────────────────────────────────────
+  async function handleGenerate(forEdit = false) {
+    const t = forEdit ? editTitle : title;
+    if (!t.trim()) { toast({ title: 'Add a title first', variant: 'destructive' }); return; }
+    forEdit ? setIsEditGenerating(true) : setIsGenerating(true);
+    const result = await generateContentFromTitle({ title: t, context: 'knowledge-base' });
+    forEdit ? setIsEditGenerating(false) : setIsGenerating(false);
     if (result.content) {
-      setDescription(result.content);
+      forEdit ? setEditDescription(result.content) : setDescription(result.content);
       toast({ title: 'Description generated' });
     } else {
       toast({ title: 'Generation failed', description: result.error, variant: 'destructive' });
@@ -228,14 +281,13 @@ export default function KnowledgeBasePage() {
   );
 
   function getFileIcon(type: string) {
-    if (type === 'pdf')               return <FileText className="h-8 w-8 text-red-500" />;
+    if (type === 'pdf')                    return <FileText className="h-8 w-8 text-red-500" />;
     if (type === 'doc' || type === 'docx') return <FileCode className="h-8 w-8 text-blue-600" />;
     if (type === 'ppt' || type === 'pptx') return <FilePlus2 className="h-8 w-8 text-orange-500" />;
     return <File className="h-8 w-8 text-slate-400" />;
   }
 
-  // Publish button is enabled only when: not busy + file is staged
-  const canPublish = !isUploading && !isPublishing && !!stagedFile;
+  const canPublish = !isPublishing && !!pickedFile && !!title.trim();
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
@@ -252,7 +304,7 @@ export default function KnowledgeBasePage() {
           </div>
         </div>
         {isAdmin && (
-          <Button onClick={() => { if (showForm) { resetForm(); } setShowForm(f => !f); }} className="gap-2">
+          <Button onClick={() => { if (showForm) resetForm(); setShowForm(f => !f); }} className="gap-2">
             {showForm ? <X className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
             {showForm ? 'Cancel' : 'Upload Manual'}
           </Button>
@@ -266,7 +318,7 @@ export default function KnowledgeBasePage() {
           <CardHeader>
             <CardTitle className="text-lg">New Document Upload</CardTitle>
             <CardDescription>
-              Accepted: PDF, Word, PowerPoint · Max {systemConfig.maxUploadSize || 20} MB
+              Fill in the title, select a file, then press Publish. The file uploads only when you press Publish.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -284,28 +336,27 @@ export default function KnowledgeBasePage() {
                   />
                 </div>
 
-                {/* File picker */}
+                {/* File picker — no upload yet */}
                 <div className="space-y-2">
                   <Label>Select File <span className="text-destructive">*</span></Label>
                   <div className="flex items-center gap-2">
                     <Input
                       type="file"
                       ref={fileInputRef}
-                      onChange={handleFileChange}
+                      onChange={handleFilePick}
                       accept=".pdf,.doc,.docx,.ppt,.pptx"
-                      disabled={isUploading || isPublishing}
+                      disabled={isPublishing}
                       className="cursor-pointer"
                     />
-                    {isUploading && <Loader2 className="h-4 w-4 animate-spin shrink-0 text-muted-foreground" />}
-                    {!isUploading && stagedFile && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
+                    {pickedFile && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
                   </div>
-                  {isUploading && (
-                    <p className="text-[11px] text-muted-foreground">Uploading file to server…</p>
-                  )}
-                  {!isUploading && stagedFile && (
+                  {pickedFile && (
                     <p className="text-[11px] text-emerald-600 font-semibold truncate">
-                      ✓ {stagedFile.fileName}
+                      ✓ {pickedFile.name} — will upload on Publish
                     </p>
+                  )}
+                  {!pickedFile && (
+                    <p className="text-[11px] text-muted-foreground">File uploads only when you press Publish.</p>
                   )}
                 </div>
 
@@ -313,7 +364,7 @@ export default function KnowledgeBasePage() {
                 <div className="md:col-span-2 space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>Description</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={handleGenerate}
+                    <Button type="button" variant="outline" size="sm" onClick={() => handleGenerate(false)}
                       disabled={isGenerating || isPublishing}
                       className="gap-1.5 h-7 px-2 text-xs font-bold border-primary/20 text-primary hover:bg-primary/5">
                       {isGenerating
@@ -330,15 +381,9 @@ export default function KnowledgeBasePage() {
                 </div>
               </div>
 
-              {/* Submit */}
               <div className="flex items-center justify-end gap-3">
-                {/* Status hint */}
-                {isUploading && (
-                  <span className="text-xs text-muted-foreground">Uploading file, please wait…</span>
-                )}
-                {!isUploading && !stagedFile && (
-                  <span className="text-xs text-muted-foreground">Select a file to enable Publish</span>
-                )}
+                {!pickedFile && <span className="text-xs text-muted-foreground">Select a file to enable Publish</span>}
+                {!title.trim() && pickedFile && <span className="text-xs text-muted-foreground">Enter a title to enable Publish</span>}
                 <Button
                   type="button"
                   onClick={handlePublish}
@@ -346,7 +391,7 @@ export default function KnowledgeBasePage() {
                   className="min-w-[180px]"
                 >
                   {isPublishing
-                    ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Publishing…</>
+                    ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Uploading & Publishing…</>
                     : <><Plus className="h-4 w-4 mr-2" /> Publish to Repository</>}
                 </Button>
               </div>
@@ -370,7 +415,7 @@ export default function KnowledgeBasePage() {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground font-medium">Scanning repository…</p>
+          <p className="text-muted-foreground font-medium">Loading repository…</p>
         </div>
       ) : filteredEntries.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -387,11 +432,20 @@ export default function KnowledgeBasePage() {
                     {getFileIcon(entry.fileType)}
                   </div>
                   {isAdmin && (
-                    <Button size="icon" variant="ghost"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setEntryToDelete(entry.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        onClick={() => openEdit(entry)}
+                        title="Edit">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setEntryToDelete(entry.id)}
+                        title="Delete">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <h3 className="text-lg font-black text-primary leading-tight mb-2 uppercase tracking-tight line-clamp-2">
@@ -403,12 +457,12 @@ export default function KnowledgeBasePage() {
                 <div className="pt-4 border-t space-y-4">
                   <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     <span>{format(new Date(entry.createdAt), 'MMM dd, yyyy')}</span>
-                    <span className="bg-muted px-2 py-0.5 rounded">{entry.fileType}</span>
+                    <span className="bg-muted px-2 py-0.5 rounded">{entry.fileType.toUpperCase()}</span>
                   </div>
                   <Button variant="outline"
                     className="w-full gap-2 font-bold group-hover:bg-primary group-hover:text-white transition-colors"
                     onClick={() => downloadFile(entry)}>
-                    <Download className="h-4 w-4" /> Download Manual
+                    <Download className="h-4 w-4" /> Download
                   </Button>
                 </div>
               </CardContent>
@@ -427,13 +481,80 @@ export default function KnowledgeBasePage() {
         </Card>
       )}
 
-      {/* Delete confirm */}
+      {/* ── Edit Modal ─────────────────────────────────────────────────────── */}
+      <Dialog open={!!editEntry} onOpenChange={open => !open && setEditEntry(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-black text-primary uppercase tracking-tight">Edit Document</DialogTitle>
+            <DialogDescription>Update the title, description, or replace the file.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Title */}
+            <div className="space-y-2">
+              <Label>Document Title <span className="text-destructive">*</span></Label>
+              <Input value={editTitle} onChange={e => setEditTitle(e.target.value)} disabled={isSaving} />
+            </div>
+            {/* Description */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Description</Label>
+                <Button type="button" variant="outline" size="sm" onClick={() => handleGenerate(true)}
+                  disabled={isEditGenerating || isSaving}
+                  className="gap-1.5 h-7 px-2 text-xs font-bold border-primary/20 text-primary hover:bg-primary/5">
+                  {isEditGenerating
+                    ? <><Sparkles className="h-3 w-3 animate-pulse" /> Generating…</>
+                    : <><Sparkles className="h-3 w-3" /> AI Autofill</>}
+                </Button>
+              </div>
+              <Textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} disabled={isSaving} rows={3} />
+            </div>
+            {/* Replace file */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <RefreshCw className="h-3.5 w-3.5" /> Replace File
+                <span className="text-[10px] text-muted-foreground font-normal">(optional — leave blank to keep existing)</span>
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="file"
+                  ref={editFileRef}
+                  onChange={handleEditFilePick}
+                  accept=".pdf,.doc,.docx,.ppt,.pptx"
+                  disabled={isSaving}
+                  className="cursor-pointer"
+                />
+                {editPickedFile && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
+              </div>
+              {editEntry && !editPickedFile && (
+                <p className="text-[11px] text-muted-foreground">
+                  Current file: <span className="font-semibold">{editEntry.fileName}</span>
+                </p>
+              )}
+              {editPickedFile && (
+                <p className="text-[11px] text-emerald-600 font-semibold truncate">
+                  ✓ {editPickedFile.name} — will replace on Save
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditEntry(null)} disabled={isSaving}>Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={isSaving} className="min-w-[120px]">
+              {isSaving
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Saving…</>
+                : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete confirm ─────────────────────────────────────────────────── */}
       <AlertDialog open={!!entryToDelete} onOpenChange={open => !open && setEntryToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this document?</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes the file from the repository and cannot be undone.
+              This permanently removes the file and cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

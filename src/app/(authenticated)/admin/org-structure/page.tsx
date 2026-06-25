@@ -154,9 +154,9 @@ function OrgNode({ node }: { node: TreeNode }) {
           <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2 }}>
             {u.position || '—'}
           </div>
-          {u.section && u.section !== 'None' && (
+          {(u.section && u.section !== 'None' ? u.section : u.division) && (
             <div style={{ marginTop: 5, display: 'inline-block', background: `${color}18`, color, fontWeight: 800, fontSize: 9, padding: '2px 7px', borderRadius: 99, textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap', overflow: 'hidden', maxWidth: '100%' }}>
-              {u.section}
+              {u.section && u.section !== 'None' ? u.section : u.division}
             </div>
           )}
         </div>
@@ -331,7 +331,7 @@ export default function OrgStructurePage() {
                 {getUsersForDivisionOnly(div.name).length > 0 && (
                   <div className="space-y-4">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                      <Shield className="h-3 w-3 text-primary" /> Division Administration
+                      <Shield className="h-3 w-3 text-primary" /> {div.name}
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {getUsersForDivisionOnly(div.name).map(user => (

@@ -88,3 +88,39 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to delete entry.' }, { status: 500 });
   }
 }
+
+// PATCH — update title, description, and optionally the file
+export async function PATCH(req: NextRequest) {
+  let user;
+  try { user = await requireSession(); }
+  catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+
+  let body: any;
+  try { body = await req.json(); }
+  catch { return NextResponse.json({ error: 'Invalid request body' }, { status: 400 }); }
+
+  if (!body?.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+  if (!body?.title?.trim()) return NextResponse.json({ error: 'Title is required' }, { status: 422 });
+
+  try {
+    db.updateKnowledgeBaseEntry({
+      id:          body.id,
+      title:       body.title.trim(),
+      description: body.description?.trim() || '',
+      fileName:    body.fileName,
+      fileType:    body.fileType,
+      filePath:    body.filePath,
+    });
+    try {
+      db.logAudit({
+        userId: user.id, username: user.username,
+        action: 'kb_document_updated',
+        details: `Updated "${body.title}"`,
+      });
+    } catch { /* audit must never block */ }
+    return NextResponse.json({ success: true });
+  } catch (e: any) {
+    console.error('KB update error:', e);
+    return NextResponse.json({ error: 'Failed to update entry.' }, { status: 500 });
+  }
+}
