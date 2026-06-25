@@ -8,25 +8,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { 
+import {
   FileText, Search, Upload, Download, Trash2, File,
-  BookOpen, Plus, X, FileCode, Loader2, Sparkles, FilePlus2
+  BookOpen, Plus, X, FileCode, Loader2, Sparkles, FilePlus2, CheckCircle2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { fetchKnowledgeBaseEntries } from '@/app/actions/db-actions';
 import { generateContentFromTitle } from '@/app/actions/ai-autofill-action';
 import { KnowledgeBaseEntry } from '@/lib/types';
-import { uploadFile, deleteFile, getFileUrl } from '@/lib/file-upload';
+import { deleteFile, getFileUrl } from '@/lib/file-upload';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -36,224 +30,209 @@ export default function KnowledgeBasePage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [entries, setEntries] = useState<KnowledgeBaseEntry[]>([]);
-  const [search, setSearch] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [entries, setEntries]           = useState<KnowledgeBaseEntry[]>([]);
+  const [search, setSearch]             = useState('');
+  const [isLoading, setIsLoading]       = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isBusy, setIsBusy] = useState(false);   // covers both upload phase and publish phase
-  const [uploadPhase, setUploadPhase] = useState<'idle' | 'uploading' | 'ready' | 'publishing'>('idle');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [isUploading, setIsUploading]   = useState(false);  // file → server
+  const [isPublishing, setIsPublishing] = useState(false);  // entry → DB
+  const [isDeleting, setIsDeleting]     = useState(false);
+  const [showForm, setShowForm]         = useState(false);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
 
-  // Single source of truth for the staged file — avoids stale closure bugs
+  // Form fields
+  const [title, setTitle]             = useState('');
+  const [description, setDescription] = useState('');
+
+  // Staged file — set after successful upload, cleared on reset
   const [stagedFile, setStagedFile] = useState<{
     fileName: string;
     fileType: string;
     filePath: string;
   } | null>(null);
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-
   const isAdmin = user?.role === 'Admin';
-  const MAX_FILE_SIZE = (systemConfig.maxUploadSize || 20) * 1024 * 1024;
+  const MAX_BYTES = (systemConfig.maxUploadSize || 20) * 1024 * 1024;
 
   useEffect(() => { loadEntries(); }, []);
 
   async function loadEntries() {
     setIsLoading(true);
     try {
-      const data = await fetchKnowledgeBaseEntries();
-      setEntries(data);
+      setEntries(await fetchKnowledgeBaseEntries());
     } catch {
-      toast({ title: 'Load Error', description: 'Failed to load knowledge base entries.', variant: 'destructive' });
+      toast({ title: 'Load Error', description: 'Failed to load entries.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   }
 
-  const handleGenerateDescription = async () => {
-    if (!title) {
-      toast({ title: 'Add a title first', description: 'Enter a document title before generating a description.', variant: 'destructive' });
-      return;
-    }
-    setIsGenerating(true);
-    const result = await generateContentFromTitle({ title, context: 'knowledge-base' });
-    setIsGenerating(false);
-    if (result.error) {
-      toast({ title: 'Generation Failed', description: result.error, variant: 'destructive' });
-    } else if (result.content) {
-      setDescription(result.content);
-      toast({ title: 'Description Generated', description: 'AI description added. Review before saving.' });
-    }
-  };
+  function resetForm() {
+    setTitle('');
+    setDescription('');
+    setStagedFile(null);
+    setIsUploading(false);
+    setIsPublishing(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── Step 1: upload file to disk when user picks it ──────────────────────
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > MAX_FILE_SIZE) {
-      toast({
-        title: 'File too large',
-        description: `Maximum file size is ${systemConfig.maxUploadSize || 20}MB.`,
-        variant: 'destructive',
-      });
+    if (file.size > MAX_BYTES) {
+      toast({ title: 'File too large', description: `Max size is ${systemConfig.maxUploadSize || 20} MB.`, variant: 'destructive' });
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     setStagedFile(null);
-    setUploadPhase('uploading');
-    setIsBusy(true);
+    setIsUploading(true);
 
     try {
-      const result = await uploadFile(file, 'knowledge-base');
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('folder', 'knowledge-base');
+
+      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data?.error || `Upload failed (${res.status})`);
+
       setStagedFile({
-        fileName: result.fileName,
-        fileType: result.fileType,
-        filePath: result.filePath,
+        fileName: data.fileName,
+        fileType: data.fileType,
+        filePath: data.filePath,
       });
-      setUploadPhase('ready');
-      toast({ title: 'File ready', description: `${file.name} staged successfully.` });
+      toast({ title: 'File ready', description: `${file.name} uploaded. Fill in the title and press Publish.` });
     } catch (err: any) {
       toast({ title: 'Upload Failed', description: err.message, variant: 'destructive' });
-      setUploadPhase('idle');
       if (fileInputRef.current) fileInputRef.current.value = '';
     } finally {
-      setIsBusy(false);
+      setIsUploading(false);
     }
-  };
+  }
 
-  // stagedFile from useState is always current at the time this function runs
-  // because React guarantees state is flushed before the next render's event handlers.
-  const handlePublish = async (e: React.FormEvent) => {
+  // ── Step 2: save entry to DB when user presses Publish ──────────────────
+  async function handlePublish(e: React.FormEvent) {
     e.preventDefault();
 
     if (!title.trim()) {
-      toast({ title: 'Validation Error', description: 'Please enter a document title.', variant: 'destructive' });
+      toast({ title: 'Title required', description: 'Please enter a document title.', variant: 'destructive' });
       return;
     }
     if (!stagedFile) {
-      toast({ title: 'Validation Error', description: 'Please select a file and wait for it to finish uploading.', variant: 'destructive' });
+      toast({ title: 'No file', description: 'Please select a file first.', variant: 'destructive' });
       return;
     }
 
-    setUploadPhase('publishing');
-    setIsBusy(true);
+    setIsPublishing(true);
 
-    const newEntry: KnowledgeBaseEntry = {
-      id: crypto.randomUUID(),
-      title: title.trim(),
+    const payload: KnowledgeBaseEntry = {
+      id:          crypto.randomUUID(),
+      title:       title.trim(),
       description: description.trim(),
-      fileName: stagedFile.fileName,
-      fileType: stagedFile.fileType,
-      filePath: stagedFile.filePath,
-      uploadedBy: user?.name || 'Admin',
-      createdAt: new Date().toISOString(),
+      fileName:    stagedFile.fileName,
+      fileType:    stagedFile.fileType,
+      filePath:    stagedFile.filePath,
+      uploadedBy:  user?.name || 'Admin',
+      createdAt:   new Date().toISOString(),
     };
 
     try {
       const res = await fetch('/api/knowledge-base', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newEntry),
+        body:    JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data?.error || `Server error ${res.status}`);
-      }
-      toast({ title: 'Document Published', description: 'The document is now available to all users.' });
+      if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
+
+      toast({ title: 'Published', description: 'Document is now available to all users.' });
       resetForm();
-      setShowUploadForm(false);
+      setShowForm(false);
       await loadEntries();
-    } catch (error: any) {
-      console.error('KB publish error:', error);
-      toast({
-        title: 'Publish Failed',
-        description: error?.message || 'An error occurred while saving the document.',
-        variant: 'destructive',
-      });
+    } catch (err: any) {
+      console.error('Publish error:', err);
+      toast({ title: 'Publish Failed', description: err.message, variant: 'destructive' });
     } finally {
-      setIsBusy(false);
-      setUploadPhase(stagedFile ? 'ready' : 'idle');
+      setIsPublishing(false);
     }
-  };
+  }
 
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setStagedFile(null);
-    setUploadPhase('idle');
-    setIsBusy(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleCancelUpload = () => {
-    resetForm();
-    setShowUploadForm(false);
-  };
-
-  const handleDelete = async () => {
+  // ── Delete ───────────────────────────────────────────────────────────────
+  async function handleDelete() {
     if (!entryToDelete) return;
     setIsDeleting(true);
     try {
       const entry = entries.find(e => e.id === entryToDelete);
       if (entry?.filePath && !entry.filePath.startsWith('data:')) {
-        await deleteFile(entry.filePath);
+        await deleteFile(entry.filePath).catch(() => {});
       }
       const res = await fetch('/api/knowledge-base', {
-        method: 'DELETE',
+        method:  'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: entryToDelete }),
+        body:    JSON.stringify({ id: entryToDelete }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || `Server error ${res.status}`);
-      toast({ title: 'Document Removed', description: 'The document has been permanently deleted.' });
+      if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
+      toast({ title: 'Deleted', description: 'Document removed from repository.' });
       await loadEntries();
-    } catch (error: any) {
-      toast({ title: 'Delete Failed', description: error?.message || 'Could not remove the document.', variant: 'destructive' });
+    } catch (err: any) {
+      toast({ title: 'Delete Failed', description: err.message, variant: 'destructive' });
     } finally {
       setIsDeleting(false);
       setEntryToDelete(null);
     }
-  };
+  }
 
-  const downloadFile = (entry: KnowledgeBaseEntry) => {
-    const url = getFileUrl(entry.filePath);
+  // ── AI description ───────────────────────────────────────────────────────
+  async function handleGenerate() {
+    if (!title.trim()) {
+      toast({ title: 'Add a title first', variant: 'destructive' });
+      return;
+    }
+    setIsGenerating(true);
+    const result = await generateContentFromTitle({ title, context: 'knowledge-base' });
+    setIsGenerating(false);
+    if (result.content) {
+      setDescription(result.content);
+      toast({ title: 'Description generated' });
+    } else {
+      toast({ title: 'Generation failed', description: result.error, variant: 'destructive' });
+    }
+  }
+
+  function downloadFile(entry: KnowledgeBaseEntry) {
     const link = document.createElement('a');
-    link.href = url;
+    link.href = getFileUrl(entry.filePath);
     link.download = entry.fileName;
     link.target = '_blank';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }
 
   const filteredEntries = entries.filter(e =>
     e.title.toLowerCase().includes(search.toLowerCase()) ||
     (e.description || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const getFileIcon = (type: string) => {
-    switch (type) {
-      case 'pdf':  return <FileText className="h-8 w-8 text-red-500" />;
-      case 'doc':
-      case 'docx': return <FileCode className="h-8 w-8 text-blue-600" />;
-      case 'ppt':
-      case 'pptx': return <FilePlus2 className="h-8 w-8 text-orange-500" />;
-      default:     return <File className="h-8 w-8 text-slate-400" />;
-    }
-  };
+  function getFileIcon(type: string) {
+    if (type === 'pdf')               return <FileText className="h-8 w-8 text-red-500" />;
+    if (type === 'doc' || type === 'docx') return <FileCode className="h-8 w-8 text-blue-600" />;
+    if (type === 'ppt' || type === 'pptx') return <FilePlus2 className="h-8 w-8 text-orange-500" />;
+    return <File className="h-8 w-8 text-slate-400" />;
+  }
 
-  const publishBtnLabel = () => {
-    if (uploadPhase === 'uploading')   return <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Uploading…</>;
-    if (uploadPhase === 'publishing')  return <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Publishing…</>;
-    return <><Plus className="h-4 w-4 mr-2" /> Publish to Repository</>;
-  };
+  // Publish button is enabled only when: not busy + file is staged
+  const canPublish = !isUploading && !isPublishing && !!stagedFile;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
+
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg">
@@ -265,25 +244,27 @@ export default function KnowledgeBasePage() {
           </div>
         </div>
         {isAdmin && (
-          <Button onClick={() => showUploadForm ? handleCancelUpload() : setShowUploadForm(true)} className="gap-2">
-            {showUploadForm ? <X className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
-            {showUploadForm ? 'Cancel' : 'Upload Manual'}
+          <Button onClick={() => { if (showForm) { resetForm(); } setShowForm(f => !f); }} className="gap-2">
+            {showForm ? <X className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
+            {showForm ? 'Cancel' : 'Upload Manual'}
           </Button>
         )}
       </div>
 
-      {showUploadForm && (
+      {/* Upload form */}
+      {showForm && (
         <Card className="border-none shadow-xl bg-white overflow-hidden animate-in slide-in-from-top-4 duration-300">
           <div className="h-1.5 bg-primary" />
           <CardHeader>
             <CardTitle className="text-lg">New Document Upload</CardTitle>
             <CardDescription>
-              Upload procedures in PDF, Word, or PowerPoint formats (Limit: {systemConfig.maxUploadSize || 20}MB).
+              Accepted: PDF, Word, PowerPoint · Max {systemConfig.maxUploadSize || 20} MB
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handlePublish} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
                 {/* Title */}
                 <div className="space-y-2">
                   <Label>Document Title <span className="text-destructive">*</span></Label>
@@ -291,32 +272,31 @@ export default function KnowledgeBasePage() {
                     placeholder="e.g. Video Suite Operation Procedure"
                     value={title}
                     onChange={e => setTitle(e.target.value)}
-                    disabled={isBusy && uploadPhase === 'publishing'}
+                    disabled={isPublishing}
                   />
                 </div>
 
                 {/* File picker */}
                 <div className="space-y-2">
                   <Label>Select File <span className="text-destructive">*</span></Label>
-                  <div className="flex gap-2 items-center">
+                  <div className="flex items-center gap-2">
                     <Input
                       type="file"
                       ref={fileInputRef}
                       onChange={handleFileChange}
                       accept=".pdf,.doc,.docx,.ppt,.pptx"
+                      disabled={isUploading || isPublishing}
                       className="cursor-pointer"
-                      disabled={uploadPhase === 'uploading' || uploadPhase === 'publishing'}
                     />
-                    {uploadPhase === 'uploading' && (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
-                    )}
-                    {uploadPhase === 'ready' && (
-                      <span className="text-xs text-emerald-600 font-bold shrink-0">✓ Ready</span>
-                    )}
+                    {isUploading && <Loader2 className="h-4 w-4 animate-spin shrink-0 text-muted-foreground" />}
+                    {!isUploading && stagedFile && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
                   </div>
-                  {stagedFile && (
-                    <p className="text-[10px] text-muted-foreground truncate">
-                      {stagedFile.fileName} · {stagedFile.fileType.toUpperCase()}
+                  {isUploading && (
+                    <p className="text-[11px] text-muted-foreground">Uploading file to server…</p>
+                  )}
+                  {!isUploading && stagedFile && (
+                    <p className="text-[11px] text-emerald-600 font-semibold truncate">
+                      ✓ {stagedFile.fileName}
                     </p>
                   )}
                 </div>
@@ -325,14 +305,9 @@ export default function KnowledgeBasePage() {
                 <div className="md:col-span-2 space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>Description</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleGenerateDescription}
-                      disabled={isGenerating || isBusy}
-                      className="gap-1.5 border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs h-7 px-2"
-                    >
+                    <Button type="button" variant="outline" size="sm" onClick={handleGenerate}
+                      disabled={isGenerating || isPublishing}
+                      className="gap-1.5 h-7 px-2 text-xs font-bold border-primary/20 text-primary hover:bg-primary/5">
                       {isGenerating
                         ? <><Sparkles className="h-3 w-3 animate-pulse" /> Generating…</>
                         : <><Sparkles className="h-3 w-3" /> AI Autofill</>}
@@ -342,18 +317,28 @@ export default function KnowledgeBasePage() {
                     placeholder="Brief overview of the document's purpose…"
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    disabled={uploadPhase === 'publishing'}
+                    disabled={isPublishing}
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              {/* Submit */}
+              <div className="flex items-center justify-end gap-3">
+                {/* Status hint */}
+                {isUploading && (
+                  <span className="text-xs text-muted-foreground">Uploading file, please wait…</span>
+                )}
+                {!isUploading && !stagedFile && (
+                  <span className="text-xs text-muted-foreground">Select a file to enable Publish</span>
+                )}
                 <Button
                   type="submit"
-                  disabled={isBusy || uploadPhase === 'idle' || uploadPhase === 'uploading'}
-                  className="min-w-[200px]"
+                  disabled={!canPublish}
+                  className="min-w-[180px]"
                 >
-                  {publishBtnLabel()}
+                  {isPublishing
+                    ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Publishing…</>
+                    : <><Plus className="h-4 w-4 mr-2" /> Publish to Repository</>}
                 </Button>
               </div>
             </form>
@@ -362,29 +347,28 @@ export default function KnowledgeBasePage() {
       )}
 
       {/* Search */}
-      <div className="relative mb-6">
+      <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search documentation by title or content keywords…"
+          placeholder="Search by title or description…"
           className="pl-10 h-12 text-lg shadow-sm border-none bg-white"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
       </div>
 
-      {/* Document grid */}
+      {/* Grid */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-muted-foreground font-medium">Scanning document repository…</p>
+          <p className="text-muted-foreground font-medium">Scanning repository…</p>
         </div>
       ) : filteredEntries.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredEntries.map(entry => (
             <Card key={entry.id} className="group border-none shadow-sm hover:shadow-xl transition-all duration-300 bg-white overflow-hidden flex flex-col">
-              <div className={cn(
-                "h-2",
-                entry.fileType === 'pdf'  ? "bg-red-500"  :
+              <div className={cn("h-2",
+                entry.fileType === 'pdf'  ? "bg-red-500" :
                 (entry.fileType === 'doc' || entry.fileType === 'docx') ? "bg-blue-600" :
                 (entry.fileType === 'ppt' || entry.fileType === 'pptx') ? "bg-orange-500" : "bg-slate-400"
               )} />
@@ -394,11 +378,9 @@ export default function KnowledgeBasePage() {
                     {getFileIcon(entry.fileType)}
                   </div>
                   {isAdmin && (
-                    <Button
-                      size="icon" variant="ghost"
+                    <Button size="icon" variant="ghost"
                       className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setEntryToDelete(entry.id)}
-                    >
+                      onClick={() => setEntryToDelete(entry.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
@@ -411,14 +393,12 @@ export default function KnowledgeBasePage() {
                 </p>
                 <div className="pt-4 border-t space-y-4">
                   <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                    <span>Uploaded {format(new Date(entry.createdAt), 'MMM dd, yyyy')}</span>
+                    <span>{format(new Date(entry.createdAt), 'MMM dd, yyyy')}</span>
                     <span className="bg-muted px-2 py-0.5 rounded">{entry.fileType}</span>
                   </div>
-                  <Button
-                    variant="outline"
+                  <Button variant="outline"
                     className="w-full gap-2 font-bold group-hover:bg-primary group-hover:text-white transition-colors"
-                    onClick={() => downloadFile(entry)}
-                  >
+                    onClick={() => downloadFile(entry)}>
                     <Download className="h-4 w-4" /> Download Manual
                   </Button>
                 </div>
@@ -433,17 +413,18 @@ export default function KnowledgeBasePage() {
           </div>
           <h3 className="font-bold text-lg">No documents found</h3>
           <p className="text-sm text-muted-foreground max-w-xs">
-            {search ? 'Try adjusting your search terms.' : 'The organizational repository is currently empty.'}
+            {search ? 'Try adjusting your search.' : 'The repository is currently empty.'}
           </p>
         </Card>
       )}
 
+      {/* Delete confirm */}
       <AlertDialog open={!!entryToDelete} onOpenChange={open => !open && setEntryToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this document?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the manual from the departmental repository.
+              This permanently removes the file from the repository and cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -451,10 +432,9 @@ export default function KnowledgeBasePage() {
             <AlertDialogAction
               onClick={e => { e.preventDefault(); handleDelete(); }}
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold"
-              disabled={isDeleting}
-            >
+              disabled={isDeleting}>
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Delete Document
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
