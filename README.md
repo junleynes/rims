@@ -12,11 +12,12 @@ A secure, self-hosted web application for broadcast, media, and engineering depa
 - **AI Anomaly Detection** — Automatically flags budget overruns, unit cost magnitude errors, and missing actuals
 - **AI Budget Autofill** — Intelligent field suggestions for project titles and item descriptions
 - **AI Narrative Reports** — Executive-ready summaries generated from live report data for VP/AVP briefings
-- **Centralized Knowledge Base** — Upload and access SOPs, technical manuals, and policy documents (PDF, Word, PowerPoint)
-- **Table of Organization** — Division and section org chart with reporting line mapping
+- **Centralized Knowledge Base** — Upload, manage, and access SOPs, technical manuals, and policy documents (PDF, Word, PowerPoint)
+- **Table of Organization** — Interactive org chart with horizontal/vertical orientation, drag-to-pan, and zoom
 - **Multi-Factor Authentication** — TOTP 2FA via Google Authenticator, enforceable per user
 - **Secure Session Management** — httpOnly iron-session cookies with brute-force lockout
-- **Admin Settings** — Branding, SMTP email, AI provider config (Anthropic / OpenAI / Ollama), locked fiscal years
+- **Audit Log** — Granular event tracking across auth, personnel, budget, knowledge base, and system actions
+- **Admin Settings** — Branding, SMTP email, AI provider config, and locked fiscal years
 
 ---
 
@@ -26,7 +27,7 @@ A secure, self-hosted web application for broadcast, media, and engineering depa
 - **Database:** SQLite via better-sqlite3 (WAL mode)
 - **Auth:** iron-session (httpOnly cookies) + bcryptjs + otplib (TOTP)
 - **UI:** shadcn/ui + Tailwind CSS + Recharts
-- **AI:** Anthropic Claude / OpenAI / Ollama (configurable)
+- **AI:** Anthropic Claude / OpenAI / OpenRouter / Ollama (configurable)
 - **File Storage:** Local filesystem (`uploads/` directory, served via authenticated API route)
 
 ---
@@ -36,7 +37,7 @@ A secure, self-hosted web application for broadcast, media, and engineering depa
 ### Prerequisites
 
 - Node.js 18+
-- A Linux server (Ubuntu recommended) behind an Nginx HTTPS reverse proxy
+- A Linux server (Ubuntu recommended) behind a reverse proxy (Apache or Nginx)
 
 ### Installation
 
@@ -44,13 +45,20 @@ A secure, self-hosted web application for broadcast, media, and engineering depa
 git clone https://github.com/junleynes/rims.git
 cd rims
 npm install
-cp .env.local.example .env.local
 ```
 
-Edit `.env.local`:
+Create `.env.local` at the project root:
 
 ```env
-SESSION_SECRET=<generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
+# Required — generate with:
+# node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+SESSION_SECRET=your_64_char_hex_secret_here
+
+# Set to false when running over HTTP (LAN without HTTPS)
+# Set to true when behind HTTPS reverse proxy
+COOKIE_SECURE=false
+
+NODE_ENV=production
 ```
 
 ### Build & Run
@@ -87,6 +95,7 @@ RestartSec=5
 User=rims
 Environment=NODE_ENV=production
 Environment="SESSION_SECRET=your-secret-here"
+Environment="COOKIE_SECURE=false"
 
 [Install]
 WantedBy=multi-user.target
@@ -94,24 +103,37 @@ WantedBy=multi-user.target
 
 ---
 
-## File Uploads & Knowledge Base
+## Reverse Proxy (Apache)
 
-Files uploaded to the Knowledge Base are stored in the `uploads/knowledge-base/` directory at the project root (outside `public/` so they are **not** directly URL-accessible). All downloads are served through the authenticated `/api/files-serve` route, which verifies the user's session before streaming the file.
+```apache
+<VirtualHost *:7777>
+    ServerName your-server-ip-or-domain
 
-### How upload works (two-phase)
+    ProxyPreserveHost On
+    ProxyRequests Off
 
-1. **Stage** — When the Admin selects a file, it is immediately sent to `/api/upload` and written to disk. A "Ready" indicator appears next to the file input. The Publish button stays disabled until this completes.
-2. **Publish** — Clicking *Publish to Repository* writes the metadata (title, description, stored path) to the SQLite database. If the file has not finished staging, the form blocks submission.
+    RequestHeader set X-Forwarded-Proto "http"
+    RequestHeader set X-Real-IP %{REMOTE_ADDR}s
 
-This two-phase approach prevents the stale-closure race condition that could cause the file path to be missing on submit.
+    <Proxy *>
+        Require all granted
+    </Proxy>
 
-### Supported formats
+    ProxyPass / http://localhost:7777/
+    ProxyPassReverse / http://localhost:7777/
+    ProxyPassReverseCookiePath / /
 
-PDF, Word (`.doc`, `.docx`), PowerPoint (`.ppt`, `.pptx`)
+    ErrorLog ${APACHE_LOG_DIR}/rims_error.log
+    CustomLog ${APACHE_LOG_DIR}/rims_access.log combined
+</VirtualHost>
+```
 
-### Size limit
+Enable required modules:
 
-Configurable by an Admin under **Settings → System → Max Upload Size** (default 20 MB). Enforced both client-side and server-side.
+```bash
+sudo a2enmod proxy proxy_http headers
+sudo systemctl restart apache2
+```
 
 ---
 
@@ -119,20 +141,10 @@ Configurable by an Admin under **Settings → System → Max Upload Size** (defa
 
 Go to **Admin → Settings → AI Integration** to configure your AI provider:
 
-- **Anthropic** — Claude Sonnet (recommended)
+- **Anthropic** — Claude Sonnet (recommended for best results)
 - **OpenAI** — GPT-4o
-- **Ollama** — Local self-hosted models (Llama 3, Mistral, etc.)
-
----
-
-## Changelog
-
-### v1.x — Knowledge Base upload fix
-
-- **Bug fix:** Resolved a stale React closure race condition in `knowledge-base/page.tsx` where `formData` captured in the `handleUpload` closure could be empty if the async file upload hadn't flushed to state yet before the user clicked *Publish*.
-- **Fix:** Upload result (file path, name, type) is now stored in a `useRef` (`uploadedFileRef`) instead of relying on the React state snapshot inside the submit handler. This guarantees the latest upload result is always available at publish time.
-- **UX improvement:** The Publish button is now disabled while a file is uploading (`isUploading`) and also while the form is saving (`isPublishing`), with matching button label changes ("Uploading…" / "Publishing…"). A "Ready" badge appears next to the file input once staging succeeds.
-- **Cancel clears state:** Clicking Cancel now resets the file input, clears the ref, and resets the `fileReady` flag.
+- **OpenRouter** — Access multiple models (Claude, GPT, Gemini, Mistral, etc.) via a single API key at [openrouter.ai](https://openrouter.ai)
+- **Ollama** — Fully local, self-hosted models (Llama 3, Mistral, Phi, etc.) — no internet required
 
 ---
 
