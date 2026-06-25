@@ -35,11 +35,18 @@ function buildStoredName(
   uploaderName: string,
   section: string,
   division: string,
+  role: string,
 ): string {
   const ext      = path.extname(originalName).toLowerCase();
   const baseName = path.basename(originalName, path.extname(originalName));
 
-  const sectionSlug  = slugify(section && section !== 'None' ? section : division || 'general');
+  const sectionSlug  = slugify(
+    (section && section !== 'None')
+      ? section
+      : (division && division !== 'None')
+        ? `${division}-division`
+        : role || 'general'
+  );
   const uploaderSlug = slugify(uploaderName || 'unknown');
   const fileSlug     = slugify(baseName).slice(0, 40); // cap to keep paths sane
 
@@ -87,6 +94,7 @@ export async function POST(req: NextRequest) {
       user.name || user.username,
       user.section  || '',
       user.division || '',
+      user.role     || '',
     );
 
     // Ensure upload directory exists
