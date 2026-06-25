@@ -11,6 +11,7 @@ export async function uploadFile(
   formData.append('folder', folder);
 
   const res = await fetch('/api/upload', {
+    credentials: 'include',
     method: 'POST',
     body: formData,
   });

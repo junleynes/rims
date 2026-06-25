@@ -95,7 +95,7 @@ export default function KnowledgeBasePage() {
       fd.append('file', file);
       fd.append('folder', 'knowledge-base');
 
-      const res = await fetch('/api/upload', { method: 'POST', body: fd });
+      const res = await fetch('/api/upload', { method: 'POST', body: fd, credentials: 'include' });
       const data = await res.json();
 
       if (!res.ok) throw new Error(data?.error || `Upload failed (${res.status})`);
@@ -142,9 +142,10 @@ export default function KnowledgeBasePage() {
 
     try {
       const res = await fetch('/api/knowledge-base', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
+        method:      'POST',
+        headers:     { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body:        JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
@@ -171,9 +172,10 @@ export default function KnowledgeBasePage() {
         await deleteFile(entry.filePath).catch(() => {});
       }
       const res = await fetch('/api/knowledge-base', {
-        method:  'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ id: entryToDelete }),
+        method:      'DELETE',
+        headers:     { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body:        JSON.stringify({ id: entryToDelete }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
