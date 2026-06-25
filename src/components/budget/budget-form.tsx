@@ -37,6 +37,7 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
   const { divisions, sections, locations, users, statusOptions, systemConfig } = useSystemData();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
@@ -140,10 +141,10 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
     return filtered;
   }, [sections, divisions, formData.division, user, isManager]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-
+    const valid: File[] = [];
     for (const file of files) {
       if (file.size > MAX_FILE_SIZE) {
         toast({
@@ -153,19 +154,17 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
         });
         continue;
       }
-
-      try {
-        const result = await uploadFile(file, 'budget-attachments');
-        setFormData(prev => ({
-          ...prev,
-          attachments: [...(prev.attachments || []), result.filePath]
-        }));
-      } catch (err: any) {
-        toast({ title: 'Upload Failed', description: `${file.name}: ${err.message}`, variant: 'destructive' });
-      }
+      valid.push(file);
     }
-
+    if (valid.length > 0) {
+      setPendingFiles(prev => [...prev, ...valid]);
+      toast({ title: `${valid.length} file(s) selected`, description: 'Files will upload when you press Save.' });
+    }
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removePending = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const removeAttachment = async (index: number) => {
@@ -187,8 +186,17 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
       const totalCostBudget = formData.quantity * formData.unitCostBudget;
       const totalCostActual = formData.unitCostActual ? formData.quantity * formData.unitCostActual : 0;
 
+      // Upload pending files on submit
+      const uploadedPaths: string[] = [];
+      for (const file of pendingFiles) {
+        const result = await uploadFile(file, 'budget-attachments');
+        uploadedPaths.push(result.filePath);
+      }
+      setPendingFiles([]);
+
       const finalData = {
         ...formData,
+        attachments: [...(formData.attachments || []), ...uploadedPaths],
         totalCostBudget,
         totalCostActual,
       };
@@ -580,6 +588,19 @@ export function BudgetForm({ initialData }: BudgetFormProps) {
                   );
                 })}
                 
+                {pendingFiles.map((file, idx) => (
+                  <div key={`pending-${idx}`} className="relative aspect-video rounded-xl overflow-hidden border-2 border-dashed border-amber-400 shadow-sm group bg-amber-50/40 flex flex-col items-center justify-center gap-1">
+                    <FileText className="h-7 w-7 text-amber-500" />
+                    <span className="text-[10px] font-bold text-amber-700 px-2 text-center truncate w-full">{file.name}</span>
+                    <span className="text-[9px] text-amber-500 font-semibold">Pending upload</span>
+                    <Button
+                      type="button" variant="destructive" size="icon"
+                      className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => removePending(idx)}
+                    ><X className="h-4 w-4" /></Button>
+                  </div>
+                ))}
+
                 <div 
                   className="aspect-video border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/10 hover:bg-muted/20 transition-colors cursor-pointer"
                   onClick={() => fileInputRef.current?.click()}

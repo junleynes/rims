@@ -267,7 +267,8 @@ export default function KnowledgeBasePage() {
 
   function downloadFile(entry: KnowledgeBaseEntry) {
     const link = document.createElement('a');
-    link.href = getFileUrl(entry.filePath);
+    // Pass original fileName so the serve route sends the correct Content-Disposition
+    link.href = getFileUrl(entry.filePath, entry.fileName);
     link.download = entry.fileName;
     link.target = '_blank';
     document.body.appendChild(link);

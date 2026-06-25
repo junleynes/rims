@@ -43,8 +43,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const relativePath = req.nextUrl.searchParams.get('path');
-  const absolutePath = resolveFilePath(relativePath);
+  const relativePath    = req.nextUrl.searchParams.get('path');
+  const displayFileName = req.nextUrl.searchParams.get('filename'); // original display name
+  const absolutePath    = resolveFilePath(relativePath);
 
   if (!absolutePath) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
@@ -58,13 +59,14 @@ export async function GET(req: NextRequest) {
     const buffer = await readFile(absolutePath);
     const ext = path.extname(absolutePath).replace('.', '').toLowerCase();
     const mimeType = MIME_TYPES[ext] ?? 'application/octet-stream';
-    const fileName = path.basename(absolutePath);
+    // Use the original display name if provided, else fall back to stored slug name
+    const servedName = displayFileName || path.basename(absolutePath);
     const inline = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
 
     return new NextResponse(buffer, {
       headers: {
         'Content-Type': mimeType,
-        'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${fileName}"`,
+        'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${servedName}"`,
         'Cache-Control': 'private, max-age=3600',
         'Content-Length': buffer.length.toString(),
       },

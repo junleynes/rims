@@ -11,9 +11,9 @@ export async function uploadFile(
   formData.append('folder', folder);
 
   const res = await fetch('/api/upload', {
-    credentials: 'include',
     method: 'POST',
     body: formData,
+    credentials: 'include',
   });
 
   if (!res.ok) {
@@ -36,11 +36,12 @@ export async function deleteFile(filePath: string): Promise<void> {
  * Get the URL to view/download a stored file.
  * All files go through /api/files-serve?path=... which verifies session first.
  */
-export function getFileUrl(filePath: string): string {
+export function getFileUrl(filePath: string, displayName?: string): string {
   if (!filePath) return '';
   // Already a full URL or base64 data URI (legacy) — return as-is
   if (filePath.startsWith('http') || filePath.startsWith('data:')) return filePath;
-  return `/api/files-serve?path=${encodeURIComponent(filePath)}`;
+  const url = `/api/files-serve?path=${encodeURIComponent(filePath)}`;
+  return displayName ? `${url}&filename=${encodeURIComponent(displayName)}` : url;
 }
 
 /**
