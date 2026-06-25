@@ -115,8 +115,7 @@ export default function KnowledgeBasePage() {
   }
 
   // ── Step 2: save entry to DB when user presses Publish ──────────────────
-  async function handlePublish(e: React.FormEvent) {
-    e.preventDefault();
+  async function handlePublish() {
 
     if (!title.trim()) {
       toast({ title: 'Title required', description: 'Please enter a document title.', variant: 'destructive' });
@@ -264,7 +263,7 @@ export default function KnowledgeBasePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handlePublish} className="space-y-4">
+            <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                 {/* Title */}
@@ -334,7 +333,8 @@ export default function KnowledgeBasePage() {
                   <span className="text-xs text-muted-foreground">Select a file to enable Publish</span>
                 )}
                 <Button
-                  type="submit"
+                  type="button"
+                  onClick={handlePublish}
                   disabled={!canPublish}
                   className="min-w-[180px]"
                 >
@@ -343,7 +343,7 @@ export default function KnowledgeBasePage() {
                     : <><Plus className="h-4 w-4 mr-2" /> Publish to Repository</>}
                 </Button>
               </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
       )}
