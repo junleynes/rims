@@ -23,7 +23,7 @@ import {
   BookOpen, Plus, X, FileCode, Loader2, Sparkles, FilePlus2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { fetchKnowledgeBaseEntries, createKnowledgeBaseEntry, removeKnowledgeBaseEntry } from '@/app/actions/db-actions';
+import { fetchKnowledgeBaseEntries } from '@/app/actions/db-actions';
 import { generateContentFromTitle } from '@/app/actions/ai-autofill-action';
 import { KnowledgeBaseEntry } from '@/lib/types';
 import { uploadFile, deleteFile, getFileUrl } from '@/lib/file-upload';
@@ -154,7 +154,15 @@ export default function KnowledgeBasePage() {
     };
 
     try {
-      await createKnowledgeBaseEntry(newEntry);
+      const res = await fetch('/api/knowledge-base', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEntry),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || `Server error ${res.status}`);
+      }
       toast({ title: 'Document Published', description: 'The document is now available to all users.' });
       resetForm();
       setShowUploadForm(false);
@@ -194,11 +202,17 @@ export default function KnowledgeBasePage() {
       if (entry?.filePath && !entry.filePath.startsWith('data:')) {
         await deleteFile(entry.filePath);
       }
-      await removeKnowledgeBaseEntry(entryToDelete);
+      const res = await fetch('/api/knowledge-base', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: entryToDelete }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || `Server error ${res.status}`);
       toast({ title: 'Document Removed', description: 'The document has been permanently deleted.' });
       await loadEntries();
-    } catch {
-      toast({ title: 'Delete Failed', description: 'Could not remove the document. Please try again.', variant: 'destructive' });
+    } catch (error: any) {
+      toast({ title: 'Delete Failed', description: error?.message || 'Could not remove the document.', variant: 'destructive' });
     } finally {
       setIsDeleting(false);
       setEntryToDelete(null);

@@ -75,11 +75,11 @@ const SystemUpdateSchema = z.object({
 const KnowledgeBaseEntrySchema = z.object({
   id: z.string(),
   title: z.string().min(1),
-  description: z.string(),
-  fileName: z.string(),
-  fileType: z.string(),
-  filePath: z.string(),
-  uploadedBy: z.string(),
+  description: z.string().optional().default(''),
+  fileName: z.string().min(1),
+  fileType: z.string().min(1),
+  filePath: z.string().min(1),
+  uploadedBy: z.string().default(''),
   createdAt: z.string(),
 });
 
@@ -212,14 +212,23 @@ export async function fetchKnowledgeBaseEntries() {
 
 export async function createKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
   const user = await requireSession();
-  const validated = KnowledgeBaseEntrySchema.parse(entry);
+  let validated;
+  try {
+    validated = KnowledgeBaseEntrySchema.parse(entry);
+  } catch (e: any) {
+    throw new Error(`Validation failed: ${e?.message || 'invalid entry data'}`);
+  }
   await db.saveKnowledgeBaseEntry(validated);
-  db.logAudit({
-    userId: user.id,
-    username: user.username,
-    action: 'kb_document_uploaded',
-    details: `Uploaded "${entry.title}" (${entry.fileType.toUpperCase()}, ${entry.fileName})`,
-  });
+  try {
+    db.logAudit({
+      userId: user.id,
+      username: user.username,
+      action: 'kb_document_uploaded',
+      details: `Uploaded "${entry.title}" (${entry.fileType.toUpperCase()}, ${entry.fileName})`,
+    });
+  } catch {
+    // audit logging must never block the publish
+  }
   return true;
 }
 
