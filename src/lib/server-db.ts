@@ -137,8 +137,7 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS system_config (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    maxUploadSize INTEGER DEFAULT 20,
-    maintenanceMode INTEGER DEFAULT 0
+    maxUploadSize INTEGER DEFAULT 20
   );
 
   CREATE TABLE IF NOT EXISTS smtp_settings (
@@ -180,14 +179,12 @@ db.exec(`
 function addColumnIfNotExists(table: string, column: string, type: string) {
   try {
     const info = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
-    const exists = info.some((col: any) => col.name === column);
-    if (exists) return;
-    db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
-  } catch (e: any) {
-    // "duplicate column name" means another process already ran this migration
-    // or the PRAGMA check raced against an ALTER. Treat it as a no-op.
-    if (e?.message?.includes('duplicate column')) return;
-    console.warn(`Migration warning for ${table}.${column}:`, e);
+    const exists = info.some(col => col.name === column);
+    if (!exists) {
+      db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`).run();
+    }
+  } catch (e) {
+    console.warn(`Migration failed for ${table}.${column}:`, e);
   }
 }
 
@@ -414,12 +411,20 @@ export async function getAllKnowledgeBaseEntries(): Promise<KnowledgeBaseEntry[]
   return db.prepare('SELECT * FROM knowledge_base ORDER BY createdAt DESC').all() as KnowledgeBaseEntry[];
 }
 
-export async function saveKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
-  const stmt = db.prepare(`
+export function saveKnowledgeBaseEntry(entry: KnowledgeBaseEntry) {
+  db.prepare(`
     INSERT INTO knowledge_base (id, title, description, fileName, fileType, filePath, uploadedBy, createdAt)
     VALUES (@id, @title, @description, @fileName, @fileType, @filePath, @uploadedBy, @createdAt)
-  `);
-  stmt.run(entry);
+  `).run({
+    id:          entry.id,
+    title:       entry.title,
+    description: entry.description || '',
+    fileName:    entry.fileName,
+    fileType:    entry.fileType,
+    filePath:    entry.filePath,
+    uploadedBy:  entry.uploadedBy || '',
+    createdAt:   entry.createdAt,
+  });
 }
 
 export async function deleteKnowledgeBaseEntry(id: string) {

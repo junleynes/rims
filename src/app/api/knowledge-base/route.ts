@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    await db.saveKnowledgeBaseEntry(validated);
+    db.saveKnowledgeBaseEntry(validated);
   } catch (e: any) {
     console.error('KB save error:', e);
     return NextResponse.json({ error: 'Failed to save entry to database.' }, { status: 500 });
