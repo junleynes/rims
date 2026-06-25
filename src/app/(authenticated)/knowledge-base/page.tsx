@@ -24,6 +24,13 @@ import { deleteFile, getFileUrl } from '@/lib/file-upload';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+function generateId(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
 export default function KnowledgeBasePage() {
   const { user } = useAuth();
   const { systemConfig } = useSystemData();
@@ -129,7 +136,7 @@ export default function KnowledgeBasePage() {
     setIsPublishing(true);
 
     const payload: KnowledgeBaseEntry = {
-      id:          crypto.randomUUID(),
+      id:          generateId(),
       title:       title.trim(),
       description: description.trim(),
       fileName:    stagedFile.fileName,
