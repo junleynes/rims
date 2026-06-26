@@ -70,6 +70,7 @@ export default function BudgetsPage() {
       "Date Delivered",
       "GR SIS Number",
       "Accountable Username",
+      "Accountable Person",
       "Status",
       "Status Others",
       "Remarks"
@@ -92,6 +93,7 @@ export default function BudgetsPage() {
       "",
       "",
       "admin",
+      "Juan dela Cruz",
       "working",
       "",
       "Sample remarks"

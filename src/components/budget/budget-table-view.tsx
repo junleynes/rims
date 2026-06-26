@@ -86,7 +86,7 @@ const CARD_COLORS = [
 
 export function BudgetTableView({ budgets, onDelete, onExportReady }: BudgetTableViewProps) {
   const { user } = useAuth();
-  const { divisions, sections, lockedYears } = useSystemData();
+  const { divisions, sections, lockedYears, users } = useSystemData();
   const { toast } = useToast();
   const router = useRouter();
   
@@ -198,7 +198,7 @@ export function BudgetTableView({ budgets, onDelete, onExportReady }: BudgetTabl
       "Quantity", "Unit Cost Budget", "Total Cost Budget",
       "Unit Cost Actual", "Total Cost Actual",
       "PR Number", "Date Delivered", "GR SIS Number",
-      "Accountable Person", "Status", "Status Others", "Remarks"
+      "Accountable Username", "Accountable Person", "Status", "Status Others", "Remarks"
     ];
 
     // Wrap in quotes and escape internal double-quotes for RFC 4180 compliance
@@ -212,7 +212,9 @@ export function BudgetTableView({ budgets, onDelete, onExportReady }: BudgetTabl
       b.quantity,           b.unitCostBudget,       b.totalCostBudget,
       b.unitCostActual ?? 0, b.totalCostActual ?? 0,
       esc(b.prNumber),      esc(b.dateDelivered),  esc(b.grSisNumber),
-      esc(b.accountablePerson), esc(b.status),     esc(b.statusOthers),
+      // Reverse-lookup username from full name for round-trip import compatibility
+      esc(users.find(u => u.name === b.accountablePerson)?.username || ''),
+      esc(b.accountablePerson), esc(b.status), esc(b.statusOthers),
       esc(b.remarks),
     ]);
 
