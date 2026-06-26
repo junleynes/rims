@@ -59,6 +59,7 @@ import { useToast } from '@/hooks/use-toast';
 interface BudgetTableViewProps {
   budgets: BudgetEntry[];
   onDelete?: (id: string) => void;
+  onExportReady?: (fn: () => void) => void;
 }
 
 type ViewScope = 'drilldown' | 'whole' | 'division';
@@ -83,7 +84,7 @@ const CARD_COLORS = [
   'bg-lime-500',
 ];
 
-export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
+export function BudgetTableView({ budgets, onDelete, onExportReady }: BudgetTableViewProps) {
   const { user } = useAuth();
   const { divisions, sections, lockedYears } = useSystemData();
   const { toast } = useToast();
@@ -185,75 +186,66 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
     return result;
   }, [budgets, scope, currentDivisionName, currentSectionName, currentYear, selectedDivisionFlat, selectedCategory, search, user, sortConfig]);
 
-  const handleExportCSV = () => {
-    if (filteredAndSortedBudgets.length === 0) return;
+  const handleExportCSV = React.useCallback(() => {
+    if (filteredAndSortedBudgets.length === 0) {
+      toast({ title: 'Nothing to export', description: 'No entries match the current filters.', variant: 'destructive' });
+      return;
+    }
 
     const headers = [
-      "Year",
-      "Division",
-      "Section",
-      "Location",
-      "Location Details",
-      "Classification",
-      "Category",
-      "Account",
-      "Project Title",
-      "Item Description",
-      "Quantity",
-      "Unit Cost Budget",
-      "Total Cost Budget",
-      "Unit Cost Actual",
-      "Total Cost Actual",
-      "PR Number",
-      "Date Delivered",
-      "GR SIS Number",
-      "Accountable Person",
-      "Status",
-      "Status Others",
-      "Remarks"
+      "Year", "Division", "Section", "Location", "Location Details",
+      "Classification", "Category", "Account", "Project Title", "Item Description",
+      "Quantity", "Unit Cost Budget", "Total Cost Budget",
+      "Unit Cost Actual", "Total Cost Actual",
+      "PR Number", "Date Delivered", "GR SIS Number",
+      "Accountable Person", "Status", "Status Others", "Remarks"
     ];
+
+    // Wrap in quotes and escape internal double-quotes for RFC 4180 compliance
+    const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 
     const rows = filteredAndSortedBudgets.map(b => [
       b.year,
-      `"${b.division || ''}"`,
-      `"${b.section || ''}"`,
-      `"${b.location || ''}"`,
-      `"${b.locationDetails || ''}"`,
-      `"${b.classification || ''}"`,
-      `"${b.category || ''}"`,
-      `"${b.account || ''}"`,
-      `"${b.projectTitle || ''}"`,
-      `"${b.itemDescription || ''}"`,
-      b.quantity,
-      b.unitCostBudget,
-      b.totalCostBudget,
-      b.unitCostActual || 0,
-      b.totalCostActual || 0,
-      `"${b.prNumber || ''}"`,
-      `"${b.dateDelivered || ''}"`,
-      `"${b.grSisNumber || ''}"`,
-      `"${b.accountablePerson || ''}"`,
-      `"${b.status || ''}"`,
-      `"${b.statusOthers || ''}"`,
-      `"${b.remarks || ''}"`
+      esc(b.division),      esc(b.section),        esc(b.location),
+      esc(b.locationDetails), esc(b.classification), esc(b.category),
+      esc(b.account),       esc(b.projectTitle),   esc(b.itemDescription),
+      b.quantity,           b.unitCostBudget,       b.totalCostBudget,
+      b.unitCostActual ?? 0, b.totalCostActual ?? 0,
+      esc(b.prNumber),      esc(b.dateDelivered),  esc(b.grSisNumber),
+      esc(b.accountablePerson), esc(b.status),     esc(b.statusOthers),
+      esc(b.remarks),
     ]);
 
-    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `rims-resource-export-${new Date().toISOString().split('T')[0]}.csv`);
+    // BOM so Excel opens UTF-8 without garbled characters
+    const BOM = '﻿';
+    const csv = BOM + [headers.join(','), ...rows.map(r => r.join(','))].join('
+');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    const yearPart = currentYear          ? `-fy${currentYear}`                                         : '';
+    const divPart  = currentDivisionName  ? `-${currentDivisionName.replace(/\s+/g, '-').toLowerCase()}` : '';
+    const secPart  = currentSectionName   ? `-${currentSectionName.replace(/\s+/g, '-').toLowerCase()}`  : '';
+    const date     = new Date().toISOString().slice(0, 10);
+    link.download  = `rims-resource-export${yearPart}${divPart}${secPart}-${date}.csv`;
+    link.href      = url;
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 
     toast({
-      title: "Export Successful",
-      description: `${filteredAndSortedBudgets.length} items exported to CSV.`,
+      title: 'Export Successful',
+      description: `${filteredAndSortedBudgets.length} entr${filteredAndSortedBudgets.length === 1 ? 'y' : 'ies'} exported to CSV.`,
     });
-  };
+  }, [filteredAndSortedBudgets, currentYear, currentDivisionName, currentSectionName, toast]);
+
+  // Register handler with parent toolbar whenever it changes
+  React.useEffect(() => {
+    onExportReady?.(handleExportCSV);
+  }, [handleExportCSV, onExportReady]);
 
   const isYearLocked = (year: number) => {
     return lockedYears.some(ly => ly.year === year);
@@ -314,8 +306,8 @@ export function BudgetTableView({ budgets, onDelete }: BudgetTableViewProps) {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs" onClick={handleExportCSV}>
-          <Download className="h-3.5 w-3.5" /> Export
+        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold border-emerald-500/30 text-emerald-700 hover:bg-emerald-50" onClick={handleExportCSV}>
+          <Download className="h-3.5 w-3.5" /> Export CSV
         </Button>
       </div>
     </div>

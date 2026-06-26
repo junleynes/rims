@@ -6,7 +6,7 @@ import { useBudgets } from '@/components/budget-context';
 import { useAuth } from '@/components/auth-context';
 import { useSystemData } from '@/components/system-data-context';
 import { Button } from '@/components/ui/button';
-import { Plus, Upload, Trash2, AlertTriangle, Loader2, FileDown, Table2 } from 'lucide-react';
+import { Plus, Upload, Trash2, AlertTriangle, Loader2, FileDown, Table2, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { BudgetEntry, Classification, BudgetCategory, Account } from '@/lib/types';
@@ -37,6 +37,7 @@ export default function BudgetsPage() {
   const { users } = useSystemData();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const exportTriggerRef = useRef<(() => void) | null>(null);
 
   const [purgeYear, setPurgeYear] = useState<string>('');
   const [purgeConfirmText, setPurgeConfirmText] = useState<string>('');
@@ -313,6 +314,14 @@ export default function BudgetsPage() {
               <FileDown className="h-4 w-4" /> Template
             </Button>
 
+            <Button
+              variant="outline"
+              onClick={() => exportTriggerRef.current?.()}
+              className="gap-2 border-emerald-500/30 hover:bg-emerald-50 text-emerald-700 font-bold"
+            >
+              <Download className="h-4 w-4" /> Export CSV
+            </Button>
+
             <input 
               type="file" 
               ref={fileInputRef} 
@@ -332,7 +341,7 @@ export default function BudgetsPage() {
         )}
       </div>
 
-      <BudgetTableView budgets={budgets} onDelete={deleteBudget} />
+      <BudgetTableView budgets={budgets} onDelete={deleteBudget} onExportReady={(fn) => { exportTriggerRef.current = fn; }} />
     </div>
   );
 }
